@@ -1,10 +1,10 @@
 [package]
 name = "gitoxide-core"
 description = "The library implementating all capabilities of the gitoxide CLI"
-repository = "https://github.com/Byron/git-oxide"
-version = "0.3.0"
+repository = "https://github.com/Byron/gitoxide"
+version = "0.11.0"
 authors = ["Sebastian Thiel <sebastian.thiel@icloud.com>"]
-license = "MIT"
+license = "MIT/Apache-2.0"
 edition = "2018"
 
 [lib]
@@ -12,17 +12,48 @@ doctest = false
 test = false
 
 [features]
-serde1 = ["git-object/serde1", "git-odb/serde1", "serde_json"]
+default = []
+serde1 = ["git-commitgraph/serde1", "git-repository/serde1", "serde_json", "serde"]
 
-[package.metadata.docs.rs]
-all-features = true
+# async or blocking tooling
+blocking-client = ["git-repository/blocking-network-client"]
+async-client = ["git-repository/async-network-client", "async-trait", "futures-io", "async-net", "async-io", "futures-lite", "blocking"]
+
+local-time-support = ["git-repository/local-time-support"]
+
+# tools
+organize = ["git-url", "jwalk"]
+estimate-hours = ["itertools", "rayon", "fs-err"]
 
 [dependencies]
-git-repository = { version = "0.3.0", path = "../git-repository" }
-git-object = { version = "^0.3.0", path = "../git-object" }
-git-odb = { version = "0.3.0", path = "../git-odb" }
-git-features = { version = "^0.3.0", path = "../git-features" }
-anyhow = "1.0.31"
+# deselect everything else (like "performance") as this should be controllable by the parent application.
+git-repository = { version ="^0.10.0", path = "../git-repository", default-features = false, features = ["local", "unstable"]} # TODO: eventually 'unstable' shouldn't be needed anymore
+git-pack-for-configuration-only = { package = "git-pack", version ="^0.12.0", path = "../git-pack", default-features = false, features = ["pack-cache-lru-dynamic", "pack-cache-lru-static"] }
+git-commitgraph = { version ="^0.5.0", path = "../git-commitgraph" }
+git-config = { version = "^0.1.0", path = "../git-config" }
+serde = { version = "1.0.114", optional = true, default-features = false, features = ["derive"] }
+anyhow = "1.0.42"
 quick-error = "2.0.0"
 bytesize = "1.0.1"
-serde_json = { version = "1.0.56", optional = true }
+serde_json = { version = "1.0.65", optional = true }
+tempfile = "3.1.0"
+os_str_bytes = "3.1.0"
+
+# for async-client
+async-trait = { version = "0.1.51", optional = true }
+async-net = { version = "1.6", optional = true }
+futures-lite = { version  = "1.12.0", optional = true }
+async-io = { version = "1.6", optional = true }
+futures-io = { version = "0.3.16", optional = true }
+blocking = { version = "1.0.2", optional = true }
+
+# for 'organize' functionality
+git-url = { version ="^0.3.4", path = "../git-url", optional = true }
+jwalk = { version = "0.6.0", optional = true }
+
+rayon = { version = "1.5.0", optional = true }
+itertools = { version = "0.10.1", optional = true }
+fs-err = { version = "2.6.0", optional = true }
+
+[package.metadata.docs.rs]
+features = ["blocking-client", "organize", "estimate-hours", "serde1"]

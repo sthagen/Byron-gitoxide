@@ -1,10 +1,10 @@
 [package]
 name = "git-features"
 description = "A crate to integrate various capabilities using compile-time feature flags"
-repository = "https://github.com/Byron/git-oxide"
-version = "0.3.0"
+repository = "https://github.com/Byron/gitoxide"
+version = "0.16.5"
 authors = ["Sebastian Thiel <sebastian.thiel@icloud.com>"]
-license = "MIT"
+license = "MIT/Apache-2.0"
 edition = "2018"
 
 [lib]
@@ -12,43 +12,74 @@ doctest = false
 test = false
 
 [features]
-parallel = ["crossbeam-utils", "crossbeam-channel", "num_cpus"]
-fast-sha1 = ["fastsha1"]
-interrupt-handler = ["ctrlc"]
-disable-interrupts = []
-
-[[test]]
-name = "parallel"
-path = "tests/parallel.rs"
-required-features = ["parallel"]
+default = []
+progress = ["prodash"]
+parallel = ["crossbeam-utils", "crossbeam-channel", "num_cpus", "jwalk"]
+fast-sha1 = ["sha-1"]
+io-pipe = ["bytes"]
+crc32 = ["crc32fast"]
+zlib = ["flate2", "flate2/rust_backend", "quick-error"]
+zlib-ng-compat = ["flate2/zlib-ng-compat"]
+zlib-rust-backend = ["flate2/rust_backend"]
+cache-efficiency-debug = []
 
 [[test]]
 name = "hash"
 path = "tests/hash.rs"
-required-features = ["fast-sha1"]
+required-features = ["rustsha1"]
 
 [[test]]
-name = "slow-hash"
-path = "tests/hash.rs"
-required-features = []
+name = "parallel"
+path = "tests/parallel_threaded.rs"
+required-features = ["parallel", "rustsha1"]
+
+[[test]]
+name = "multi-threaded"
+path = "tests/parallel_shared_threaded.rs"
+required-features = ["parallel", "rustsha1"]
+
+[[test]]
+name = "single-threaded"
+path = "tests/parallel_shared.rs"
+required-features = ["rustsha1"]
+
+[[test]]
+name = "pipe"
+path = "tests/pipe.rs"
+required-features = ["io-pipe"]
 
 [dependencies]
+git-hash = { version ="^0.7.0", path = "../git-hash" }
+
 # 'parallel' feature
-crossbeam-utils = { version = "0.7.2", optional = true }
-crossbeam-channel = { version = "0.4.2", optional = true }
+crossbeam-utils = { version = "0.8.5", optional = true }
+crossbeam-channel = { version = "0.5.0", optional = true }
 num_cpus = { version = "1.13.0", optional = true }
 
+jwalk = { version = "0.6.0", optional = true }
+walkdir = { version = "2.3.1", optional = true } # used when parallel is off
+
 # hashing and 'fast-sha1' feature
-sha1 = "0.6.0"
-crc = "1.8.1"
-fastsha1 = { package = "sha-1", version = "0.9.1", optional = true }
+rustsha1 = { package = "sha1", version = "0.6.0", optional = true }
+crc32fast = { version = "1.2.1", optional = true }
+sha-1 = { version = "0.9.1", optional = true }
 
 # progress
-prodash = { version = "8.0.0", default-features = false, features = ["unit-bytes", "unit-human"] }
+prodash = { version = "16.0.0", optional = true, default-features = false, features = ["unit-bytes", "unit-human"] }
 
-# interrupt-handler
-ctrlc = { version = "3.1.4", optional = true, default-features = false, features = ['termination'] }
+# pipe
+bytes = { version = "1.0.0", optional = true }
+
+# zlib module
+flate2 = { version = "1.0.17", optional = true, default-features = false }
+quick-error = { version = "2.0.0", optional = true }
+
+# time module
+time = { version = "0.3.2", optional = true, default-features = false, features = ["local-offset"] }
 
 [package.metadata.docs.rs]
 all-features = true
 
+# Assembly doesn't yet compile on MSVC on windows, but does on GNU, see https://github.com/RustCrypto/asm-hashes/issues/17
+[target.'cfg(not(all(target_os = "windows", target_env = "msvc")))'.dependencies]
+sha-1 = { version = "0.9.1", optional = true, features = ["asm"] }

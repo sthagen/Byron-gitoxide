@@ -1,7 +1,9 @@
 use std::path::PathBuf;
 
-mod borrowed;
-mod owned;
+mod encode;
+mod immutable;
+
+type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 #[cfg(not(windows))]
 fn fixup(v: Vec<u8>) -> Vec<u8> {
@@ -16,9 +18,7 @@ fn fixup(v: Vec<u8>) -> Vec<u8> {
     v.replace(b"\r\n", "\n")
 }
 
-pub fn hex_to_id(hex: &str) -> git_object::owned::Id {
-    git_object::owned::Id::from_40_bytes_in_hex(hex.as_bytes()).expect("40 bytes hex")
-}
+pub use git_testtools::hex_to_id;
 
 pub fn fixture(path: &str) -> PathBuf {
     PathBuf::from("tests/fixtures").join(path)
@@ -26,4 +26,13 @@ pub fn fixture(path: &str) -> PathBuf {
 
 fn fixture_bytes(path: &str) -> Vec<u8> {
     fixup(std::fs::read(fixture(path)).unwrap())
+}
+
+#[test]
+fn size_in_memory() {
+    assert_eq!(
+        std::mem::size_of::<git_object::Object>(),
+        264,
+        "Prevent unexpected growth of what should be lightweight objects"
+    )
 }

@@ -1,5 +1,4 @@
-#[cfg(feature = "pretty-cli")]
-pub mod pretty;
+mod options;
 
-#[cfg(all(feature = "lean-cli", not(feature = "pretty-cli")))]
-pub mod lean;
+mod main;
+pub use main::main;

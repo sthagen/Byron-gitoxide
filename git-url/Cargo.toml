@@ -1,16 +1,24 @@
 [package]
 name = "git-url"
-version = "0.0.0"
-repository = "https://github.com/Byron/git-oxide"
-license = "MIT"
+version = "0.3.4"
+repository = "https://github.com/Byron/gitoxide"
+license = "MIT/Apache-2.0"
 description = "A WIP crate of the gitoxide project implementing parsing and serialization of git-url"
 authors = ["Sebastian Thiel <sebastian.thiel@icloud.com>"]
 edition = "2018"
+include = ["src/**/*", "CHANGELOG.md"]
 
 [lib]
 doctest = false
-test = false
+
+[features]
+serde1 = ["serde", "bstr/serde1"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+serde = { version = "1.0.114", optional = true, default-features = false, features = ["std", "derive"]}
+quick-error = "2.0.0"
+url = "2.1.1"
+bstr = { version = "0.2.13", default-features = false, features = ["std"] }
+home = "0.5.3"

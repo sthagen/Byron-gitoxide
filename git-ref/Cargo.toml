@@ -1,8 +1,8 @@
 [package]
 name = "git-ref"
-version = "0.3.0"
-repository = "https://github.com/Byron/git-oxide"
-license = "MIT"
+version = "0.8.0"
+repository = "https://github.com/Byron/gitoxide"
+license = "MIT/Apache-2.0"
 description = "A crate to handle git references"
 authors = ["Sebastian Thiel <sebastian.thiel@icloud.com>"]
 edition = "2018"
@@ -12,8 +12,35 @@ include = ["src/**/*"]
 doctest = false
 test = true
 
+[features]
+serde1 = ["serde", "git-hash/serde1", "git-actor/serde1", "git-object/serde1"]
+internal-testing-git-features-parallel = ["git-features/parallel"] # test sorted parallel loose file traversal
+
+[[test]]
+name = "refs-parallel-fs-traversal"
+path = "tests/refs-parallel.rs"
+required-features = ["internal-testing-git-features-parallel"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+git-features = { version ="^0.16.5", path = "../git-features", features = ["walkdir"]}
+git-hash = { version ="^0.7.0", path = "../git-hash" }
+git-object = { version ="^0.14.1", path = "../git-object" }
+git-validate = { version ="^0.5.3", path = "../git-validate" }
+git-actor = { version ="^0.5.3", path = "../git-actor" }
+git-lock = { version ="^1.0.0", path = "../git-lock" }
+git-tempfile = { version ="^1.0.0", path = "../git-tempfile" }
+
 quick-error = "2.0.0"
-bstr = { version = "0.2.13", default-features = false, features = ["std"] }
+nom = { version = "7", default-features = false, features = ["std"]}
+serde = { version = "1.0.114", optional = true, default-features = false, features = ["derive"]}
+os_str_bytes = "3.1.0"
+
+# packed refs
+filebuffer = "0.4.0"
+
+[dev-dependencies]
+git-testtools = { path = "../tests/tools" }
+git-odb = { path = "../git-odb" }
+tempfile = "3.2.0"

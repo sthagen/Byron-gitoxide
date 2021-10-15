@@ -1,16 +1,66 @@
 [package]
 name = "git-transport"
-version = "0.0.0"
-repository = "https://github.com/Byron/git-oxide"
-license = "MIT"
+version = "0.12.0"
+repository = "https://github.com/Byron/gitoxide"
+license = "MIT/Apache-2.0"
 description = "A WIP crate of the gitoxide project dedicated to implementing the git transport layer"
 authors = ["Sebastian Thiel <sebastian.thiel@icloud.com>"]
 edition = "2018"
+include = ["src/**/*", "CHANGELOG.md"]
 
 [lib]
 doctest = false
-test = false
+
+[features]
+default = []
+serde1 = ["serde"]
+http-client-curl = ["curl", "base64", "git-features/io-pipe", "blocking-client"]
+blocking-client = ["git-packetline/blocking-io"]
+async-client = ["git-packetline/async-io", "async-trait", "futures-lite", "futures-io", "pin-project-lite"]
+
+[[test]]
+name = "blocking-transport"
+path = "tests/blocking-transport.rs"
+required-features = ["blocking-client", "maybe-async/is_sync"]
+
+[[test]]
+name = "blocking-transport-http-only"
+path = "tests/blocking-transport-http.rs"
+required-features = ["http-client-curl", "maybe-async/is_sync"]
+
+[[test]]
+name = "async-transport"
+path = "tests/async-transport.rs"
+required-features = ["async-client"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+git-features = { version ="^0.16.5", path = "../git-features" }
+git-url = { version ="^0.3.4", path = "../git-url" }
+git-packetline = { version ="^0.11.0", path = "../git-packetline" }
+
+serde = { version = "1.0.114", optional = true, default-features = false, features = ["std", "derive"]}
+quick-error = "2.0.0"
+bstr = { version = "0.2.13", default-features = false, features = ["std"] }
+
+# for async-client
+async-trait = { version = "0.1.51", optional = true }
+futures-io = { version = "0.3.16", optional = true }
+futures-lite = { version  = "1.12.0", optional = true }
+pin-project-lite = { version = "0.2.6", optional = true }
+
+# for http-client-curl
+# zlib-ng-compat doesn't force zlib-ng
+curl = { version = "0.4", optional = true, features = ["static-curl", "static-ssl", "zlib-ng-compat"] }
+thiserror = "1.0.26"
+base64 = { version = "0.13.0", optional = true }
+
+[dev-dependencies]
+async-std = { version = "1.9.0", features = ["attributes"] }
+maybe-async = "0.2.6"
+git-pack = { path = "../git-pack" }
+blocking = "1.0.2"
+
+[package.metadata.docs.rs]
+features = ["http-client-curl"]

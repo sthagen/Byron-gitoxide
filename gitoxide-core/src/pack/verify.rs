@@ -1,12 +1,22 @@
-use crate::OutputFormat;
+use std::{
+    io,
+    path::Path,
+    str::FromStr,
+    sync::{atomic::AtomicBool, Arc},
+};
+
 use anyhow::{anyhow, Context as AnyhowContext, Result};
 use bytesize::ByteSize;
-use git_features::progress::{self, Progress};
-use git_object::{owned, Kind};
-use git_odb::pack::{self, index};
-use std::{io, path::Path, str::FromStr};
-
+use git_repository::{
+    easy::object,
+    hash::ObjectId,
+    odb,
+    odb::{pack, pack::index},
+    progress, Progress,
+};
 pub use index::verify::Mode;
+
+use crate::OutputFormat;
 
 #[derive(Debug, Eq, PartialEq, Hash, Clone, Copy)]
 pub enum Algorithm {
@@ -56,6 +66,7 @@ pub struct Context<W1: io::Write, W2: io::Write> {
     pub thread_limit: Option<usize>,
     pub mode: index::verify::Mode,
     pub algorithm: Algorithm,
+    pub should_interrupt: Arc<AtomicBool>,
 }
 
 impl Default for Context<Vec<u8>, Vec<u8>> {
@@ -63,39 +74,39 @@ impl Default for Context<Vec<u8>, Vec<u8>> {
         Context {
             output_statistics: None,
             thread_limit: None,
-            mode: index::verify::Mode::Sha1CRC32,
+            mode: index::verify::Mode::Sha1Crc32,
             algorithm: Algorithm::LessMemory,
             out: Vec::new(),
             err: Vec::new(),
+            should_interrupt: Default::default(),
         }
     }
 }
 
-#[allow(clippy::large_enum_variant)]
-enum EitherCache {
-    Left(pack::cache::DecodeEntryNoop),
-    Right(pack::cache::DecodeEntryLRU),
+enum EitherCache<const SIZE: usize> {
+    Left(pack::cache::Never),
+    Right(pack::cache::lru::StaticLinkedList<SIZE>),
 }
 
-impl pack::cache::DecodeEntry for EitherCache {
-    fn put(&mut self, offset: u64, data: &[u8], kind: Kind, compressed_size: usize) {
+impl<const SIZE: usize> pack::cache::DecodeEntry for EitherCache<SIZE> {
+    fn put(&mut self, pack_id: u32, offset: u64, data: &[u8], kind: object::Kind, compressed_size: usize) {
         match self {
-            EitherCache::Left(v) => v.put(offset, data, kind, compressed_size),
-            EitherCache::Right(v) => v.put(offset, data, kind, compressed_size),
+            EitherCache::Left(v) => v.put(pack_id, offset, data, kind, compressed_size),
+            EitherCache::Right(v) => v.put(pack_id, offset, data, kind, compressed_size),
         }
     }
 
-    fn get(&mut self, offset: u64, out: &mut Vec<u8>) -> Option<(Kind, usize)> {
+    fn get(&mut self, pack_id: u32, offset: u64, out: &mut Vec<u8>) -> Option<(object::Kind, usize)> {
         match self {
-            EitherCache::Left(v) => v.get(offset, out),
-            EitherCache::Right(v) => v.get(offset, out),
+            EitherCache::Left(v) => v.get(pack_id, offset, out),
+            EitherCache::Right(v) => v.get(pack_id, offset, out),
         }
     }
 }
 
-pub fn pack_or_pack_index<P, W1, W2>(
+pub fn pack_or_pack_index<W1, W2>(
     path: impl AsRef<Path>,
-    progress: Option<P>,
+    progress: Option<impl Progress>,
     Context {
         mut out,
         mut err,
@@ -103,14 +114,12 @@ pub fn pack_or_pack_index<P, W1, W2>(
         output_statistics,
         thread_limit,
         algorithm,
+        should_interrupt,
     }: Context<W1, W2>,
-) -> Result<(owned::Id, Option<index::traverse::Outcome>)>
+) -> Result<(ObjectId, Option<index::traverse::Outcome>)>
 where
-    P: Progress + Send,
-    <P as Progress>::SubProgress: Send,
     W1: io::Write,
     W2: io::Write,
-    <<P as Progress>::SubProgress as Progress>::SubProgress: Send,
 {
     let path = path.as_ref();
     let ext = path.extension().and_then(|ext| ext.to_str()).ok_or_else(|| {
@@ -121,14 +130,17 @@ where
     })?;
     let res = match ext {
         "pack" => {
-            let pack = git_odb::pack::data::File::at(path).with_context(|| "Could not open pack file")?;
-            pack.verify_checksum(progress::DoOrDiscard::from(progress).add_child("Sha1 of pack"))
-                .map(|id| (id, None))?
+            let pack = odb::pack::data::File::at(path).with_context(|| "Could not open pack file")?;
+            pack.verify_checksum(
+                progress::DoOrDiscard::from(progress).add_child("Sha1 of pack"),
+                &should_interrupt,
+            )
+            .map(|id| (id, None))?
         }
         "idx" => {
-            let idx = git_odb::pack::index::File::at(path).with_context(|| "Could not open pack index file")?;
+            let idx = odb::pack::index::File::at(path).with_context(|| "Could not open pack index file")?;
             let packfile_path = path.with_extension("pack");
-            let pack = git_odb::pack::data::File::at(&packfile_path)
+            let pack = odb::pack::data::File::at(&packfile_path)
                 .map_err(|e| {
                     writeln!(
                         err,
@@ -140,20 +152,25 @@ where
                     e
                 })
                 .ok();
-            let cache = || -> EitherCache {
-                if output_statistics.is_some() {
-                    // turn off acceleration as we need to see entire chains all the time
-                    EitherCache::Left(pack::cache::DecodeEntryNoop)
+            const CACHE_SIZE: usize = 64;
+            let cache = || -> EitherCache<CACHE_SIZE> {
+                if matches!(algorithm, Algorithm::LessMemory) {
+                    if output_statistics.is_some() {
+                        // turn off acceleration as we need to see entire chains all the time
+                        EitherCache::Left(pack::cache::Never)
+                    } else {
+                        EitherCache::Right(pack::cache::lru::StaticLinkedList::<CACHE_SIZE>::default())
+                    }
                 } else {
-                    EitherCache::Right(pack::cache::DecodeEntryLRU::default())
+                    EitherCache::Left(pack::cache::Never)
                 }
             };
 
             idx.verify_integrity(
-                pack.as_ref().map(|p| (p, mode, algorithm.into())),
+                pack.as_ref().map(|p| (p, mode, algorithm.into(), cache)),
                 thread_limit,
                 progress,
-                cache,
+                should_interrupt,
             )
             .map(|(a, b, _)| (a, b))
             .with_context(|| "Verification failure")?
@@ -161,6 +178,7 @@ where
         ext => return Err(anyhow!("Unknown extension {:?}, expecting 'idx' or 'pack'", ext)),
     };
     if let Some(stats) = res.1.as_ref() {
+        #[cfg_attr(not(feature = "serde1"), allow(clippy::single_match))]
         match output_statistics {
             Some(OutputFormat::Human) => drop(print_statistics(&mut out, stats)),
             #[cfg(feature = "serde1")]
@@ -182,7 +200,7 @@ fn print_statistics(out: &mut impl io::Write, stats: &index::traverse::Outcome) 
     }
     writeln!(out, "\t->: {}", total_object_count)?;
 
-    let pack::data::decode::Outcome {
+    let pack::data::decode_entry::Outcome {
         kind: _,
         num_deltas,
         decompressed_size,

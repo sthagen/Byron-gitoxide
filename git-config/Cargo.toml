@@ -1,0 +1,30 @@
+[package]
+name = "git-config"
+version = "0.1.7"
+repository = "https://github.com/Byron/gitoxide"
+description = "A git-config file parser and editor from the gitoxide project"
+license = "MIT OR Apache-2.0"
+authors = ["Edward Shen <code@eddie.sh>"]
+edition = "2018"
+keywords = ["git-config", "git", "config", "gitoxide"]
+categories = ["config", "parser-implementations"]
+include = ["src/**/*", "LICENSE-*", "README.md", "CHANGELOG.md"]
+
+[features]
+# serde = ["serde_crate"]
+
+[dependencies]
+dirs = "3"
+nom = { version = "7", default_features = false, features = [ "std" ] }
+memchr = "2"
+serde_crate = { version = "1", package = "serde", optional = true }
+
+[dev-dependencies]
+serial_test = "0.5.1"
+serde_derive = "1.0"
+criterion = "0.3"
+
+[[bench]]
+name = "large_config_file"
+harness = false
+path = "./benches/large_config_file.rs"

@@ -1,8 +1,20 @@
+use std::{
+    fs,
+    io::Read,
+    path::Path,
+    sync::{atomic::AtomicBool, Arc},
+};
+
 use anyhow::{anyhow, Result};
-use git_features::progress::{self, Progress};
-use git_object::{owned, HashKind};
-use git_odb::{loose, pack, Write};
-use std::{fs, io::Read, path::Path};
+use git_repository::{
+    easy::object,
+    hash,
+    hash::ObjectId,
+    odb,
+    odb::{loose, pack, Write},
+    progress, Progress,
+};
+use quick_error::quick_error;
 
 #[derive(PartialEq, Debug)]
 pub enum SafetyCheck {
@@ -59,8 +71,6 @@ impl From<SafetyCheck> for pack::index::traverse::SafetyCheck {
     }
 }
 
-use quick_error::quick_error;
-
 quick_error! {
     #[derive(Debug)]
     enum Error {
@@ -69,27 +79,27 @@ quick_error! {
             source(err)
             from()
         }
-        OdbWrite(err: loose::db::write::Error) {
+        OdbWrite(err: loose::write::Error) {
             display("An object could not be written to the database")
             source(err)
             from()
         }
-        Write(err: Box<dyn std::error::Error + Send + Sync>, kind: git_object::Kind, id: owned::Id) {
+        Write(err: Box<dyn std::error::Error + Send + Sync>, kind: object::Kind, id: ObjectId) {
             display("Failed to write {} object {}", kind, id)
             source(&**err)
         }
-        Verify(err: loose::object::verify::Error) {
+        Verify(err: pack::data::object::verify::Error) {
             display("Object didn't verify after right after writing it")
             source(err)
             from()
         }
-        ObjectEncodeMismatch(kind: git_object::Kind, actual: owned::Id, expected: owned::Id) {
+        ObjectEncodeMismatch(kind: object::Kind, actual: ObjectId, expected: ObjectId) {
             display("{} object {} wasn't re-encoded without change - new hash is {}", kind, expected, actual)
         }
-        WrittenFileMissing(id: owned::Id) {
+        WrittenFileMissing(id: ObjectId) {
             display("The recently written file for loose object {} could not be found", id)
         }
-        WrittenFileCorrupt(err: loose::db::locate::Error, id: owned::Id) {
+        WrittenFileCorrupt(err: loose::find::Error, id: ObjectId) {
             display("The recently written file for loose object {} cold not be read", id)
             source(err)
         }
@@ -98,14 +108,14 @@ quick_error! {
 
 #[allow(clippy::large_enum_variant)]
 enum OutputWriter {
-    Loose(loose::Db),
-    Sink(git_odb::Sink),
+    Loose(loose::Store),
+    Sink(odb::Sink),
 }
 
-impl git_odb::Write for OutputWriter {
+impl git_repository::odb::Write for OutputWriter {
     type Error = Error;
 
-    fn write_buf(&self, kind: git_object::Kind, from: &[u8], hash: HashKind) -> Result<owned::Id, Self::Error> {
+    fn write_buf(&self, kind: object::Kind, from: &[u8], hash: hash::Kind) -> Result<ObjectId, Self::Error> {
         match self {
             OutputWriter::Loose(db) => db.write_buf(kind, from, hash).map_err(Into::into),
             OutputWriter::Sink(db) => db.write_buf(kind, from, hash).map_err(Into::into),
@@ -114,11 +124,11 @@ impl git_odb::Write for OutputWriter {
 
     fn write_stream(
         &self,
-        kind: git_object::Kind,
+        kind: object::Kind,
         size: u64,
         from: impl Read,
-        hash: HashKind,
-    ) -> Result<owned::Id, Self::Error> {
+        hash: hash::Kind,
+    ) -> Result<ObjectId, Self::Error> {
         match self {
             OutputWriter::Loose(db) => db.write_stream(kind, size, from, hash).map_err(Into::into),
             OutputWriter::Sink(db) => db.write_stream(kind, size, from, hash).map_err(Into::into),
@@ -129,8 +139,8 @@ impl git_odb::Write for OutputWriter {
 impl OutputWriter {
     fn new(path: Option<impl AsRef<Path>>, compress: bool) -> Self {
         match path {
-            Some(path) => OutputWriter::Loose(loose::Db::at(path.as_ref())),
-            None => OutputWriter::Sink(git_odb::sink().compress(compress)),
+            Some(path) => OutputWriter::Loose(loose::Store::at(path.as_ref())),
+            None => OutputWriter::Sink(odb::sink().compress(compress)),
         }
     }
 }
@@ -141,25 +151,22 @@ pub struct Context {
     pub delete_pack: bool,
     pub sink_compress: bool,
     pub verify: bool,
+    pub should_interrupt: Arc<AtomicBool>,
 }
 
-pub fn pack_or_pack_index<P>(
+pub fn pack_or_pack_index(
     pack_path: impl AsRef<Path>,
     object_path: Option<impl AsRef<Path>>,
     check: SafetyCheck,
-    progress: Option<P>,
+    progress: Option<impl Progress>,
     Context {
         thread_limit,
         delete_pack,
         sink_compress,
         verify,
+        should_interrupt,
     }: Context,
-) -> Result<()>
-where
-    P: Progress + Send,
-    <P as Progress>::SubProgress: Send,
-    <<P as Progress>::SubProgress as Progress>::SubProgress: Send,
-{
+) -> Result<()> {
     use anyhow::Context;
 
     let path = pack_path.as_ref();
@@ -190,46 +197,56 @@ where
                 pack::index::traverse::Algorithm::DeltaTreeLookup
             }
         });
-    let mut progress = bundle.index.traverse(
-        &bundle.pack,
-        progress,
-        {
-            let object_path = object_path.map(|p| p.as_ref().to_owned());
-            move || {
-                let out = OutputWriter::new(object_path.clone(), sink_compress);
-                let object_verifier = if verify {
-                    object_path.as_ref().map(loose::Db::at)
-                } else {
-                    None
-                };
-                move |object_kind, buf, index_entry, progress| {
-                    let written_id = out
-                        .write_buf(object_kind, buf, HashKind::Sha1)
-                        .map_err(|err| Error::Write(Box::new(err) as Box<dyn std::error::Error + Send + Sync>, object_kind, index_entry.oid))?;
-                    if written_id != index_entry.oid {
-                       if let git_object::Kind::Tree = object_kind {
-                           progress.info(format!("The tree in pack named {} was written as {} due to modes 100664 and 100640 rewritten as 100644.", index_entry.oid, written_id));
-                       } else {
-                           return Err(Error::ObjectEncodeMismatch(object_kind, index_entry.oid, written_id))
-                       }
+    let mut progress = bundle
+        .index
+        .traverse(
+            &bundle.pack,
+            progress,
+            {
+                let object_path = object_path.map(|p| p.as_ref().to_owned());
+                move || {
+                    let out = OutputWriter::new(object_path.clone(), sink_compress);
+                    let object_verifier = if verify { object_path.as_ref().map(loose::Store::at) } else { None };
+                    let mut read_buf = Vec::new();
+                    move |object_kind, buf, index_entry, progress| {
+                        let written_id = out.write_buf(object_kind, buf, hash::Kind::Sha1).map_err(|err| {
+                            Error::Write(
+                                Box::new(err) as Box<dyn std::error::Error + Send + Sync>,
+                                object_kind,
+                                index_entry.oid,
+                            )
+                        })?;
+                        if written_id != index_entry.oid {
+                            if let object::Kind::Tree = object_kind {
+                                progress.info(format!(
+                                    "The tree in pack named {} was written as {} due to modes 100664 and 100640 rewritten as 100644.",
+                                    index_entry.oid, written_id
+                                ));
+                            } else {
+                                return Err(Error::ObjectEncodeMismatch(object_kind, index_entry.oid, written_id));
+                            }
+                        }
+                        if let Some(verifier) = object_verifier.as_ref() {
+                            let obj = verifier
+                                .try_find(written_id, &mut read_buf)
+                                .map_err(|err| Error::WrittenFileCorrupt(err, written_id))?
+                                .ok_or(Error::WrittenFileMissing(written_id))?;
+                            obj.verify_checksum(written_id)?;
+                        }
+                        Ok(())
                     }
-                    if let Some(verifier) = object_verifier.as_ref() {
-                        let mut obj = verifier.locate(written_id.to_borrowed())
-                                            .ok_or_else(|| Error::WrittenFileMissing(written_id))?
-                                            .map_err(|err| Error::WrittenFileCorrupt(err, written_id))?;
-                        obj.verify_checksum(written_id.to_borrowed())?;
-                    }
-                    Ok(())
                 }
-            }
-        },
-        pack::cache::DecodeEntryLRU::default,
-        pack::index::traverse::Options {
-            algorithm,
-            thread_limit,
-            check: check.into(),
-        },
-    ).map(|(_,_,c)|progress::DoOrDiscard::from(c)).with_context(|| "Failed to explode the entire pack - some loose objects may have been created nonetheless")?;
+            },
+            pack::cache::lru::StaticLinkedList::<64>::default,
+            pack::index::traverse::Options {
+                algorithm,
+                thread_limit,
+                check: check.into(),
+                should_interrupt,
+            },
+        )
+        .map(|(_, _, c)| progress::DoOrDiscard::from(c))
+        .with_context(|| "Failed to explode the entire pack - some loose objects may have been created nonetheless")?;
 
     let (index_path, data_path) = (bundle.index.path().to_owned(), bundle.pack.path().to_owned());
     drop(bundle);

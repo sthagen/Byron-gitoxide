@@ -1,100 +1,86 @@
-#[cfg(all(feature = "interrupt-handler", not(feature = "disable-interrupts")))]
-mod _impl {
-    use std::{
-        io,
-        sync::atomic::{AtomicUsize, Ordering},
-    };
+//! Utilities to cause interruptions in common traits, like Read/Write and Iterator.
+use std::{
+    io,
+    sync::atomic::{AtomicBool, Ordering},
+};
 
-    pub fn init_handler(mut message_channel: impl io::Write + Send + 'static) {
-        ctrlc::set_handler(move || {
-            const MESSAGES: &[&str] = &[
-                "interrupt requested", 
-                "please wait…", 
-                "the program will respond soon…", 
-                "if the program doesn't respond quickly enough, please let us know here: https://github.com/Byron/gitoxide/issues"
-            ];
-            static CURRENT_MESSAGE: AtomicUsize = AtomicUsize::new(0);
-            if !super::is_triggered() {
-                CURRENT_MESSAGE.store(0, Ordering::Relaxed);
-            }
-            let msg_idx =CURRENT_MESSAGE.fetch_add(1, Ordering::Relaxed);
-            super::IS_INTERRUPTED.store(true, Ordering::Relaxed);
-            writeln!(message_channel, "{}", MESSAGES[msg_idx % MESSAGES.len()]).ok();
-        })
-        .expect("it is up to the application to ensure only one interrupt handler is installed, and this function is called only once.")
+/// A wrapper for an inner iterator which will check for interruptions on each iteration.
+pub struct Iter<'a, I, EFN> {
+    /// The actual iterator to yield elements from.
+    pub inner: I,
+    make_err: Option<EFN>,
+    should_interrupt: &'a AtomicBool,
+}
+
+impl<'a, I, EFN, E> Iter<'a, I, EFN>
+where
+    I: Iterator,
+    EFN: FnOnce() -> E,
+{
+    /// Create a new iterator over `inner` which checks for interruptions on each iteration and cals `make_err()` to
+    /// signal an interruption happened, causing no further items to be iterated from that point on.
+    pub fn new(inner: I, make_err: EFN, should_interrupt: &'a AtomicBool) -> Self {
+        Iter {
+            inner,
+            make_err: Some(make_err),
+            should_interrupt,
+        }
     }
 }
-use std::io;
-#[cfg(not(feature = "disable-interrupts"))]
-use std::sync::atomic::{AtomicBool, Ordering};
 
-#[cfg(any(feature = "disable-interrupts", not(feature = "interrupt-handler")))]
-mod _impl {
-    use std::io;
+impl<'a, I, EFN, E> Iterator for Iter<'a, I, EFN>
+where
+    I: Iterator,
+    EFN: FnOnce() -> E,
+{
+    type Item = Result<I::Item, E>;
 
-    pub fn init_handler(_message_channel: impl io::Write + Send + 'static) {}
+    fn next(&mut self) -> Option<Self::Item> {
+        self.make_err.as_ref()?;
+        if self.should_interrupt.load(Ordering::Relaxed) {
+            return Some(Err(self.make_err.take().expect("no bug")()));
+        }
+        match self.inner.next() {
+            Some(next) => Some(Ok(next)),
+            None => {
+                self.make_err = None;
+                None
+            }
+        }
+    }
 }
-pub use _impl::init_handler;
 
-pub struct Read<R> {
+/// A wrapper for implementors of [`std::io::Read`] or [`std::io::BufRead`] with interrupt support.
+///
+/// It fails a [read][`std::io::Read::read`] while an interrupt was requested.
+pub struct Read<'a, R> {
+    /// The actual implementor of [`std::io::Read`] to which interrupt support will be added.
     pub inner: R,
+    /// The flag to trigger interruption
+    pub should_interrupt: &'a AtomicBool,
 }
 
-impl<R> io::Read for Read<R>
+impl<'a, R> io::Read for Read<'a, R>
 where
     R: io::Read,
 {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        if is_triggered() {
-            return Err(io::Error::new(io::ErrorKind::Other, "interrupted by user"));
+        if self.should_interrupt.load(Ordering::Relaxed) {
+            return Err(io::ErrorKind::Interrupted.into());
         }
         self.inner.read(buf)
     }
 }
 
-#[cfg(not(feature = "disable-interrupts"))]
-static IS_INTERRUPTED: AtomicBool = AtomicBool::new(false);
-
-#[cfg(not(feature = "disable-interrupts"))]
-pub fn is_triggered() -> bool {
-    IS_INTERRUPTED.load(Ordering::Relaxed)
-}
-#[cfg(feature = "disable-interrupts")]
-pub fn is_triggered() -> bool {
-    false
-}
-pub fn trigger() {
-    #[cfg(not(feature = "disable-interrupts"))]
-    IS_INTERRUPTED.store(true, Ordering::Relaxed);
-}
-pub fn reset() {
-    #[cfg(not(feature = "disable-interrupts"))]
-    IS_INTERRUPTED.store(false, Ordering::Relaxed);
-}
-
-/// Useful if some parts of the program set the interrupt programmatically to cause others to stop, while
-/// assuring the interrupt state is reset at the end of the function to avoid other side-effects.
-///
-/// Note that this is inherently racy and that this will only work deterministically if there is only one
-/// top-level function running in a process.
-pub struct ResetOnDrop {
-    was_interrupted: bool,
-}
-
-impl Default for ResetOnDrop {
-    fn default() -> Self {
-        ResetOnDrop {
-            was_interrupted: is_triggered(),
-        }
+impl<'a, R> io::BufRead for Read<'a, R>
+where
+    R: io::BufRead,
+{
+    fn fill_buf(&mut self) -> io::Result<&[u8]> {
+        self.inner.fill_buf()
     }
-}
 
-impl Drop for ResetOnDrop {
-    fn drop(&mut self) {
-        if self.was_interrupted {
-            trigger()
-        } else {
-            reset()
-        }
+    fn consume(&mut self, amt: usize) {
+        self.inner.consume(amt)
     }
 }

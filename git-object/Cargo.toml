@@ -1,10 +1,10 @@
 [package]
 name = "git-object"
-version = "0.3.0"
-description = "Borrowed and owned git objects with deserialization and serialization support"
+version = "0.14.1"
+description = "Immutable and mutable git objects with decoding and encoding support"
 authors = ["Sebastian Thiel <sebastian.thiel@icloud.com>"]
-repository = "https://github.com/Byron/git-oxide"
-license = "MIT"
+repository = "https://github.com/Byron/gitoxide"
+license = "MIT/Apache-2.0"
 edition = "2018"
 include = ["src/**/*"]
 
@@ -12,21 +12,24 @@ include = ["src/**/*"]
 doctest = false
 
 [features]
-serde1 = ["serde", "bstr/serde1", "smallvec/serde"]
+serde1 = ["serde", "bstr/serde1", "smallvec/serde", "git-hash/serde1", "git-actor/serde1"]
+verbose-object-parsing-errors = ["nom/std"]
 
 [package.metadata.docs.rs]
 all-features = true
 
 [dependencies]
-git-ref = { version = "^0.3.0", path = "../git-ref" }
+git-hash = { version ="^0.7.0", path = "../git-hash" }
+git-validate = { version ="^0.5.3", path = "../git-validate" }
+git-actor = { version ="^0.5.3", path = "../git-actor" }
+
 quick-error = "2.0.0"
 hex = "0.4.2"
-btoi = "0.4.2"
-bstr = { version = "0.2.13", default-features = false, features = ["std"] }
-nom = { version = "6.0.0-alpha1", default-features = false, features = ["alloc"]}
+bstr = { version = "0.2.13", default-features = false, features = ["std", "unicode"] }
+nom = { version = "7", default-features = false, features = ["std"]}
 smallvec = "1.4.0"
 serde = { version = "1.0.114", optional = true, default-features = false, features = ["derive"]}
-itoa = "0.4.6"
 
 [dev-dependencies]
-pretty_assertions = "0.6.1"
+pretty_assertions = "0.7.1"
+git-testtools = { path = "../tests/tools"}

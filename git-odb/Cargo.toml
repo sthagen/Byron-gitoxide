@@ -1,42 +1,43 @@
 [package]
 name = "git-odb"
-version = "0.3.0"
-repository = "https://github.com/Byron/git-oxide"
+version = "0.22.0"
+repository = "https://github.com/Byron/gitoxide"
 authors = ["Sebastian Thiel <sebastian.thiel@icloud.com>"]
-license = "MIT"
-description = "Implements a git object database for loose objects and packs"
+license = "MIT/Apache-2.0"
+description = "Implements various git object databases"
 edition = "2018"
-include = ["src/**/*"]
+include = ["src/**/*", "CHANGELOG.md"]
 
 [lib]
 doctest = false
 
 [features]
-serde1 = ["serde", "git-object/serde1"]
+internal-testing-git-features-parallel = ["git-features/parallel"]
+
+[[test]]
+name = "multi-threaded"
+path = "tests/odb-multi-threaded.rs"
+required-features = ["internal-testing-git-features-parallel"]
+
+[[test]]
+name = "single-threaded"
+path = "tests/odb-single-threaded.rs"
+required-features = []
 
 [package.metadata.docs.rs]
 all-features = true
 
 [dependencies]
-git-object = { version = "^0.3.0", path = "../git-object" }
-git-features = { version = "^0.3.0", path = "../git-features" }
+git-features = { version ="^0.16.5", path = "../git-features", features = ["rustsha1", "walkdir", "zlib"] }
+git-hash = { version ="^0.7.0", path = "../git-hash" }
+git-object = { version ="^0.14.1", path = "../git-object" }
+git-pack = { version ="^0.12.0", path = "../git-pack" }
 
-quick-error = "2.0.0"
-walkdir = "2.1.4"
-miniz_oxide = "0.4.0"
-smallvec = "1.3.0"
-filebuffer = "0.4.0"
-byteorder = "1.2.3"
-serde = { version = "1.0.114", optional = true, default-features = false, features = ["derive"] }
 btoi = "0.4.2"
-uluru = "1.0.0"
-itoa = "0.4.6"
-bytesize = "1.0.1"
 tempfile = "3.1.0"
-parking_lot = { version = "0.11.0", default-features = false }
+thiserror = "1.0.26"
 
 [dev-dependencies]
-pretty_assertions = "0.6.1"
-bstr = { version = "0.2.13", default-features = false, features = ["std"] }
-hex = "0.4.2"
-common_macros = "0.1.1"
+git-testtools = { path = "../tests/tools"}
+git-actor = { path = "../git-actor" }
+pretty_assertions = "0.7.1"

@@ -1,4 +1,4 @@
-[![Rust](https://github.com/Byron/git-oxide/workflows/Rust/badge.svg)](https://github.com/Byron/git-oxide/actions)
+[![Rust](https://github.com/Byron/gitoxide/workflows/Rust/badge.svg)](https://github.com/Byron/gitoxide/actions)
 [![Crates.io](https://img.shields.io/crates/v/gitoxide.svg)](https://crates.io/crates/gitoxide)
 
 **gix** is a command-line interface (*CLI*) to access git repositories. It's written to optimize the
@@ -17,195 +17,112 @@ Please see _'Development Status'_ for a listing of all crates and their capabili
   * limit amount of threads used in operations that support it.
   * choose between 'human' and 'json' output formats
   * **the `gix` program** - convenient and for humans
-    * [x] init - initialize a new non-bare repository with a `main` branch
+    * [x] **init** - initialize a new non-bare repository with a `main` branch
+    * [ ] **clone** - initialize a local copy of a remote repository
+    * **tools**  
+      * [x] **organize** - find all git repositories and place them in directories according to their remote paths
+      * [x] **find** - find all git repositories in a given directory - useful for tools like [skim][skim]
+      * [x] **estimate-hours** - estimate the time invested into a repository by evaluating commit dates.
+          * Based on the [git-hours] algorithm.
+          * See the [discussion][git-hours-discussion] for some performance data.
   * **the `gixp` program** _(plumbing)_ - lower level commands for use in automation
     * **pack**
-      * [x] [pack verify](https://asciinema.org/a/352942)
-      * [x] [pack index verify](https://asciinema.org/a/352945) including each object sha1 and statistics
-      * [x] [pack explode](https://asciinema.org/a/352951), useful for transforming packs into loose objects for inspection or restoration
+      * [x] [verify](https://asciinema.org/a/352942)
+      * [x] [index verify](https://asciinema.org/a/352945) including each object sha1 and statistics
+      * [x] [explode](https://asciinema.org/a/352951), useful for transforming packs into loose objects for inspection or restoration
         * [x] verify written objects (by reading them back from disk)
-      * [ ] pack-send - create a pack and send it using the pack protocol to stdout
-      * [ ] pack-receive - receive a pack produced by pack-send
-    * **index**
-      * [x] [index from pack](https://asciinema.org/a/352941) - create an index file by streaming a pack file as done during clone
+      * [x] [receive](https://asciinema.org/a/359321) - receive a whole pack produced by **pack-send** or _git-upload-pack_, useful for `clone` like operations.
+      * [x] **create** - create a pack from given objects or tips of the commit graph.
+      * [ ] **send** - create a pack and send it using the pack protocol to stdout, similar to 'git-upload-pack', 
+            for consumption by **pack-receive** or _git-receive-pack_
+      * [x] [index from data](https://asciinema.org/a/352941) - create an index file by streaming a pack file as done during clone
           * [ ] support for thin packs (as needed for fetch/pull)
-          
-### git-object
-  * *decode (zero-copy)* borrowed objects
-    * [x] commit
-    * [x] tree
-    * [x] tag
-  * encode owned objects
-    * [x] commit
-    * [x] tree
-    * [x] tag
-  * [x] transform borrowed to owned objects
-  * [ ] API documentation with examples
-  
-### git-odb
-  * **loose objects**
-    * [x] traverse
-    * [x] read
-      * [x] into memory
-      * [x] streaming
-      * [x] verify checksum
-    * [x] streaming write for blobs
-    * [x] buffer write for small in-memory objects/non-blobs
-  * **packs**
-    * [x] traverse pack index
-    * [x] 'object' abstraction
-      * [x] decode (zero copy)
-      * [x] verify checksum
-    * [x] simple and fast pack traversal
-    * [x] decode
-      * [x] full objects
-      * [x] deltified objects
-    * **streaming**
-      * _decode a pack from `Read` input_
-      * [x] `Read` to `Iterator`
-        * _read as is, verify hash, and restore partial packs_
-      * [x] create index from pack alone
-        * _various memory options allow trading off speed for lower memory consumption_
-        * [ ] resolve 'thin' packs
-    * [ ] encode
-      * [ ] Add support for zlib-ng for 2.5x compression performance and 20% faster decompression
-      * [ ] create new pack
-      * [ ] create 'thin' pack
-    * [x] verify pack with statistics
-      * [x] brute force - less memory
-      * [x] indexed - faster, but more memory
-    * **advanced**
-      * [ ] Multi-Pack index file (MIDX)
-      * [ ] 'bitmap' file
-  * [ ] API documentation with examples
-  * **sink**
-    * [x] write objects and obtain id
-  * **alternates**
-    * [ ] _database that act as link to other known ODB types on disk_
-    * [ ] handles cycles
-    * [ ] handles recursive configurations
-  * **multi-odb**
-    * [ ] _an ODB for object lookup from multiple lower level ODB at once_
-  * **promisor**
-    * It's vague, but these seems to be like index files allowing to fetch objects from a server on demand.
+    * **commit-graph**
+      * [x] **verify** - assure that a commit-graph is consistent
+    * [remote-ref-list](https://asciinema.org/a/359320)
+      * [x] list all (or given) references from a remote at the given URL
 
-### git-protocol
-  * We handle timeouts by shifting all IO into the transport layer, and for the transport itself, there could be 
-    some sort of reactor which feeds the client/server respectively with deserialized lines. This enables us to
-    start out with a sync implementation, and later add an async one that reuses all the protocol code.
-  * [ ] [PKT-Line](https://github.com/git/git/blob/master/Documentation/technical/protocol-common.txt#L52:L52)
-    * [ ] encode
-    * [ ] decode
-    * [ ] [error line](https://github.com/git/git/blob/master/Documentation/technical/pack-protocol.txt#L28:L28)
-  * [ ] `Iterator` for multi-plexed pack lines from `Read`
-  * [ ] parse and serialize [capabilities](https://github.com/git/git/blob/master/Documentation/technical/protocol-capabilities.txt#L1:L1)
-  * [ ] **Version 1**
-    * [ ] [fetch](https://github.com/git/git/blob/master/Documentation/technical/pack-protocol.txt#L157:L157)
-      * [ ] [ref advertisement](https://github.com/git/git/blob/master/Documentation/technical/pack-protocol.txt#L200:L200)
-      * [ ] [upload request](https://github.com/git/git/blob/master/Documentation/technical/pack-protocol.txt#L245:L245)
-      * [ ] [shallow update](https://github.com/git/git/blob/master/Documentation/technical/pack-protocol.txt#L305:L305)
-      * [ ] [upload haves](https://github.com/git/git/blob/master/Documentation/technical/pack-protocol.txt#L333:L333)
-        * [ ] 'simple' (multi-ack* is absent)
-        * [ ] multi-ack 
-        * [ ] multi-ack detailed
-      * [ ] [server-response (pack)](https://github.com/git/git/blob/master/Documentation/technical/pack-protocol.txt#L404:L404)
-        * [ ] [side-band mode](https://github.com/git/git/blob/master/Documentation/technical/pack-protocol.txt#L467:L467)
-    * [ ] push
-  * [ ] [Version 2](https://github.com/git/git/blob/master/Documentation/technical/protocol-v2.txt)
-  
-### git-transport
-  * [ ] **[git](https://github.com/git/git/blob/master/Documentation/technical/pack-protocol.txt#L66:L66)**
-    * [ ] **initiate**
-      * [ ] [extra parameters](https://github.com/git/git/blob/master/Documentation/technical/pack-protocol.txt#L52:L52) via null separated k=v pairs
-          * [ ] protocol version definition
-  * [ ] **[ssh](https://github.com/git/git/blob/master/Documentation/technical/pack-protocol.txt#L103:L103)**
-    * `ssh2` crate with [openssl vendoring support](https://lib.rs/crates/ssh2) for static linkage
-    * [ ] **initiate**
-      * extra paramaters (via environment variable)
-  * [ ] protocol for transfer via http(s)
-    * [ ] extra parameters
-  * [ ] API documentation with examples
-  
-### git-repository
-  * [x] initialize
-    * [ ] Proper configuration depending on platform (e.g. ignorecase, filemode, …)
-  * [ ] read and write all data types
-  * [ ] rev-parsing and ref history
-  * [ ] remotes with push and pull
-  * [ ] configuration
-  * [ ] merging
-  * [ ] stashing
-  * [ ] API documentation with examples
-  * [ ] _Commit Graph_ - split and unsplit
-  
-### git-config
-  * read and write git configuration files
-  * [ ] API documentation with examples
-  
-### git-ref
-  * Handle symbolic references and packed references
-  * discover them in typical folder structures
-  * [x] [name validation](https://github.com/git/git/blob/master/Documentation/technical/protocol-common.txt#L23:L23)
-  * [ ] API documentation with examples
-  
-### git-index
-  * read and write a git-index file
-  * add and remove entries
-  * [ ] API documentation with examples
-  
-### git-diff
-  * diffing of git-object::Tree structures
-  * diffing, merging, working with hunks of data
-  * find differences between various states, i.e. index, working tree, commit-tree
-  * [ ] API documentation with examples
-  
-### git-url
-  * As documented here: https://www.git-scm.com/docs/git-clone#_git_urls
-  * [ ] ssh://user@example.com/project.git 
-  * [ ] user@example.com:project.git
-  * [ ] git://user@example.com:project.git
-  * [ ] ssh://user@example.com/~alice/project.git
-  
-### git-features
-  * **parallel** feature toggle
-    * _When on…_
-      * `in_parallel`
-      * `join`
-    * _When off all functions execute serially_
-    
-### git-tui
-  * _a terminal user interface seeking to replace and improve on `tig`_
+[skim]: https://github.com/lotabout/skim
+[git-hours]: https://github.com/kimmobrunfeldt/git-hours/blob/8aaeee237cb9d9028e7a2592a25ad8468b1f45e4/index.js#L114-L143
+[git-hours-discussion]: https://github.com/Byron/gitoxide/discussions/78
+
+### Crates
+
+Follow linked crate name for detailed status. Please note that all crates follow [semver] as well as the [stability guide].
+
+### Production Grade
+
+* **Stability Tier 1**
+  - [git-lock](https://github.com/Byron/gitoxide/blob/main/git-lock/README.md)
+     
+* **Stability Tier 2**
+  - [git-tempfile](https://github.com/Byron/gitoxide/blob/main/git-tempfile/README.md)
+
+### In Development/Pre-Release
+* **usable**
+  * [git-actor](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-actor)
+  * [git-hash](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-hash)
+  * [git-object](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-object)
+  * [git-validate](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-validate)
+  * [git-url](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-url)
+  * [git-packetline](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-packetline)
+  * [git-transport](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-transport)
+  * [git-protocol](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-protocol)
+  * [git-pack](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-pack)
+  * [git-odb](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-odb)
+  * [git-commitgraph](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-commitgraph)
+  * [git-diff](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-diff)
+  * [git-traverse](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-traverse)
+  * [git-config](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-config)
+  * [git-features](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-features)
+  * [git-ref](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-ref)
+  * [git-repository](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-repository)
+  * `gitoxide-core`
+* **very early**    
+* **idea**
+  * [git-index](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-index)
+  * git-status
+  * [git-tui](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-tui)
+  * [git-bundle](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-bundle)
   
 ### Stress Testing
   * [x] Verify huge packs
   * [x] Explode a pack to disk 
+  * [x] Generate and verify large commit graphs
   * [ ] Generate huge pack from a lot of loose objects
   
-### Ideas for Demos
-  * [ ] A simple [`git-hours`][git-hours-algo] clone
-  * [ ] Open up SQL for git using [sqlite virtual tables](https://github.com/rusqlite/rusqlite/blob/master/tests/vtab.rs). Check out gitqlite
-        as well. What would an MVP look like? Maybe even something that could ship with gitoxide.
+### Cargo features
 
-[git-hours-algo]: https://github.com/kimmobrunfeldt/git-hours/blob/8aaeee237cb9d9028e7a2592a25ad8468b1f45e4/index.js#L114-L143
+Many crates use feature flags to allow tuning the compiled result based on your needs. Have a [look at the guide][cargo-features] for more information.
+
+[cargo-features]: https://github.com/Byron/gitoxide/blob/main/cargo-features.md#git-config
+
+### Stability
+
+Our [stability guide] helps to judge how much churn can be expected when depending on crates in this workspace.
+
+[stability guide]: https://github.com/Byron/gitoxide/blob/main/STABILITY.md
 
 ## Installation
 
-### Binary Release
+### Download a Binary Release
 
 ```sh
-curl -LSfs https://raw.githubusercontent.com/byron/git-oxide/master/ci/install.sh | \
-    sh -s -- --git byron/git-oxide --crate gix-max-termion
+curl -LSfs https://raw.githubusercontent.com/Byron/gitoxide/main/ci/install.sh | \
+    sh -s -- --git Byron/gitoxide --crate gix-max-termion
 ```
 
 See the [releases section][releases] for manual installation and various alternative builds that are _slimmer_ or _smaller_, depending
 on your needs, for _Linux_, _MacOS_ and _Windows_.
 
-[releases]: https://github.com/Byron/git-oxide/releases
+[releases]: https://github.com/Byron/gitoxide/releases
 
-#### Cargo
+### From Source via Cargo
 
 `cargo` is the Rust package manager which can easily be obtained through [rustup][rustup]. With it, you can build your own binary
 effortlessly and for your particular CPU for additional performance gains.
+
+The minimum required cargo version is _the latest stable_ release, but may run on older stable releases as well.
 
 ```
 # The default installation, 'max'
@@ -219,7 +136,7 @@ cargo install gitoxide --no-default-features --features max-termion
 cargo install gitoxide --no-default-features --features lean
 ```
 
-[releases]: https://github.com/Byron/git-oxide/releases 
+[releases]: https://github.com/Byron/gitoxide/releases 
 [rustup]: https://rustup.rs
 
 ## Usage
@@ -232,6 +149,8 @@ Once installed, there are two binaries:
   * low level commands, _plumbing_, for use in more specialized cases
 
 ## Project Goals
+
+Project goals can change over time as we learn more, and they can be challenged.
 
  * **a pure-rust implementation of git**
    * including *transport*, *object database*, *references*, *cli* and *tui*
@@ -251,16 +170,18 @@ Once installed, there are two binaries:
    * assure multiple concurrent writes don't cause trouble
  * **take shortcuts, but not in quality**
    * binaries may use `anyhow::Error` exhaustively, knowing these errors are solely user-facing.
-   * libraries use light-weight custom errors implemented using `quick-error`.
+   * libraries use light-weight custom errors implemented using `quick-error` or `thiserror`.
    * internationalization is nothing we are concerned with right now.
    * IO errors due to insufficient amount of open file handles don't always lead to operation failure
  * **Cross platform support, including Windows**
    * With the tools and experience available here there is no reason not to support Windows.
-   * [Windows is testsed on CI](https://github.com/Byron/git-oxide/blob/df66d74aa2a8cb62d8a03383135f08c8e8c579a8/.github/workflows/rust.yml#L34)
+   * [Windows is tested on CI](https://github.com/Byron/gitoxide/blob/df66d74aa2a8cb62d8a03383135f08c8e8c579a8/.github/workflows/rust.yml#L34)
      and failures do prevent releases.
      
 
 ## Non-Goals
+
+Project non-goals can change over time as we learn more, and they can be challenged.
 
  * **replicate `git` command functionality perfectly**
    * `git` is `git`, and there is no reason to not use it. Our path is the one of simplicity to make
@@ -275,132 +196,73 @@ Once installed, there are two binaries:
    * When connecting or streaming over TCP connections, especially when receiving on the server, async seems like a must
      though, but behind a feature flag.
 
-## Roadmap to Future
+## Contributions
 
-### Roadmap to 1.0
+If what you have seen so far sparked your interest to contribute, then let us say: We are happy to have you and help you to get started.
+
+We recommend running `make tests check-size` during the development process to assure CI is green before pushing.
+
+A backlog for work ready to be picked up is [available in the Project's Kanban board][project-board], which contains instructions on how 
+to pick a task. If it's empty or you have other questions, feel free to [start a discussion][discussions] or reach out to @Byron [privately][keybase].
+
+For additional details, also take a look at the [collaboration guide].
+
+[collaboration guide]: https://github.com/Byron/gitoxide/blob/main/COLLABORATING.md
+[project-board]: https://github.com/Byron/gitoxide/projects
+[discussions]: https://github.com/Byron/gitoxide/discussions
+[keybase]: https://keybase.io/byronbates
+
+## Roadmap
+
+### Features for 1.0
 
 Provide a CLI to for the most basic user journey:
 
 * [x] initialize a repository
 * [ ] clone a repository
-   * [ ] http(s) (or ssh, whatever is easier)
 * [ ] create a commit
 * [ ] add a remote
 * [ ] push
   * [ ] create (thin) pack
-  
-## Cargo features guide
 
-Cargo uses feature toggles to control which dependencies are pulled in, allowing users to specialize crates to fit their usage.
-Ideally, these should be additive.
-This guide documents which features are available for each of the crates provided here and how they function.
+### Ideas for Examples
 
-### gitoxide
+* [ ] `gix tool open-remote` open the URL of the remote, possibly after applying known transformations to go from `ssh` to `https`.
+* [ ] Open up SQL for git using [sqlite virtual tables](https://github.com/rusqlite/rusqlite/blob/master/tests/vtab.rs). Check out gitqlite
+  as well. What would an MVP look like? Maybe even something that could ship with gitoxide.
+* [ ] A truly awesome history rewriter which makes it easy to understand what happened while avoiding all pitfalls. Think BFG, but more awesome, if that's possible.
+* [ ] `git-tui` should learn a lot from [fossil-scm] regarding the presentation of data. Maybe [this](https://github.com/Lutetium-Vanadium/requestty/) can be used for prompts.
+* [ ] Can markdown be used as database so issue-trackers along with meta-data could just be markdown files which are mostly human-editable? Could user interfaces
+  be meta-data aware and just hide the meta-data chunks which are now editable in the GUI itself? Doing this would make conflicts easier to resolve than an `sqlite`
+  database.
+    * ~~A git-backend for `sqlite` which should allow embedding sqlite databases into git repositories, which in turn can be used for bug-trackers, wikis or other
+      features, making for a fully distributed github like experience, maybe.~~
 
-The top-level command-line interface.
+### Ideas for Spin-Offs
 
-* **fast**
-  * Makes the crate execute as fast as possible by supporting parallel computation of otherwise long-running functions
-    as well as fast, hardware accelerated hashing.
-  * If disabled, the binary will be visibly smaller.
-* _(mutually exclusive)_
-  * **pretty-cli**
-    * Use `clap` 3.0 to build the prettiest, best documented and most user-friendly CLI at the expense of file size.
-    * provides a terminal user interface for detailed and exhaustive progress.
-    * provides a line renderer for log-like progress
-  * **lean-cli**
-    * Use `argh` to produce a usable binary with decent documentation that is smallest in size, usually 300kb less than `pretty-cli`.
-    * If `pretty-cli` is enabled as well, `lean-cli` will take precedence, and you pay for building unnecessary dependencies.
-    * provides a line renderer for log-like progress
-* **prodash-render-line-crossterm** or **prodash-render-line-termion** _(mutually exclusive)_
-  * The `--verbose` flag will be powered by an interactive progress mechanism that doubles as log as well as interactive progress
-    that appears after a short duration.
-  
-There are **convenience features**, which combine common choices of the above into one name
+* [ ] A system to integrate tightly with `git-lfs` to allow a multi-tier architecture so that assets can be stored in git and are accessible quickly from an intranet location
+  (for example by accessing the storage read-only over the network) while changes are pushed immediately by the server to other edge locations, like _the cloud_ or backups. Sparse checkouts along with explorer/finder integrations
+  make it convenient to only work on a small subset of files locally. Clones can contain all configuration somebody would need to work efficiently from their location,
+  and authentication for the git history as well as LFS resources make the system secure. One could imagine encryption support for untrusted locations in _the cloud_
+  even though more research would have to be done to make it truly secure.
+* [ ] A [syncthing] like client/server application. This is to demonstrate how lower-level crates can be combined into custom applications that use
+  only part of git's technology to achieve their very own thing. Watch out for big file support, multi-device cross-syncing, the possibility for
+  untrusted destinations using full-encryption, case-insensitive and sensitive filesystems, and extended file attributes as well as ignore files.
 
-* **max** = *pretty-cli* + *fast* + *prodash-render-tui-crossterm*
-  * _default_, for unix and windows
-* **max-termion** = *pretty-cli* + *fast* + *prodash-render-tui-termion*
-  * for unix only, faster compile times, a little smaller
-* **lean** = *lean-cli* + *fast* + *prodash-render-line-crossterm*
-  * for unix and windows, significantly smaller than _max_, but without `--progress` terminal user interface.
-* **lean-termion** = *lean-cli* + *fast* + *prodash-render-line-termion*
-  * for unix only, faster compile times, a little smaller
-* **light** = *lean-cli* + *fast*
-  * crossplatform by nature as this comes with simplified log based progress
-* **small** = *lean-cli*
-  * As small as it can possibly be, no threading, no fast sha1, log based progress only, no cleanup of temporary files on interrupt
-    
-### git-features
+[syncthing]: https://github.com/syncthing/syncthing
+[fossil-scm]: https://www.fossil-scm.org
 
-A crate to help controlling which capabilities are available from the top-level crate that uses `gitoxide-core` or any other
-`gitoxide` crate that uses `git-features`.
-All feature toggles are additive.
 
-* **parallel**
-  * Use scoped threads and channels to parallelize common workloads on multiple objects. If enabled, it is used everywhere
-    where it makes sense.
-  * As caches are likely to be used and instantiated per thread, more memory will be used on top of the costs for threads.
-* **fast-sha1** 
-  * a multi-crate implementation that can use hardware acceleration, thus bearing the potential for up to 2Gb/s throughput on 
-    CPUs that support it, like AMD Ryzen or Intel Core i3.
-* _mutually-exclusive_
-  * **interrupt-handler**  
-    * Listen to interrupts and termination requests and provide long-running operations tooling to allow aborting the input stream.
-      * **Note that** `git_features::interrupt::init_handler()` must be called at the start of the application.
-    * If the application already sets a handler, this handler will have no effect.
-    * If unset, these utilities can still be triggered programmatically. However, interrupting with Ctrl+C or SIGTERM may lead to 
-      leaking temporary files.
-  * **disable-interrupts** (_takes precedence if **interrupt-handler** is set as well_)
-    * If set, interrupts cannot be triggered programmatically and it's up to the user to inject means of supporting interrupts.
-    * Useful if there is multiple interruptible operations at the same time that should be triggered independently. After all,
-    * this facility is a global one.
-    * Probably useful for server implementations.
-    
-### Serialization Support
- 
- What follows is feature toggles to control serialization of all public facing simple data types.
- 
- * **serde1**
-   * Data structures implement `serde::Serialize` and `serde::Deserialize`
-   
- The feature above is provided by the crates:
- 
- * **git-object**
- * **git-odb**
- * **gitoxide-core**
+## Shortcomings & Limitations
 
- 
-## Plumbing vs Porcelain
-
-Both terms are coming from the `git` implementation itself, even though it won't necessarily point out which commands are plumbing and which
-are porcelain.
-The term *plumbing* refers to lower-level, more rarely used commands that complement porcelain by being invoked by it or for certain use
-cases.
-The term *porcelain* refers to those with a decent user experience, they are primarily intended for use by humans.
-
-In any case, both types of programs must self-document their capabilities using through the `--help` flag.
-
-From there, we can derive a few rules to try adhere to:
-
-### Plumbing
-
-* does not show any progress or logging output by default
-* if supported and logging is enabled, it will show timestamps in UTC
-* it does not need a git repository, but instead takes all variables via the command-line 
-
-### Porcelain
-
-* Provides output to stderr by default to provide progress information. There is no need to allow disabling it, but it shouldn't show up unless
-  the operation takes some time.
-* If timestamps are shown, they are in localtime.
-* Non-progress information goes to stdout.
-
-## Shortcomings
-
+* **fetches using protocol V1 and stateful connections, i.e. ssh, git, file, may hang**
+  * This can be fixed by making response parsing.
+  * Note that this does not affect cloning, which works fine.
 * **lean** and **light** and **small** builds don't support non-UTF-8 paths _in the CLI_
   * This is because they depend on `argh`, which [does not yet support parsing OsStrings](https://github.com/google/argh/issues/33). We however
     believe it eventually will do so and thus don't move on to [`pico-args`](https://github.com/RazrFalcon/pico-args/blob/master/examples/app.rs).
+  * Only one level of sub-commands are supported due to a limitation of `argh`, which forces porcelain to limit itself as well despite using `clap`.
+    We deem this acceptable for plumbing commands and think that porcelain will be high-level and smart enough to not ever require deeply nested sub-commands.
 * **Packfiles use memory maps**
   * Even though they are comfortable to use and fast, they squelch IO errors.
   * _potential remedy_: We could generalize the Pack to make it possible to work on in-memory buffers directly. That way, one
@@ -409,9 +271,16 @@ From there, we can derive a few rules to try adhere to:
 * **Packfiles cannot load files bigger than 2^31 or 2^32 on 32 bit systems**
   * As these systems cannot address more memory than that.
   * _potential remedy_: implement a sliding window to map and unmap portions of the file as needed.
-* **CRC32** implementation doesn't use SIMD
-  * Probably at no cost one could upgrade to the **crc32fast** crate, but it looks unmaintained and has more code.
-
+    * However, those who need to access big packs on these systems would rather resort to `git` itself, allowing
+      our implementation to be simpler and potentially more performant.
+* **Objects larger than 32 bits cannot be loaded on 32 bit systems**
+  * in-memory representations objects cannot handle objects greater than the amount of addressable memory.
+  * This should not affect git LFS though.
+* **git-url** _might_ be more restrictive than what git allows as for the most part, it uses a browser grade URL parser.
+  * Thus far there is no proof for this, and as _potential remedy_ we could certainly re-implement exactly what git does
+    to handle its URLs.
+* **local time** is currently impeded by [this issue](https://github.com/time-rs/time/issues/293#issuecomment-909158529) but it's planned to resolve it eventually.
+  
 ## Credits
 
 * **itertools** _(MIT Licensed)_
@@ -419,22 +288,21 @@ From there, we can derive a few rules to try adhere to:
 * **deflate2** _(MIT Licensed)_
   * We use various abstractions to implement decompression and compression directly on top of the rather low-level `miniz_oxide` crate
   
-## Unused Performance Optimizations
-* **miniz-oxide**
-  * **unnecessary buffer reset**
-    * In the [`InflateState` struct][miniz-inflatestate], there is a big 32kb buffer which gets zeroed for every decompression attempt.
-    * This costs ~4s for 7.5 million objects.
-  * **reuse of state between decompressions could be faster**
-    * Similar to above, there are several occasions when we decompress in an 'all at once', which also requires to recreate a 32kb buffer
-      filled with zeroes. If most of that state could be reused, we would save time when handling millions of objects both during pack
-      lookup as well as pack streaming.
-    
-[miniz-inflatestate]: https://github.com/Frommi/miniz_oxide/blob/7f5aedd7cc553b624902210a7d136440c138dc80/miniz_oxide/src/inflate/stream.rs#L102
+## License
+
+This project is licensed under either of
+
+ * Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or
+   http://www.apache.org/licenses/LICENSE-2.0)
+ * MIT license ([LICENSE-MIT](LICENSE-MIT) or
+   http://opensource.org/licenses/MIT)
+
+at your option.
 
 ## Fun facts
 
-* Originally I was really fascinated by [this problem](https://github.com/gitpython-developers/GitPython/issues/765#issuecomment-396072153)
-  and believe that with `gitoxide` it will be possible to provide the fastest solution for it.
-* I have been absolutely blown away by `git` from the first time I experienced git more than 13 years ago, and 
+* Originally @Byron was really fascinated by [this problem](https://github.com/gitpython-developers/GitPython/issues/765#issuecomment-396072153)
+  and believes that with `gitoxide` it will be possible to provide the fastest solution for it.
+* @Byron has been absolutely blown away by `git` from the first time he experienced git more than 13 years ago, and 
   tried to implement it in [various shapes](https://github.com/gitpython-developers/GitPython/pull/1028) and [forms](https://github.com/byron/gogit)
-  multiple [times](https://github.com/Byron/gitplusplus). Now with Rust I finally feel to have found the right tool for the job!
+  multiple [times](https://github.com/Byron/gitplusplus). Now with Rust @Byron finally feels to have found the right tool for the job!

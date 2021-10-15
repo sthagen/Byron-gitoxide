@@ -1,0 +1,29 @@
+[package]
+name = "git-commitgraph"
+version = "0.5.0"
+repository = "https://github.com/Byron/gitoxide"
+documentation = "https://git-scm.com/docs/commit-graph#:~:text=The%20commit-graph%20file%20is%20a%20supplemental%20data%20structure,or%20in%20the%20info%20directory%20of%20an%20alternate."
+license = "MIT/Apache-2.0"
+description = "Read-only access to the git commitgraph file format"
+authors = ["Conor Davis <gitoxide@conor.fastmail.fm>", "Sebastian Thiel <sebastian.thiel@icloud.com>"]
+edition = "2018"
+include = ["src/**/*", "CHANGELOG.md"]
+
+[lib]
+doctest = false
+
+[features]
+serde1 = ["serde", "git-hash/serde1", "bstr/serde1"]
+
+[dependencies]
+git-features = { version ="^0.16.5", path = "../git-features", features = ["rustsha1"] }
+git-hash = { version ="^0.7.0", path = "../git-hash" }
+
+bstr = { version = "0.2.13", default-features = false, features = ["std"] }
+byteorder = "1.2.3"
+filebuffer = "0.4.0"
+serde = { version = "1.0.114", optional = true, default-features = false, features = ["derive"] }
+thiserror = "1.0.26"
+
+[dev-dependencies]
+git-testtools = { path = "../tests/tools" }

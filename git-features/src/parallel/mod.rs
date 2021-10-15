@@ -1,16 +1,51 @@
+//! Run computations in parallel, or not based the `parallel` feature toggle.
+//!
+//! ### in_parallel(…)
+//!
+//! The [`in_parallel(…)`][in_parallel()] is the typical fan-out-fan-in mode of parallelism, with thread local storage
+//! made available to a `consume(…)` function to process input. The result is sent to the [`Reduce`] running in the calling
+//! thread to aggregate the results into a single output, which is returned by [`in_parallel()`].
+//!
+//! Interruptions can be achieved by letting the reducers [`feed(…)`][Reduce::feed()]` method fail.
+//!
+//! It gets a boost in usability as it allows threads to borrow variables from the stack, most commonly the repository itself
+//! or the data to work on.
+//!
+//! This mode of operation doesn't lend itself perfectly to being wrapped for `async` as it appears like a single long-running
+//! operation which runs as fast as possible, which is cancellable only by merit of stopping the input or stopping the output
+//! aggregation.
+//!
+//! ### `reduce::Stepwise`
+//!
+//! The [`Stepwise`][reduce::Stepwise] iterator works exactly as [`in_parallel()`] except that the processing of the output produced by
+//! `consume(I, &mut State) -> O` is made accessible by the `Iterator` trait's `next()` method. As produced work is not
+//! buffered, the owner of the iterator controls the progress made.
+//!
+//! Getting the final output of the [`Reduce`] is achieved through the consuming [`Stepwise::finalize()`][reduce::Stepwise::finalize()] method, which
+//! is functionally equivalent to calling [`in_parallel()`].
+//!
+//! In an `async` context this means that progress is only made each time `next()` is called on the iterator, while merely dropping
+//! the iterator will wind down the computation without any result.
+//!
+//! #### Maintaining Safety
+//!
+//! In order to assure that threads don't outlive the data they borrow because their handles are leaked, we enforce
+//! the `'static` lifetime for its inputs, making it less intuitive to use. It is, however, possible to produce
+//! suitable input iterators as long as they can hold something on the heap.
 #[cfg(feature = "parallel")]
 mod in_parallel;
-mod serial;
-
-#[cfg(not(feature = "parallel"))]
-pub use serial::*;
-
 #[cfg(feature = "parallel")]
-pub use in_parallel::*;
+pub use in_parallel::{in_parallel, join};
 
-mod eager;
-pub use eager::{EagerIter, EagerIterIf};
+mod serial;
+#[cfg(not(feature = "parallel"))]
+pub use serial::{in_parallel, join};
 
+mod eager_iter;
+pub use eager_iter::{EagerIter, EagerIterIf};
+
+/// A no-op returning the input _(`desired_chunk_size`, `Some(thread_limit)`, `thread_limit)_ used
+/// when the `parallel` feature toggle is not set.
 #[cfg(not(feature = "parallel"))]
 pub fn optimize_chunk_size_and_thread_limit(
     desired_chunk_size: usize,
@@ -18,9 +53,21 @@ pub fn optimize_chunk_size_and_thread_limit(
     thread_limit: Option<usize>,
     _available_threads: Option<usize>,
 ) -> (usize, Option<usize>, usize) {
-    return (desired_chunk_size, thread_limit, num_threads(thread_limit));
+    (desired_chunk_size, thread_limit, num_threads(thread_limit))
 }
 
+/// Return the 'optimal' _(`size of chunks`,  `amount of threads as Option`, `amount of threads`)_ to use in [`in_parallel()`] for the given
+/// `desired_chunk_size`, `num_items`, `thread_limit` and `available_threads`.
+///
+/// * `desired_chunk_size` is the amount of items per chunk you think should be used.
+/// * `num_items` is the total amount of items in the iteration, if `Some`.
+///    Otherwise this knowledge will not affect the output of this function.
+/// * `thread_limit` is the amount of threads to use at most, if `Some`.
+///    Otherwise this knowledge will not affect the output of this function.
+/// * `available_threads` is the total amount of threads available, if `Some`.
+///    Otherwise the actual amount of available threads is determined by querying the system.
+///
+/// `Note` that this implementation is available only if the `parallel` feature toggle is set.
 #[cfg(feature = "parallel")]
 pub fn optimize_chunk_size_and_thread_limit(
     desired_chunk_size: usize,
@@ -49,40 +96,39 @@ pub fn optimize_chunk_size_and_thread_limit(
             };
             (chunk_size, thread_limit)
         })
-        .unwrap_or((
-            if available_threads == 1 {
+        .unwrap_or({
+            let chunk_size = if available_threads == 1 {
                 desired_chunk_size
             } else if desired_chunk_size < lower {
                 lower
             } else {
                 desired_chunk_size.min(upper)
-            },
-            available_threads,
-        ));
+            };
+            (chunk_size, available_threads)
+        });
     (chunk_size, Some(thread_limit), thread_limit)
 }
 
+/// Always returns 1, available when the `parallel` feature toggle is unset.
 #[cfg(not(feature = "parallel"))]
-pub(crate) fn num_threads(_thread_limit: Option<usize>) -> usize {
-    return 1;
+fn num_threads(_thread_limit: Option<usize>) -> usize {
+    1
 }
 
+/// Returns the amount of threads the system can effectively use as the amount of its logical cores.
+///
+/// Only available with the `parallel` feature toggle set.
 #[cfg(feature = "parallel")]
-pub(crate) fn num_threads(thread_limit: Option<usize>) -> usize {
-    let logical_cores = num_cpus::get();
+fn num_threads(thread_limit: Option<usize>) -> usize {
+    let logical_cores = || num_cpus::get();
     thread_limit
-        .map(|l| if l == 0 { logical_cores } else { l })
-        .unwrap_or(logical_cores)
+        .map(|l| if l == 0 { logical_cores() } else { l })
+        .unwrap_or_else(logical_cores)
 }
 
-pub trait Reducer {
-    type Input;
-    type Output;
-    type Error;
-    fn feed(&mut self, input: Self::Input) -> Result<(), Self::Error>;
-    fn finalize(self) -> Result<Self::Output, Self::Error>;
-}
-
+/// Run [`in_parallel()`] only if the given `condition()` returns true when eagerly evaluated.
+///
+/// For parameters, see the documentation of [`in_parallel()`]
 pub fn in_parallel_if<I, S, O, R>(
     condition: impl FnOnce() -> bool,
     input: impl Iterator<Item = I> + Send,
@@ -90,9 +136,9 @@ pub fn in_parallel_if<I, S, O, R>(
     new_thread_state: impl Fn(usize) -> S + Send + Sync,
     consume: impl Fn(I, &mut S) -> O + Send + Sync,
     reducer: R,
-) -> Result<<R as Reducer>::Output, <R as Reducer>::Error>
+) -> Result<<R as Reduce>::Output, <R as Reduce>::Error>
 where
-    R: Reducer<Input = O>,
+    R: Reduce<Input = O>,
     I: Send,
     O: Send,
 {
@@ -102,3 +148,7 @@ where
         serial::in_parallel(input, thread_limit, new_thread_state, consume, reducer)
     }
 }
+
+///
+pub mod reduce;
+pub use reduce::Reduce;
