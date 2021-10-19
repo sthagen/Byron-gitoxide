@@ -35,6 +35,17 @@ pub fn will(not_really: bool) -> &'static str {
     }
 }
 
+pub fn try_to_published_crate_and_new_version<'meta, 'a>(
+    c: &'a crate::traverse::Dependency<'meta>,
+) -> Option<(&'meta Package, &'a semver::Version)> {
+    match &c.mode {
+        crate::traverse::dependency::Mode::ToBePublished { adjustment } => {
+            Some((c.package, adjustment.bump().next_release()))
+        }
+        _ => None,
+    }
+}
+
 pub fn is_pre_release_version(semver: &Version) -> bool {
     semver.major == 0
 }
@@ -45,29 +56,14 @@ pub fn is_top_level_package(manifest_path: &Utf8Path, shared: &git::Easy) -> boo
         .map_or(false, |p| p.components().count() == 1)
 }
 
-pub fn is_dependency_with_version_requirement(dep: &Dependency) -> bool {
-    !dep.req.comparators.is_empty()
-}
-
-pub fn is_workspace_member(meta: &Metadata, crate_name: &str) -> bool {
-    workspace_package_by_name(meta, crate_name).is_some()
-}
-
 pub fn package_eq_dependency(package: &Package, dependency: &Dependency) -> bool {
     package.name == dependency.name
 }
 
-pub fn workspace_package_by_name<'a>(meta: &'a Metadata, crate_name: &str) -> Option<&'a Package> {
+pub fn workspace_package_by_dependency<'a>(meta: &'a Metadata, dep: &Dependency) -> Option<&'a Package> {
     meta.packages
         .iter()
-        .find(|p| p.name == crate_name)
-        .filter(|p| meta.workspace_members.iter().any(|m| m == &p.id))
-}
-
-pub fn workspace_package_by_id<'a>(meta: &'a Metadata, id: &PackageId) -> Option<&'a Package> {
-    meta.packages
-        .iter()
-        .find(|p| &p.id == id)
+        .find(|p| p.name == dep.name)
         .filter(|p| meta.workspace_members.iter().any(|m| m == &p.id))
 }
 
@@ -78,16 +74,9 @@ pub fn package_by_name<'a>(meta: &'a Metadata, name: &str) -> anyhow::Result<&'a
         .ok_or_else(|| anyhow!("workspace member '{}' must be a listed package", name))
 }
 
-pub fn package_for_dependency<'a>(meta: &'a Metadata, dep: &Dependency) -> &'a Package {
-    meta.packages
-        .iter()
-        .find(|p| package_eq_dependency(p, dep))
-        .expect("dependency always available as package")
-}
-
-pub fn names_and_versions(publishees: &[(&Package, String)]) -> String {
+pub fn names_and_versions<'a>(publishees: impl IntoIterator<Item = &'a (&'a Package, &'a semver::Version)>) -> String {
     publishees
-        .iter()
+        .into_iter()
         .map(|(p, nv)| format!("{} v{}", p.name, nv))
         .collect::<Vec<_>>()
         .join(", ")
@@ -108,11 +97,11 @@ pub fn tag_prefix<'p>(package: &'p Package, repo: &git::Easy) -> Option<&'p str>
     }
 }
 
-pub fn tag_name(package: &Package, version: &str, repo: &git::Easy) -> String {
+pub fn tag_name(package: &Package, version: &semver::Version, repo: &git::Easy) -> String {
     tag_name_inner(tag_prefix(package, repo), version)
 }
 
-fn tag_name_inner(package_name: Option<&str>, version: &str) -> String {
+fn tag_name_inner(package_name: Option<&str>, version: &semver::Version) -> String {
     match package_name {
         Some(name) => format!("{}-v{}", name, version),
         None => format!("v{}", version),
@@ -160,6 +149,8 @@ pub fn component_to_bytes(c: Utf8Component<'_>) -> &[u8] {
 mod tests {
     mod parse_possibly_prefixed_tag_version {
         mod matches {
+            use std::str::FromStr;
+
             use git_repository::bstr::ByteSlice;
             use semver::Version;
 
@@ -170,7 +161,9 @@ mod tests {
                 assert_eq!(
                     parse_possibly_prefixed_tag_version(
                         "git-test".into(),
-                        tag_name_inner("git-test".into(), "1.0.1").as_bytes().as_bstr()
+                        tag_name_inner("git-test".into(), &Version::from_str("1.0.1").unwrap())
+                            .as_bytes()
+                            .as_bstr()
                     ),
                     Version::parse("1.0.1").expect("valid").into()
                 );
@@ -178,13 +171,20 @@ mod tests {
                 assert_eq!(
                     parse_possibly_prefixed_tag_version(
                         "single".into(),
-                        tag_name_inner("single".into(), "0.0.1-beta.1").as_bytes().as_bstr()
+                        tag_name_inner("single".into(), &Version::from_str("0.0.1-beta.1").unwrap())
+                            .as_bytes()
+                            .as_bstr()
                     ),
                     Version::parse("0.0.1-beta.1").expect("valid").into()
                 );
 
                 assert_eq!(
-                    parse_possibly_prefixed_tag_version(None, tag_name_inner(None, "0.0.1+123.x").as_bytes().as_bstr()),
+                    parse_possibly_prefixed_tag_version(
+                        None,
+                        tag_name_inner(None, &Version::from_str("0.0.1+123.x").unwrap())
+                            .as_bytes()
+                            .as_bstr()
+                    ),
                     Version::parse("0.0.1+123.x").expect("valid").into()
                 );
             }
@@ -193,7 +193,10 @@ mod tests {
 
     mod is_tag_name {
         mod no_match {
+            use std::str::FromStr;
+
             use git_repository::bstr::ByteSlice;
+            use semver::Version;
 
             use crate::utils::{is_tag_name, tag_name_inner};
 
@@ -201,12 +204,17 @@ mod tests {
             fn due_to_crate_name() {
                 assert!(!is_tag_name(
                     "foo",
-                    tag_name_inner("bar".into(), "0.0.1-beta.1").as_bytes().as_bstr()
+                    tag_name_inner("bar".into(), &Version::from_str("0.0.1-beta.1").unwrap())
+                        .as_bytes()
+                        .as_bstr()
                 ));
             }
         }
         mod matches {
+            use std::str::FromStr;
+
             use git_repository::bstr::ByteSlice;
+            use semver::Version;
 
             use crate::utils::{is_tag_name, tag_name_inner};
 
@@ -214,12 +222,16 @@ mod tests {
             fn whatever_tag_name_would_return() {
                 assert!(is_tag_name(
                     "git-test",
-                    tag_name_inner("git-test".into(), "1.0.1").as_bytes().as_bstr()
+                    tag_name_inner("git-test".into(), &Version::from_str("1.0.1").unwrap())
+                        .as_bytes()
+                        .as_bstr()
                 ));
 
                 assert!(is_tag_name(
                     "single",
-                    tag_name_inner("single".into(), "0.0.1-beta.1").as_bytes().as_bstr()
+                    tag_name_inner("single".into(), &Version::from_str("0.0.1-beta.1").unwrap())
+                        .as_bytes()
+                        .as_bstr()
                 ));
             }
         }

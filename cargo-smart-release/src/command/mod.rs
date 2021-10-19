@@ -17,17 +17,15 @@ pub mod release {
         pub bump_when_needed: bool,
         pub verbose: bool,
         pub skip_push: bool,
-        pub skip_dependencies: bool,
-        pub multi_crate_release: bool,
+        pub dependencies: bool,
         pub isolate_dependencies_from_breaking_changes: bool,
         pub changelog: bool,
         pub preview: bool,
         pub generator_segments: segment::Selection,
         pub allow_fully_generated_changelogs: bool,
-        pub no_changelog_links: bool,
+        pub changelog_links: bool,
         pub allow_changelog_github_release: bool,
     }
-    pub use super::release_impl::BumpSpec;
 }
 #[path = "release/mod.rs"]
 mod release_impl;

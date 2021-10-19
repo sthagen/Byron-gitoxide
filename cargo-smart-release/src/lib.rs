@@ -1,5 +1,7 @@
 #![deny(rust_2018_idioms)]
 
+pub use context::Context;
+
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct ChangeLog {
     pub sections: Vec<changelog::Section>,
@@ -7,12 +9,11 @@ pub struct ChangeLog {
 
 pub mod changelog;
 pub mod command;
-pub mod commit;
+pub(crate) mod commit;
 
+pub(crate) mod bat;
 mod context;
-pub use context::Context;
-
-pub mod bat;
-pub mod git;
-pub mod traverse;
+pub(crate) mod git;
+pub(crate) mod traverse;
 mod utils;
+pub mod version;

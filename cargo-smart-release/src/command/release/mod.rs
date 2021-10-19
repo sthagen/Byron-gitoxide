@@ -1,33 +1,29 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use anyhow::bail;
-use cargo_metadata::{Dependency, DependencyKind, Metadata, Package};
-use crates_index::Index;
 
 use crate::{
     changelog,
     changelog::{write::Linkables, Section},
     command::release::Options,
-    utils::{
-        is_dependency_with_version_requirement, names_and_versions, package_by_id, package_by_name,
-        package_eq_dependency, package_for_dependency, tag_name, will, workspace_package_by_id,
+    traverse::{
+        self, dependency,
+        dependency::{ManifestAdjustment, VersionAdjustment},
     },
+    utils::{tag_name, try_to_published_crate_and_new_version, will},
+    version,
+    version::BumpSpec,
 };
 
 mod cargo;
 mod git;
 mod github;
 mod manifest;
-mod version;
 
 type Oid<'repo> = git_repository::easy::Oid<'repo, git_repository::Easy>;
 
 pub(crate) struct Context {
     base: crate::Context,
-    crates_index: Index,
-    history: Option<crate::commit::History>,
-    bump: BumpSpec,
-    bump_dependencies: BumpSpec,
     changelog_links: Linkables,
 }
 
@@ -39,12 +35,6 @@ impl Context {
         changelog: bool,
         changelog_links: bool,
     ) -> anyhow::Result<Self> {
-        let crates_index = Index::new_cargo_default();
-        let base = crate::Context::new(crate_names)?;
-        let history = (changelog || matches!(bump, BumpSpec::Auto) || matches!(bump_dependencies, BumpSpec::Auto))
-            .then(|| crate::git::history::collect(&base.repo))
-            .transpose()?
-            .flatten();
         let changelog_links = if changelog_links {
             crate::git::remote_url()?
                 .map(|url| Linkables::AsLinks {
@@ -55,23 +45,10 @@ impl Context {
             Linkables::AsText
         };
         Ok(Context {
-            base,
-            history,
-            crates_index,
-            bump,
-            bump_dependencies,
+            base: crate::Context::new(crate_names, changelog, bump, bump_dependencies)?,
             changelog_links,
         })
     }
-}
-
-#[derive(Copy, Clone)]
-pub enum BumpSpec {
-    Auto,
-    Keep,
-    Patch,
-    Minor,
-    Major,
 }
 
 /// In order to try dealing with https://github.com/sunng87/cargo-release/issues/224 and also to make workspace
@@ -86,22 +63,19 @@ pub fn release(opts: Options, crates: Vec<String>, bump: BumpSpec, bump_dependen
     } else {
         opts.changelog
     };
-    let ctx = Context::new(
-        crates,
-        bump,
-        bump_dependencies,
-        allow_changelog,
-        !opts.no_changelog_links,
-    )?;
+    let ctx = Context::new(crates, bump, bump_dependencies, allow_changelog, opts.changelog_links)?;
     if opts.update_crates_index {
-        log::info!("Updating crates-io index at '{}'", ctx.crates_index.path().display());
-        ctx.crates_index.update()?;
+        log::info!(
+            "Updating crates-io index at '{}'",
+            ctx.base.crates_index.path().display()
+        );
+        ctx.base.crates_index.update()?;
     } else if opts.bump_when_needed {
         log::warn!(
             "Consider running with --update-crates-index to assure bumping on demand uses the latest information"
         );
     }
-    if !ctx.crates_index.exists() {
+    if !ctx.base.crates_index.exists() {
         log::warn!("Crates.io index doesn't exist. Consider using --update-crates-index to help determining if release versions are published already");
     }
 
@@ -110,58 +84,273 @@ pub fn release(opts: Options, crates: Vec<String>, bump: BumpSpec, bump_dependen
 }
 
 fn release_depth_first(ctx: Context, options: Options) -> anyhow::Result<()> {
-    let meta = &ctx.base.meta;
-    let changed_crate_names_to_publish = if options.skip_dependencies {
-        ctx.base.crate_names.clone()
-    } else {
-        crate::traverse::dependencies(&ctx.base, options.verbose, options.allow_auto_publish_of_stable_crates)?
+    let Options {
+        bump_when_needed,
+        dry_run,
+        allow_auto_publish_of_stable_crates,
+        dependencies: traverse_dependencies,
+        verbose,
+        isolate_dependencies_from_breaking_changes,
+        ..
+    } = options;
+    let crates = {
+        crate::traverse::dependencies(
+            &ctx.base,
+            allow_auto_publish_of_stable_crates,
+            bump_when_needed,
+            isolate_dependencies_from_breaking_changes,
+            traverse_dependencies,
+        )
+        .and_then(|deps| present_dependencies(&deps, &ctx, verbose, dry_run).map(|_| deps))?
     };
-
-    let crates_to_publish_together = resolve_cycles_with_publish_group(meta, &changed_crate_names_to_publish, options)?;
 
     assure_working_tree_is_unchanged(options)?;
 
-    if options.multi_crate_release && !changed_crate_names_to_publish.is_empty() {
-        perform_multi_version_release(&ctx, options, meta, changed_crate_names_to_publish)?;
-    } else {
-        for publishee_name in changed_crate_names_to_publish
-            .iter()
-            .filter(|n| !crates_to_publish_together.contains(n))
-        {
-            let publishee = package_by_name(meta, publishee_name)?;
-
-            let (new_version, (commit_id, release_section_by_publishee)) =
-                perform_single_release(meta, publishee, options, &ctx)?;
-            let tag_name = git::create_version_tag(
-                publishee,
-                &new_version,
-                commit_id,
-                release_section_by_publishee
-                    .get(publishee_name.as_str())
-                    .and_then(|s| section_to_string(s, WriteMode::Tag)),
-                &ctx.base,
-                options,
-            )?;
-            git::push_tags_and_head(tag_name.as_ref(), options)?;
-            if let Some(message) = options
-                .allow_changelog_github_release
-                .then(|| {
-                    release_section_by_publishee
-                        .get(publishee_name.as_str())
-                        .and_then(|s| section_to_string(s, WriteMode::GitHubRelease))
-                })
-                .flatten()
-            {
-                github::create_release(publishee, &new_version, &message, options, &ctx.base)?;
-            }
-        }
-    }
-
-    if !crates_to_publish_together.is_empty() {
-        perform_multi_version_release(&ctx, options, meta, crates_to_publish_together)?;
+    if !crates.is_empty() {
+        perform_multi_version_release(&ctx, options, &crates)?;
     }
 
     Ok(())
+}
+
+fn present_dependencies(
+    crates: &[traverse::Dependency<'_>],
+    ctx: &Context,
+    verbose: bool,
+    dry_run: bool,
+) -> anyhow::Result<()> {
+    use dependency::Kind;
+    let all_skipped: Vec<_> = crates
+        .iter()
+        .filter_map(|dep| match &dep.mode {
+            dependency::Mode::NotForPublishing { reason, adjustment } => {
+                Some((dep.package.name.as_str(), adjustment.is_some(), *reason))
+            }
+            _ => None,
+        })
+        .collect();
+    let mut num_refused = 0;
+    for (refused_crate, has_adjustment, _) in all_skipped
+        .iter()
+        .filter(|(name, _, _)| ctx.base.crate_names.iter().any(|n| n == *name))
+    {
+        num_refused += 1;
+        log::warn!(
+            "Refused to publish '{}' as {}.",
+            refused_crate,
+            has_adjustment
+                .then(|| "only a manifest change is needed")
+                .unwrap_or("as it didn't change")
+        );
+    }
+
+    let no_requested_crate_will_publish = num_refused == ctx.base.crate_names.len();
+    let no_crate_being_published_message = "No provided crate is actually eligible for publishing.";
+    if no_requested_crate_will_publish && !verbose {
+        bail!(
+            "{} Use --verbose to see the release plan nonetheless.",
+            no_crate_being_published_message
+        )
+    }
+
+    let skipped = all_skipped
+        .iter()
+        .filter_map(|(name, has_adjustment, reason)| (!has_adjustment).then(|| (*name, reason)))
+        .collect::<Vec<_>>();
+    if !skipped.is_empty() {
+        let skipped_len = skipped.len();
+        let mut crates_by_reason: Vec<_> = skipped
+            .into_iter()
+            .fold(BTreeMap::default(), |mut acc, (name, reason)| {
+                acc.entry(*reason).or_insert_with(Vec::new).push(name);
+                acc
+            })
+            .into_iter()
+            .collect();
+        crates_by_reason.sort_by_key(|(k, _)| *k);
+
+        log::info!(
+            "Will not publish or alter {} dependent crate{}: {}",
+            skipped_len,
+            (skipped_len != 1).then(|| "s").unwrap_or(""),
+            crates_by_reason
+                .into_iter()
+                .map(|(key, names)| format!(
+                    "{} = {}",
+                    key,
+                    names.iter().map(|n| format!("'{}'", n)).collect::<Vec<_>>().join(", ")
+                ))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+    }
+
+    if all_skipped.len() == crates.len() {
+        bail!("There is no crate eligible for publishing.");
+    }
+
+    let mut error = false;
+    for dep in crates {
+        let (bump_spec, kind) = match dep.kind {
+            Kind::UserSelection => (ctx.base.bump, "provided"),
+            Kind::DependencyOrDependentOfUserSelection => (ctx.base.bump_dependencies, "dependent"),
+        };
+        match &dep.mode {
+            dependency::Mode::ToBePublished { adjustment } => {
+                let (bump, breaking_dependencies) = match adjustment {
+                    VersionAdjustment::Breakage {
+                        bump,
+                        causing_dependency_names,
+                        ..
+                    } => (bump, Some(causing_dependency_names)),
+                    VersionAdjustment::Changed { bump, .. } => (bump, None),
+                };
+                match &bump.next_release {
+                    Ok(next_release) => {
+                        if next_release > &dep.package.version {
+                            log::info!(
+                                "{} {}-bump {} package '{}' from {} to {} for publishing{}{}{}",
+                                will(dry_run),
+                                bump_spec,
+                                kind,
+                                dep.package.name,
+                                dep.package.version,
+                                next_release,
+                                bump.latest_release
+                                    .as_ref()
+                                    .and_then(|latest_release| {
+                                        (dep.package.version != *latest_release)
+                                            .then(|| format!(", {} on crates.io", latest_release))
+                                    })
+                                    .unwrap_or_default(),
+                                breaking_dependencies
+                                    .map(|causes| format!(
+                                        ", for SAFETY due to breaking package{} {}",
+                                        if causes.len() == 1 { "" } else { "s" },
+                                        causes.iter().map(|n| format!("'{}'", n)).collect::<Vec<_>>().join(", ")
+                                    ))
+                                    .unwrap_or_default(),
+                                (*next_release != bump.desired_release)
+                                    .then(|| format!(", ignoring computed version {}", bump.desired_release))
+                                    .unwrap_or_default(),
+                            );
+                        } else {
+                            log::info!(
+                            "Manifest version of {} package '{}' at {} is sufficient{}, ignoring computed version {}",
+                            kind,
+                            dep.package.name,
+                            dep.package.version,
+                            bump.latest_release
+                                .as_ref()
+                                .map(|latest_release| format!(" to succeed latest released version {}", latest_release))
+                                .unwrap_or_else(|| ", creating a new release 🎉".into()),
+                            bump.desired_release
+                        );
+                        }
+                    }
+                    Err(version::bump::Error::LatestReleaseMoreRecentThanDesiredOne(latest_release)) => {
+                        log::warn!(
+                        "Latest published version of '{}' is {}, the new version is {}. Consider using --bump <level> or --bump-dependencies <level> or update the index with --update-crates-index.",
+                        dep.package.name,
+                        latest_release,
+                        bump.desired_release
+                    );
+                        error = true;
+                    }
+                };
+            }
+            dependency::Mode::NotForPublishing { .. } => {}
+        }
+    }
+
+    {
+        let affected_crates_by_cause = crates
+            .iter()
+            .filter_map(|dep| match &dep.mode {
+                dependency::Mode::NotForPublishing {
+                    adjustment:
+                        Some(ManifestAdjustment::Version(VersionAdjustment::Breakage {
+                            bump,
+                            causing_dependency_names,
+                            ..
+                        })),
+                    ..
+                } => Some((dep, bump, causing_dependency_names)),
+                _ => None,
+            })
+            .fold(
+                Vec::new(),
+                |mut acc: Vec<(&str, Vec<(&str, &version::Bump)>)>, (dep, bump, causing_names)| {
+                    for name in causing_names {
+                        match acc.iter_mut().find(|(k, _v)| k == name) {
+                            Some((_k, deps)) => deps.push((dep.package.name.as_str(), bump)),
+                            None => acc.push((name, vec![(dep.package.name.as_str(), bump)])),
+                        }
+                    }
+                    acc
+                },
+            );
+        for (cause, deps_and_bumps) in affected_crates_by_cause {
+            let plural_s = (deps_and_bumps.len() != 1).then(|| "s").unwrap_or("");
+            log::info!(
+                "{} adjust {} manifest version{} due to breaking change in '{}': {}",
+                will(dry_run),
+                deps_and_bumps.len(),
+                plural_s,
+                cause,
+                deps_and_bumps
+                    .into_iter()
+                    .map(|(dep_name, bump)| format!(
+                        "'{}' {} ➡ {}",
+                        dep_name,
+                        bump.package_version,
+                        bump.next_release
+                            .as_ref()
+                            .expect("bailed earlier if there was an error")
+                    ))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            );
+        }
+    }
+
+    {
+        let crate_names_for_manifest_updates = crates
+            .iter()
+            .filter_map(|d| {
+                matches!(
+                    d.mode,
+                    dependency::Mode::NotForPublishing {
+                        adjustment: Some(ManifestAdjustment::DueToDependencyChange),
+                        ..
+                    }
+                )
+                .then(|| d.package.name.as_str())
+            })
+            .collect::<Vec<_>>();
+        if !crate_names_for_manifest_updates.is_empty() {
+            let plural_s = (crate_names_for_manifest_updates.len() > 1)
+                .then(|| "s")
+                .unwrap_or_default();
+            log::info!(
+                "{} adjust version constraints in manifest{} of {} package{} as direct dependencies are changing: {}",
+                will(dry_run),
+                plural_s,
+                crate_names_for_manifest_updates.len(),
+                plural_s,
+                crate_names_for_manifest_updates.join(", ")
+            );
+        }
+    }
+
+    if error {
+        bail!("Aborting due to previous error(s)");
+    } else {
+        if no_requested_crate_will_publish {
+            bail!(no_crate_being_published_message)
+        }
+        Ok(())
+    }
 }
 
 fn assure_working_tree_is_unchanged(options: Options) -> anyhow::Result<()> {
@@ -180,41 +369,16 @@ fn assure_working_tree_is_unchanged(options: Options) -> anyhow::Result<()> {
 fn perform_multi_version_release(
     ctx: &Context,
     options: Options,
-    meta: &Metadata,
-    crates_to_publish_together: Vec<String>,
+    crates: &[traverse::Dependency<'_>],
 ) -> anyhow::Result<()> {
-    let mut crates_to_publish_together = crates_to_publish_together
-        .into_iter()
-        .map(|name| {
-            let p = package_by_name(meta, &name)?;
-            version::bump(p, version::select_publishee_bump_spec(&p.name, ctx), ctx, &options)
-                .map(|v| (p, v.to_string()))
-        })
-        .collect::<Result<Vec<_>, _>>()?;
+    let manifest::Outcome {
+        commit_id,
+        section_by_package: release_section_by_publishee,
+    } = manifest::edit_version_and_fixup_dependent_crates_and_handle_changelog(crates, options, ctx)?;
 
-    let (commit_id, release_section_by_publishee) =
-        manifest::edit_version_and_fixup_dependent_crates_and_handle_changelog(
-            meta,
-            &crates_to_publish_together,
-            options,
-            ctx,
-        )?;
-
-    log::info!(
-        "{} prepare releases of {}",
-        will(options.dry_run),
-        names_and_versions(&crates_to_publish_together)
-    );
-
-    crates_to_publish_together.reverse();
     let mut tag_names = Vec::new();
-    for (publishee, new_version) in crates_to_publish_together.iter().rev() {
-        let unpublished_crates: Vec<_> = crates_to_publish_together
-            .iter()
-            .map(|(p, _)| p.name.to_owned())
-            .collect();
-
-        cargo::publish_crate(publishee, &unpublished_crates, options)?;
+    for (publishee, new_version) in crates.iter().filter_map(|c| try_to_published_crate_and_new_version(c)) {
+        cargo::publish_crate(publishee, options)?;
         if let Some(tag_name) = git::create_version_tag(
             publishee,
             new_version,
@@ -230,7 +394,7 @@ fn perform_multi_version_release(
     }
     git::push_tags_and_head(tag_names.iter(), options)?;
     if options.allow_changelog_github_release {
-        for (publishee, new_version) in crates_to_publish_together.iter().rev() {
+        for (publishee, new_version) in crates.iter().filter_map(|c| try_to_published_crate_and_new_version(c)) {
             if let Some(message) = release_section_by_publishee
                 .get(&publishee.name.as_str())
                 .and_then(|s| section_to_string(s, WriteMode::GitHubRelease))
@@ -260,153 +424,4 @@ fn section_to_string(section: &Section, mode: WriteMode) -> Option<String> {
         )
         .ok()
         .map(|_| b)
-}
-
-type ReleaseCommitSections<'repo, 'a> = (String, (Option<Oid<'repo>>, BTreeMap<&'a str, changelog::Section>));
-
-fn perform_single_release<'repo, 'a>(
-    meta: &Metadata,
-    publishee: &'a Package,
-    options: Options,
-    ctx: &'repo Context,
-) -> anyhow::Result<ReleaseCommitSections<'repo, 'a>> {
-    let bump_spec = version::select_publishee_bump_spec(&publishee.name, ctx);
-    let new_version = version::bump(publishee, bump_spec, ctx, &options)?;
-    let new_version = new_version.to_string();
-    let commit_id_and_changelog_sections = manifest::edit_version_and_fixup_dependent_crates_and_handle_changelog(
-        meta,
-        &[(publishee, new_version.clone())],
-        options,
-        ctx,
-    )?;
-    log::info!(
-        "{} prepare release of {} v{}",
-        will(options.dry_run),
-        publishee.name,
-        new_version
-    );
-    cargo::publish_crate(publishee, &[], options)?;
-    Ok((new_version, commit_id_and_changelog_sections))
-}
-
-fn resolve_cycles_with_publish_group(
-    meta: &Metadata,
-    changed_crate_names_to_publish: &[String],
-    options: Options,
-) -> anyhow::Result<Vec<String>> {
-    let mut crates_to_publish_additionally_to_avoid_instability = Vec::new();
-    let mut publish_group = Vec::<String>::new();
-    for publishee_name in changed_crate_names_to_publish.iter() {
-        let publishee = package_by_name(meta, publishee_name)?;
-        let cycles = workspace_members_referring_to_publishee(meta, publishee);
-        if cycles.is_empty() {
-            log::debug!("'{}' is cycle-free", publishee.name);
-        } else {
-            for Cycle { from, hops } in cycles {
-                log::warn!(
-                    "'{}' links to '{}' {} causing publishes to never settle.",
-                    publishee.name,
-                    from.name,
-                    if hops == 1 {
-                        "directly".to_string()
-                    } else {
-                        format!("via {} hops", hops)
-                    }
-                );
-                if !changed_crate_names_to_publish.contains(&from.name) {
-                    crates_to_publish_additionally_to_avoid_instability.push(from.name.clone());
-                } else {
-                    for name in &[&from.name, &publishee.name] {
-                        if !publish_group.contains(name) {
-                            publish_group.push(name.to_string())
-                        }
-                    }
-                }
-            }
-        }
-    }
-    if !crates_to_publish_additionally_to_avoid_instability.is_empty() && !options.ignore_instability {
-        bail!(
-            "Refusing to publish unless --ignore-instability is provided or crate(s) {} is/are included in the publish. To avoid this, don't specify versions in your dev dependencies.",
-            crates_to_publish_additionally_to_avoid_instability.join(", ")
-        )
-    }
-    Ok(reorder_according_to_existing_order(
-        changed_crate_names_to_publish,
-        &publish_group,
-    ))
-}
-
-fn reorder_according_to_existing_order(reference_order: &[String], names_to_order: &[String]) -> Vec<String> {
-    let new_order = reference_order
-        .iter()
-        .filter(|name| names_to_order.contains(name))
-        .fold(Vec::new(), |mut acc, name| {
-            acc.push(name.clone());
-            acc
-        });
-    assert_eq!(
-        new_order.len(),
-        names_to_order.len(),
-        "the reference order must contain all items to be ordered"
-    );
-    new_order
-}
-
-struct Cycle<'a> {
-    from: &'a Package,
-    hops: usize,
-}
-
-fn workspace_members_referring_to_publishee<'a>(meta: &'a Metadata, publishee: &Package) -> Vec<Cycle<'a>> {
-    publishee
-        .dependencies
-        .iter()
-        .filter(|dep| is_dependency_with_version_requirement(dep)) // unspecified versions don't matter for publishing
-        .filter(|dep| {
-            dep.kind != DependencyKind::Normal
-                && meta
-                    .workspace_members
-                    .iter()
-                    .map(|id| package_by_id(meta, id))
-                    .any(|potential_cycle| package_eq_dependency(potential_cycle, dep))
-        })
-        .filter_map(|dep| {
-            hops_for_dependency_to_link_back_to_publishee(meta, dep, publishee).map(|hops| Cycle {
-                hops,
-                from: package_by_name(meta, &dep.name).expect("package exists"),
-            })
-        })
-        .collect()
-}
-
-fn hops_for_dependency_to_link_back_to_publishee<'a>(
-    meta: &'a Metadata,
-    source: &Dependency,
-    destination: &Package,
-) -> Option<usize> {
-    let source = package_for_dependency(meta, source);
-    let mut package_ids = vec![(0, &source.id)];
-    let mut seen = BTreeSet::new();
-    while let Some((level, id)) = package_ids.pop() {
-        if !seen.insert(id) {
-            continue;
-        }
-        if let Some(package) = workspace_package_by_id(meta, id) {
-            if package
-                .dependencies
-                .iter()
-                .any(|dep| package_eq_dependency(destination, dep))
-            {
-                return Some(level + 1);
-            }
-            package_ids.extend(
-                package
-                    .dependencies
-                    .iter()
-                    .map(|dep| (level + 1, &package_for_dependency(meta, dep).id)),
-            );
-        };
-    }
-    None
 }

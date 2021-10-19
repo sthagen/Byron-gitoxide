@@ -1,8 +1,7 @@
-use clap::{AppSettings, Clap};
+use clap::AppSettings;
 
-#[derive(Clap)]
+#[derive(clap::Parser)]
 #[clap(setting = AppSettings::SubcommandRequired)]
-#[clap(setting = AppSettings::ColoredHelp)]
 #[clap(setting = AppSettings::DisableHelpSubcommand)]
 #[clap(setting = AppSettings::DisableVersionFlag)]
 #[clap(bin_name = "cargo")]
@@ -14,9 +13,8 @@ pub struct Args {
     pub subcommands: SubCommands,
 }
 
-#[derive(Clap)]
+#[derive(clap::Parser)]
 pub enum SubCommands {
-    #[clap(setting = AppSettings::ColoredHelp)]
     #[clap(name = "smart-release", version = clap::crate_version!())]
     /// Release workspace crates fearlessly.
     ///
@@ -72,13 +70,6 @@ pub enum SubCommands {
         /// crates do not build with the released versions of their workspace dependencies anymore.
         #[clap(long, help_heading = Some("CUSTOMIZATION"))]
         dry_run_cargo_publish: bool,
-
-        /// As dependencies are automatically picked up for release, put all manifest changes into a single commit.
-        ///
-        /// If this flag is set, each dependency will yield its own commit with respective manifest changes, possibly
-        /// adding a lot of additional commits even though the release could have looked like coherent.
-        #[clap(long, help_heading = Some("EXPERT"))]
-        no_multi_crate_release: bool,
 
         /// Always bump versions as specified by --bump or --bump-dependencies even if this is not required
         /// to publish a new version to crates.io.
@@ -169,7 +160,6 @@ pub enum SubCommands {
         #[clap(long, help_heading = Some("EXPERT"))]
         ignore_instability: bool,
     },
-    #[clap(setting = AppSettings::ColoredHelp)]
     #[clap(name = "changelog", version = clap::crate_version!())]
     /// Generate changelogs from commit histories, non-destructively.
     ///
@@ -183,10 +173,10 @@ pub enum SubCommands {
         #[clap(long, help_heading = Some("CUSTOMIZATION"))]
         without: Vec<String>,
 
-        /// Do not take into consideration any dependencies of the crates to generate the changelog for.
+        /// Take into consideration any dependencies of the crates to generate the changelog for.
         ///
         /// This flag is useful if you plan to review and finalize changelogs before a a smart-release, where dependencies
-        /// are taken into consideration by default, but would like to do so one at a time.
+        /// are taken into consideration by default, instead of handling them one at a time.
         #[clap(long, visible_alias = "only", help_heading = Some("CUSTOMIZATION"))]
         no_dependencies: bool,
 

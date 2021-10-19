@@ -30,9 +30,9 @@ impl Support {
 
 pub fn create_release(
     publishee: &Package,
-    new_version: &str,
+    new_version: &semver::Version,
     notes: &str,
-    Options { verbose, dry_run, .. }: Options,
+    Options { dry_run, .. }: Options,
     ctx: &Context,
 ) -> anyhow::Result<()> {
     let tag_name = crate::utils::tag_name(publishee, new_version, &ctx.repo);
@@ -49,14 +49,17 @@ pub fn create_release(
             new_version
         ))
         .arg("--notes");
-    if dry_run && verbose {
-        log::info!(
-            "{} run {:?} \"{}…\" [note truncated]",
-            will(dry_run),
-            cmd,
-            notes.chars().take(15).collect::<String>()
-        );
-    }
+    log::trace!(
+        "{} run {:?} \"{}…\" [note truncated]",
+        will(dry_run),
+        cmd,
+        notes
+            .chars()
+            .take(22)
+            .collect::<String>()
+            .replace('\n', "\\n")
+            .replace("\r\n", "\\r\\n")
+    );
 
     cmd.arg(notes);
     if !Program::named("gh").found {

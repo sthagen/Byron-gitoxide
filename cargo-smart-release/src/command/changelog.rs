@@ -5,16 +5,52 @@ use crate::{
     changelog::write::{Components, Linkables},
     command::changelog::Options,
     git,
+    traverse::dependency,
     utils::will,
+    version::BumpSpec,
     ChangeLog,
 };
 
 pub fn changelog(opts: Options, crates: Vec<String>) -> anyhow::Result<()> {
-    let ctx = crate::Context::new(crates)?;
-    let crate_names = if opts.dependencies {
-        crate::traverse::dependencies(&ctx, false, true)?
-    } else {
-        ctx.crate_names.clone()
+    let Options {
+        generator_segments,
+        dependencies,
+        dry_run,
+        preview,
+        no_links,
+        ..
+    } = opts;
+    let bump_spec = dependencies.then(|| BumpSpec::Auto).unwrap_or(BumpSpec::Keep);
+    let force_history_segmentation = false;
+    let ctx = crate::Context::new(crates.clone(), force_history_segmentation, bump_spec, bump_spec)?;
+    let crates: Vec<_> = {
+        let add_production_crates = true;
+        let bump_only_when_needed = true;
+        let isolate_dependencies_from_breaking_changes = true;
+        crate::traverse::dependencies(
+            &ctx,
+            add_production_crates,
+            bump_only_when_needed,
+            isolate_dependencies_from_breaking_changes,
+            dependencies,
+        )?
+        .into_iter()
+        .filter_map(|d| match d.mode {
+            dependency::Mode::ToBePublished { .. } => Some(d.package),
+            dependency::Mode::NotForPublishing { .. } => {
+                if crates.contains(&d.package.name) {
+                    log::info!(
+                        "Skipping '{}' as it won't be published.{}",
+                        d.package.name,
+                        (!dependencies)
+                            .then(|| " Try not to specify --no-dependencies/--only.")
+                            .unwrap_or("")
+                    );
+                }
+                None
+            }
+        })
+        .collect()
     };
     assure_working_tree_is_unchanged(opts)?;
     let history = match git::history::collect(&ctx.repo)? {
@@ -22,10 +58,10 @@ pub fn changelog(opts: Options, crates: Vec<String>) -> anyhow::Result<()> {
         Some(history) => history,
     };
 
-    let bat = (opts.dry_run && opts.preview).then(bat::Support::new);
+    let bat = (dry_run && preview).then(bat::Support::new);
 
     let mut pending_changes = Vec::new();
-    let linkables = if opts.dry_run || opts.no_links {
+    let linkables = if dry_run || no_links {
         Linkables::AsText
     } else {
         crate::git::remote_url()?
@@ -34,16 +70,16 @@ pub fn changelog(opts: Options, crates: Vec<String>) -> anyhow::Result<()> {
             })
             .unwrap_or(Linkables::AsText)
     };
-    for (idx, crate_name) in crate_names.iter().enumerate() {
+    for (idx, package) in crates.iter().enumerate() {
         let (
             crate::changelog::init::Outcome {
                 log, mut lock, state, ..
             },
             _package,
-        ) = ChangeLog::for_crate_by_name_with_write_lock(crate_name, &history, &ctx, opts.generator_segments)?;
+        ) = ChangeLog::for_crate_by_name_with_write_lock(package, &history, &ctx, generator_segments)?;
         log::info!(
             "{} write {} sections to {} ({})",
-            will(opts.dry_run),
+            will(dry_run),
             log.sections.len(),
             lock.resource_path()
                 .strip_prefix(&ctx.root)
@@ -56,7 +92,7 @@ pub fn changelog(opts: Options, crates: Vec<String>) -> anyhow::Result<()> {
             log.write_to(
                 &mut buf,
                 &linkables,
-                if opts.dry_run {
+                if dry_run {
                     Components::SECTION_TITLE
                 } else {
                     Components::all()
@@ -69,10 +105,10 @@ pub fn changelog(opts: Options, crates: Vec<String>) -> anyhow::Result<()> {
             bat.display_to_tty(
                 lock.lock_path(),
                 lock.resource_path().strip_prefix(&ctx.root.to_path_buf())?,
-                format!("PREVIEW {} / {}, press Ctrl+C to cancel", idx + 1, crate_names.len()),
+                format!("PREVIEW {} / {}, press Ctrl+C to cancel", idx + 1, crates.len()),
             )?;
         }
-        if !opts.dry_run {
+        if !dry_run {
             pending_changes.push(lock);
         }
     }
