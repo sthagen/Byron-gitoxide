@@ -1,11 +1,12 @@
-name: stress
+name: cron
 
 on:
   schedule: 
     - cron: '0 13,1 * * *'
+  workflow_dispatch:
 
 jobs:
-  build-lint-test-benchmark:
+  stress:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
