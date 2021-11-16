@@ -10,10 +10,10 @@ mod find {
     }
 
     #[test]
-    fn and_peel() {
-        let repo = repo().unwrap();
-        let mut packed_tag_ref = repo.try_find_reference("dt1").unwrap().expect("tag to exist");
-        assert_eq!(packed_tag_ref.name(), "refs/tags/dt1".try_into().unwrap());
+    fn and_peel() -> crate::Result {
+        let repo = repo()?;
+        let mut packed_tag_ref = repo.try_find_reference("dt1")?.expect("tag to exist");
+        assert_eq!(packed_tag_ref.name(), "refs/tags/dt1".try_into()?);
 
         assert_eq!(
             packed_tag_ref.inner.target,
@@ -21,23 +21,24 @@ mod find {
             "it points to a tag object"
         );
 
-        let object = packed_tag_ref.peel_to_id_in_place().unwrap();
+        let object = packed_tag_ref.peel_to_id_in_place()?;
         let the_commit = hex_to_id("134385f6d781b7e97062102c6a483440bfda2a03");
         assert_eq!(object, the_commit, "it is assumed to be fully peeled");
         assert_eq!(
             object,
-            packed_tag_ref.peel_to_id_in_place().unwrap(),
+            packed_tag_ref.peel_to_id_in_place()?,
             "peeling again yields the same object"
         );
 
-        let mut symbolic_ref = repo.find_reference("multi-link-target1").unwrap();
-        assert_eq!(symbolic_ref.name(), "refs/heads/multi-link-target1".try_into().unwrap());
-        assert_eq!(symbolic_ref.peel_to_id_in_place().unwrap(), the_commit);
+        let mut symbolic_ref = repo.find_reference("multi-link-target1")?;
+        assert_eq!(symbolic_ref.name(), "refs/heads/multi-link-target1".try_into()?);
+        assert_eq!(symbolic_ref.peel_to_id_in_place()?, the_commit);
         assert_eq!(
             symbolic_ref.name(),
-            "refs/remotes/origin/multi-link-target3".try_into().unwrap(),
+            "refs/remotes/origin/multi-link-target3".try_into()?,
             "it follows symbolic refs, too"
         );
-        assert_eq!(symbolic_ref.into_fully_peeled_id().unwrap(), the_commit, "idempotency");
+        assert_eq!(symbolic_ref.into_fully_peeled_id()?, the_commit, "idempotency");
+        Ok(())
     }
 }

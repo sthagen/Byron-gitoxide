@@ -1,6 +1,6 @@
 [package]
 name = "git-config"
-version = "0.1.7"
+version = "0.1.8"
 repository = "https://github.com/Byron/gitoxide"
 description = "A git-config file parser and editor from the gitoxide project"
 license = "MIT OR Apache-2.0"
@@ -23,6 +23,7 @@ serde_crate = { version = "1", package = "serde", optional = true }
 serial_test = "0.5.1"
 serde_derive = "1.0"
 criterion = "0.3"
+tempfile = "3.2.0"
 
 [[bench]]
 name = "large_config_file"

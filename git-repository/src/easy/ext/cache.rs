@@ -44,21 +44,37 @@ pub trait CacheAccessExt: easy::Access + Sized {
     /// could be used to cause high memory consumption.
     ///
     /// Use the `GITOXIDE_DISABLE_PACK_CACHE` environment variable to turn off any pack cache, which can be beneficial when it's known that
-    /// the cache efficiency is low. Use `GITOXIDE_PACK_CACHE_MEMORY_IN_BYTES=512000` to use up to 512MB of RAM for the pack delta base
+    /// the cache efficiency is low. Use `GITOXIDE_PACK_CACHE_MEMORY=512MB` to use up to 512MB of RAM for the pack delta base
     /// cache. If none of these are set, the default cache is fast enough to nearly never cause a (marginal) slow-down while providing
     /// some gains most of the time. Note that the value given is _per-thread_.
     fn apply_environment(self) -> easy::borrow::state::Result<Self> {
         #[cfg(not(feature = "max-performance"))]
         let pack_cache = git_pack::cache::Never;
         #[cfg(feature = "max-performance")]
-        let pack_cache: crate::easy::PackCache = {
+        let pack_cache: easy::PackCache = {
+            use std::convert::TryInto;
             if std::env::var_os("GITOXIDE_DISABLE_PACK_CACHE").is_some() {
                 Box::new(git_pack::cache::Never)
-            } else if let Some(num_bytes) = std::env::var("GITOXIDE_PACK_CACHE_MEMORY_IN_BYTES")
+            } else if let Some(bytes) = std::env::var("GITOXIDE_PACK_CACHE_MEMORY")
                 .ok()
-                .and_then(|v| <usize as std::str::FromStr>::from_str(&v).ok())
+                .and_then(|v| {
+                    byte_unit::Byte::from_str(&v)
+                        .map_err(|err| log::warn!("Failed to parse {:?} into byte unit for pack cache: {}", v, err))
+                        .ok()
+                })
+                .and_then(|unit| {
+                    unit.get_bytes()
+                        .try_into()
+                        .map_err(|err| {
+                            log::warn!(
+                            "Parsed bytes value is not representable as usize. Defaulting to standard pack cache: {}",
+                            err
+                        )
+                        })
+                        .ok()
+                })
             {
-                Box::new(git_pack::cache::lru::MemoryCappedHashmap::new(num_bytes))
+                Box::new(git_pack::cache::lru::MemoryCappedHashmap::new(bytes))
             } else {
                 Box::new(git_pack::cache::lru::StaticLinkedList::<64>::default())
             }

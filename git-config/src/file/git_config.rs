@@ -135,6 +135,33 @@ impl<'event> GitConfig<'event> {
         parse_from_path(path).map(Self::from)
     }
 
+    /// Constructs a `git-config` file from the provided paths in the order provided.
+    /// This is neither zero-copy nor zero-alloc.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if there was an IO error or if a file wasn't a valid
+    /// git-config file.
+    ///
+    /// [`git-config`'s documentation]: https://git-scm.com/docs/git-config#Documentation/git-config.txt-FILES
+    #[inline]
+    pub fn from_paths(paths: &[&Path]) -> Result<Self, ParserOrIoError<'static>> {
+        let mut config = Self::new();
+
+        for path in paths {
+            let other = Self::open(path)?;
+            for (section_id, section_header) in other.section_headers {
+                config.push_section(
+                    section_header.name.0.to_owned(),
+                    section_header.subsection_name.to_owned(),
+                    other.sections[&section_id].clone(),
+                );
+            }
+        }
+
+        Ok(config)
+    }
+
     /// Generates a config from the environment variables. This is neither
     /// zero-copy nor zero-alloc. See [`git-config`'s documentation] on
     /// environment variable for more information.
@@ -1132,7 +1159,6 @@ impl<'a> From<Parser<'a>> for GitConfig<'a> {
 
         #[allow(clippy::explicit_into_iter_loop)] // it's not really an iterator (yet), needs streaming iterator support
         for event in parser.into_iter() {
-            #[allow(clippy::unnested_or_patterns)] // TODO: remove once Rust 1.53 is available on CI
             match event {
                 Event::SectionHeader(header) => {
                     if let Some(prev_header) = prev_section_header.take() {
@@ -1500,6 +1526,100 @@ a"#,
 
         values.delete_all();
         assert!(values.get().is_err());
+    }
+}
+
+#[cfg(test)]
+mod from_paths {
+    use std::{fs, io};
+
+    use tempfile::tempdir;
+
+    use super::{Cow, GitConfig, ParserOrIoError};
+
+    #[test]
+    fn file_not_found() {
+        let dir = tempdir().unwrap();
+        let config_path = dir.path().join("config");
+
+        let paths = vec![config_path.as_path()];
+        let error = GitConfig::from_paths(&paths).unwrap_err();
+        assert!(matches!(error, ParserOrIoError::Io(io_error) if io_error.kind() == io::ErrorKind::NotFound));
+    }
+
+    #[test]
+    fn single_path() {
+        let dir = tempdir().unwrap();
+        let config_path = dir.path().join("config");
+        fs::write(config_path.as_path(), b"[core]\nboolean = true").expect("Unable to write config file");
+
+        let paths = vec![config_path.as_path()];
+        let config = GitConfig::from_paths(&paths).unwrap();
+
+        assert_eq!(
+            config.get_raw_value("core", None, "boolean"),
+            Ok(Cow::<[u8]>::Borrowed(b"true"))
+        );
+
+        assert_eq!(config.len(), 1);
+    }
+
+    #[test]
+    fn multiple_paths_single_value() {
+        let dir = tempdir().unwrap();
+
+        let a_path = dir.path().join("a");
+        fs::write(a_path.as_path(), b"[core]\na = true").expect("Unable to write config file");
+
+        let b_path = dir.path().join("b");
+        fs::write(b_path.as_path(), b"[core]\nb = true").expect("Unable to write config file");
+
+        let c_path = dir.path().join("c");
+        fs::write(c_path.as_path(), b"[core]\nc = true").expect("Unable to write config file");
+
+        let paths = vec![a_path.as_path(), b_path.as_path(), c_path.as_path()];
+        let config = GitConfig::from_paths(&paths).unwrap();
+
+        assert_eq!(
+            config.get_raw_value("core", None, "a"),
+            Ok(Cow::<[u8]>::Borrowed(b"true"))
+        );
+
+        assert_eq!(
+            config.get_raw_value("core", None, "b"),
+            Ok(Cow::<[u8]>::Borrowed(b"true"))
+        );
+
+        assert_eq!(
+            config.get_raw_value("core", None, "c"),
+            Ok(Cow::<[u8]>::Borrowed(b"true"))
+        );
+
+        assert_eq!(config.len(), 3);
+    }
+
+    #[test]
+    fn multiple_paths_multi_value() {
+        let dir = tempdir().unwrap();
+
+        let a_path = dir.path().join("a");
+        fs::write(a_path.as_path(), b"[core]\nkey = a").expect("Unable to write config file");
+
+        let b_path = dir.path().join("b");
+        fs::write(b_path.as_path(), b"[core]\nkey = b").expect("Unable to write config file");
+
+        let c_path = dir.path().join("c");
+        fs::write(c_path.as_path(), b"[core]\nkey = c").expect("Unable to write config file");
+
+        let paths = vec![a_path.as_path(), b_path.as_path(), c_path.as_path()];
+        let config = GitConfig::from_paths(&paths).unwrap();
+
+        assert_eq!(
+            config.get_raw_multi_value("core", None, "key").unwrap(),
+            vec![Cow::Borrowed(b"a"), Cow::Borrowed(b"b"), Cow::Borrowed(b"c")]
+        );
+
+        assert_eq!(config.len(), 3);
     }
 }
 

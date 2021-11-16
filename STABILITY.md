@@ -34,7 +34,7 @@ The following schematic helps to visualize what follows.
                 Release Software v1.X                 
     Stability Tier 1 ═════════════════════════════╗   
     ║                                             ║   
-    ║    gixp─────────────┐ gix──────────────┐    ║   
+    ║    gix──────────────┐ ein──────────────┐    ║   
     ║    │  plumbing app  │ │  porcelain app │    ║   
     ║    └────────────────┘ └────────────────┘    ║   
     ║             │                  │            ║   

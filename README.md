@@ -16,7 +16,7 @@ Please see _'Development Status'_ for a listing of all crates and their capabili
     and itself relies on all `git-*` crates.
   * limit amount of threads used in operations that support it.
   * choose between 'human' and 'json' output formats
-  * **the `gix` program** - convenient and for humans
+  * **the `ein` program** - convenient and for humans
     * [x] **init** - initialize a new non-bare repository with a `main` branch
     * [ ] **clone** - initialize a local copy of a remote repository
     * **tools**  
@@ -25,7 +25,7 @@ Please see _'Development Status'_ for a listing of all crates and their capabili
       * [x] **estimate-hours** - estimate the time invested into a repository by evaluating commit dates.
           * Based on the [git-hours] algorithm.
           * See the [discussion][git-hours-discussion] for some performance data.
-  * **the `gixp` program** _(plumbing)_ - lower level commands for use in automation
+  * **the `gix` program** _(plumbing)_ - lower level commands for use in automation
     * **pack**
       * [x] [verify](https://asciinema.org/a/352942)
       * [x] [index verify](https://asciinema.org/a/352945) including each object sha1 and statistics
@@ -143,9 +143,9 @@ cargo install gitoxide --no-default-features --features lean
 
 Once installed, there are two binaries:
 
-* **gix**
+* **ein**
   * high level commands, _porcelain_, for every-day use, optimized for a pleasant user experience
-* **gixp**
+* **gix**
   * low level commands, _plumbing_, for use in more specialized cases
 
 ## Project Goals
@@ -231,7 +231,7 @@ Provide a CLI to for the most basic user journey:
 * [ ] Open up SQL for git using [sqlite virtual tables](https://github.com/rusqlite/rusqlite/blob/master/tests/vtab.rs). Check out gitqlite
   as well. What would an MVP look like? Maybe even something that could ship with gitoxide.
 * [ ] A truly awesome history rewriter which makes it easy to understand what happened while avoiding all pitfalls. Think BFG, but more awesome, if that's possible.
-* [ ] `git-tui` should learn a lot from [fossil-scm] regarding the presentation of data. Maybe [this](https://github.com/Lutetium-Vanadium/requestty/) can be used for prompts.
+* [ ] `git-tui` should learn a lot from [fossil-scm] regarding the presentation of data. Maybe [this](https://github.com/Lutetium-Vanadium/requestty/) can be used for prompts. Probably [magit] has a lot to offer, too.
 * [ ] Can markdown be used as database so issue-trackers along with meta-data could just be markdown files which are mostly human-editable? Could user interfaces
   be meta-data aware and just hide the meta-data chunks which are now editable in the GUI itself? Doing this would make conflicts easier to resolve than an `sqlite`
   database.
@@ -251,6 +251,7 @@ Provide a CLI to for the most basic user journey:
 
 [syncthing]: https://github.com/syncthing/syncthing
 [fossil-scm]: https://www.fossil-scm.org
+[magit]: https://magit.vc
 
 
 ## Shortcomings & Limitations

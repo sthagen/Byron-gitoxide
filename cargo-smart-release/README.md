@@ -57,6 +57,7 @@ cargo install cargo-smart-release
 * [x] automatically adjust manifest versions and update manifests of crates which use those whose versions were incremented
 * [x] conservatively bump downstream workspace crates in the light of breaking changes, even though these won't be published, making downstream breakage impossible
 * [x] use git tags to know if a crate changed at all, skipping publishes if there is no code change at all
+* [ ] it's _too eager_ to release and there should be a way to control patch releases.
 * [ ] Handle pre-release versions and meta-data as per the [stability guide].
 * [ ] Support other remote names than 'origin' - currently the latter name is assumed. Fix by getting the remote of the currently checked out branch.
 * [ ] handle version specifications correctly [(tables vs values)](https://github.com/Byron/cargo-release/blob/master/src/cargo.rs#L179:L207)
@@ -86,7 +87,12 @@ Here is what `cargo smart-release` does differently: "It tries really hard to do
 * changelog rewriting of user content will drop links if they are not of the 'inline' form
 * it's very young and probably tries to eat underwear
 * it needs a git repository to govern the workspace
-* When determining if something changed in top-level crates, only the `src/` directory is used. This value is hard-coded.
+
+### Changelogs
+
+* When determining if something changed in top-level crates, only the `src/` directory is used, unless there is only a single crate in the workspace. This value is hard-coded.
+* For change tracking, it will only obtain manifest values once to know where a crate lives, and
+  expects it to not be moved.
 
 ## Acknowledgements
 
