@@ -3,7 +3,11 @@ use std::{
     time::Instant,
 };
 
-use git_features::{parallel, progress::Progress};
+use git_features::{
+    parallel,
+    progress::Progress,
+    threading::{lock, Mutable, OwnShared},
+};
 
 use crate::{data, index::traverse};
 
@@ -24,7 +28,7 @@ fn div_decode_result(lhs: &mut data::decode_entry::Outcome, div: usize) {
 }
 
 pub struct Reducer<'a, P, E> {
-    progress: &'a parking_lot::Mutex<P>,
+    progress: OwnShared<Mutable<P>>,
     check: traverse::SafetyCheck,
     then: Instant,
     entries_seen: usize,
@@ -38,7 +42,7 @@ where
     P: Progress,
 {
     pub fn from_progress(
-        progress: &'a parking_lot::Mutex<P>,
+        progress: OwnShared<Mutable<P>>,
         pack_data_len_in_bytes: usize,
         check: traverse::SafetyCheck,
         should_interrupt: &'a AtomicBool,
@@ -72,7 +76,7 @@ where
     fn feed(&mut self, input: Self::Input) -> Result<(), Self::Error> {
         let chunk_stats: Vec<_> = match input {
             Err(err @ traverse::Error::PackDecode { .. }) if !self.check.fatal_decode_error() => {
-                self.progress.lock().info(format!("Ignoring decode error: {}", err));
+                lock(&self.progress).info(format!("Ignoring decode error: {}", err));
                 return Ok(());
             }
             res => res,
@@ -99,7 +103,7 @@ where
         );
 
         add_decode_result(&mut self.stats.average, chunk_total);
-        self.progress.lock().set(self.entries_seen);
+        lock(&self.progress).set(self.entries_seen);
 
         if self.should_interrupt.load(Ordering::SeqCst) {
             return Err(Self::Error::Interrupted);
@@ -113,7 +117,7 @@ where
         let elapsed_s = self.then.elapsed().as_secs_f32();
         let objects_per_second = (self.entries_seen as f32 / elapsed_s) as u32;
 
-        self.progress.lock().info(format!(
+        lock(&self.progress).info(format!(
             "of {} objects done in {:.2}s ({} objects/s, ~{}/s)",
             self.entries_seen,
             elapsed_s,

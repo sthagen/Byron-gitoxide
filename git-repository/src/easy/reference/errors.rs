@@ -1,22 +1,4 @@
 ///
-pub mod namespace {
-    ///
-    pub mod set {
-        use crate::easy;
-
-        /// The error returned by [ReferenceAccessExt::set_namespace(…)][easy::ext::ReferenceAccessExt::set_namespace()].
-        #[derive(Debug, thiserror::Error)]
-        #[allow(missing_docs)]
-        pub enum Error {
-            #[error(transparent)]
-            BorrowRepoMut(#[from] easy::borrow::repo::Error),
-            #[error(transparent)]
-            NameValidation(#[from] git_validate::refname::Error),
-        }
-    }
-}
-
-///
 pub mod edit {
     use crate::easy;
 
@@ -54,15 +36,6 @@ pub mod peel {
         #[error("BUG: The repository could not be borrowed")]
         BorrowRepo(#[from] easy::borrow::repo::Error),
     }
-
-    impl From<easy::reference::packed::Error> for Error {
-        fn from(err: easy::reference::packed::Error) -> Self {
-            match err {
-                easy::reference::packed::Error::PackedRefsOpen(err) => Error::PackedRefsOpen(err),
-                easy::reference::packed::Error::BorrowState(err) => Error::BorrowState(err),
-            }
-        }
-    }
 }
 
 ///
@@ -96,14 +69,5 @@ pub mod find {
         BorrowState(#[from] easy::borrow::state::Error),
         #[error("BUG: The repository could not be borrowed")]
         BorrowRepo(#[from] easy::borrow::repo::Error),
-    }
-
-    impl From<easy::reference::packed::Error> for Error {
-        fn from(err: easy::reference::packed::Error) -> Self {
-            match err {
-                easy::reference::packed::Error::PackedRefsOpen(err) => Error::PackedRefsOpen(err),
-                easy::reference::packed::Error::BorrowState(err) => Error::BorrowState(err),
-            }
-        }
     }
 }

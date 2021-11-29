@@ -9,7 +9,7 @@ use git_object::bstr::ByteSlice;
 
 use crate::{
     file,
-    store::{
+    store_impl::{
         file::{loose, path_to_name},
         packed,
     },
@@ -24,30 +24,23 @@ enum Transform {
 impl file::Store {
     /// Find a single reference by the given `path` which is required to be a valid reference name.
     ///
-    /// If `packed` is provided, the reference search will extend to the packed buffer created with [`packed()`][file::Store::packed_buffer()].
-    /// Note that the caller is responsible for its freshness, i.e. assuring it wasn't modified since it was read.
-    ///
     /// Returns `Ok(None)` if no such ref exists.
     ///
     /// ### Note
     ///
     /// * The lookup algorithm follows the one in [the git documentation][git-lookup-docs].
-    /// * Namespaced names will only be found if they are fully qualified. They can, however, be found during iteration.
-    ///   This shortcoming can be fixed if there is demand by introducing `try_find_in_namespace(…)` or by letting `PartialNameRef` have
-    ///   a namespace reference, too.
+    /// * The packed buffer is checked for modifications each time the method is called. See [`file::Store::try_find_packed()`]
+    ///   for a version with more control.
     ///
     /// [git-lookup-docs]: https://github.com/git/git/blob/5d5b1473453400224ebb126bf3947e0a3276bdf5/Documentation/revisions.txt#L34-L46
-    pub fn try_find<'a, Name, E>(
-        &self,
-        partial: Name,
-        packed: Option<&packed::Buffer>,
-    ) -> Result<Option<Reference>, Error>
+    pub fn try_find<'a, Name, E>(&self, partial: Name) -> Result<Option<Reference>, Error>
     where
         Name: TryInto<PartialNameRef<'a>, Error = E>,
         Error: From<E>,
     {
         let path = partial.try_into()?;
-        self.find_one_with_verified_input(path.to_partial_path().as_ref(), packed)
+        let packed = self.assure_packed_refs_uptodate()?;
+        self.find_one_with_verified_input(path.to_partial_path().as_ref(), packed.as_deref())
     }
 
     /// Similar to [`file::Store::find()`] but a non-existing ref is treated as error.
@@ -60,14 +53,29 @@ impl file::Store {
         Name: TryInto<PartialNameRef<'a>, Error = E>,
         Error: From<E>,
     {
-        self.try_find(partial, None)
+        let path = partial.try_into()?;
+        self.find_one_with_verified_input(path.to_partial_path().as_ref(), None)
             .map(|r| r.map(|r| r.try_into().expect("only loose refs are found without pack")))
     }
 
-    pub(crate) fn find_one_with_verified_input<'p>(
+    /// Similar to [`file::Store::find()`], but allows to pass a snapshotted packed buffer instead.
+    pub fn try_find_packed<'a, Name, E>(
+        &self,
+        partial: Name,
+        packed: Option<&packed::Buffer>,
+    ) -> Result<Option<Reference>, Error>
+    where
+        Name: TryInto<PartialNameRef<'a>, Error = E>,
+        Error: From<E>,
+    {
+        let path = partial.try_into()?;
+        self.find_one_with_verified_input(path.to_partial_path().as_ref(), packed)
+    }
+
+    pub(crate) fn find_one_with_verified_input(
         &self,
         relative_path: &Path,
-        packed: Option<&'p packed::Buffer>,
+        packed: Option<&packed::Buffer>,
     ) -> Result<Option<Reference>, Error> {
         let is_all_uppercase = relative_path
             .to_string_lossy()
@@ -191,7 +199,7 @@ pub mod existing {
 
     use crate::{
         file::{self},
-        store::{
+        store_impl::{
             file::{find, loose},
             packed,
         },
@@ -200,7 +208,31 @@ pub mod existing {
 
     impl file::Store {
         /// Similar to [`file::Store::find()`] but a non-existing ref is treated as error.
-        pub fn find<'a, Name, E>(&self, partial: Name, packed: Option<&packed::Buffer>) -> Result<Reference, Error>
+        pub fn find<'a, Name, E>(&self, partial: Name) -> Result<Reference, Error>
+        where
+            Name: TryInto<PartialNameRef<'a>, Error = E>,
+            crate::name::Error: From<E>,
+        {
+            let packed = self.assure_packed_refs_uptodate().map_err(find::Error::PackedOpen)?;
+            self.find_existing_inner(partial, packed.as_deref())
+        }
+
+        /// Similar to [`file::Store::find()`] won't handle packed-refs.
+        pub fn find_loose<'a, Name, E>(&self, partial: Name) -> Result<loose::Reference, Error>
+        where
+            Name: TryInto<PartialNameRef<'a>, Error = E>,
+            crate::name::Error: From<E>,
+        {
+            self.find_existing_inner(partial, None)
+                .map(|r| r.try_into().expect("always loose without packed"))
+        }
+
+        /// Similar to [`file::Store::find()`] but a non-existing ref is treated as error.
+        pub(crate) fn find_existing_inner<'a, Name, E>(
+            &self,
+            partial: Name,
+            packed: Option<&packed::Buffer>,
+        ) -> Result<Reference, Error>
         where
             Name: TryInto<PartialNameRef<'a>, Error = E>,
             crate::name::Error: From<E>,
@@ -214,16 +246,6 @@ pub mod existing {
                 Err(err) => Err(err.into()),
             }
         }
-
-        /// Similar to [`file::Store::find()`] won't handle packed-refs.
-        pub fn find_loose<'a, Name, E>(&self, partial: Name) -> Result<loose::Reference, Error>
-        where
-            Name: TryInto<PartialNameRef<'a>, Error = E>,
-            crate::name::Error: From<E>,
-        {
-            self.find(partial, None)
-                .map(|r| r.try_into().expect("always loose without packed"))
-        }
     }
 
     mod error {
@@ -231,7 +253,7 @@ pub mod existing {
 
         use quick_error::quick_error;
 
-        use crate::store::file::find;
+        use crate::store_impl::file::find;
 
         quick_error! {
             /// The error returned by [file::Store::find_existing()][crate::file::Store::find_existing()].
@@ -256,7 +278,7 @@ mod error {
 
     use quick_error::quick_error;
 
-    use crate::{file, store::packed};
+    use crate::{file, store_impl::packed};
 
     quick_error! {
         /// The error returned by [file::Store::find()].
@@ -279,6 +301,11 @@ mod error {
             }
             PackedRef(err: packed::find::Error) {
                 display("A packed ref lookup failed")
+                from()
+                source(err)
+            }
+            PackedOpen(err: packed::buffer::open::Error) {
+                display("Could not open the packed refs buffer when trying to find references.")
                 from()
                 source(err)
             }

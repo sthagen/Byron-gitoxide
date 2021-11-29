@@ -122,7 +122,7 @@ impl index::File {
             &crate::data::File,
             Mode,
             index::traverse::Algorithm,
-            impl Fn() -> C + Send + Sync,
+            impl Fn() -> C + Send + Clone,
         )>,
         thread_limit: Option<usize>,
         progress: Option<P>,

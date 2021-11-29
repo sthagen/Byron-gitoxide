@@ -1,9 +1,5 @@
 //!
-use std::{
-    cell::Ref,
-    ops::{Deref, DerefMut},
-    path::Path,
-};
+use std::{ops::DerefMut, path::Path};
 
 use git_odb::Find;
 use git_ref::file::ReferenceExt;
@@ -16,15 +12,13 @@ pub struct Platform<'r, A>
 where
     A: easy::Access + Sized,
 {
-    pub(crate) repo: A::RepoRef,
-    pub(crate) packed_refs: Ref<'r, easy::reference::packed::ModifieablePackedRefsBuffer>,
+    pub(crate) platform: git_ref::file::iter::Platform<'r>,
     pub(crate) access: &'r A,
 }
 
 /// An iterator over references, with or without filter.
 pub struct Iter<'r, A> {
     inner: git_ref::file::iter::LooseThenPacked<'r, 'r>,
-    packed_refs: Option<&'r git_ref::packed::Buffer>,
     peel: bool,
     access: &'r A,
 }
@@ -38,10 +32,8 @@ where
     /// Even broken or otherwise unparsible or inaccessible references are returned and have to be handled by the caller on a
     /// case by case basis.
     pub fn all(&self) -> Result<Iter<'_, A>, init::Error> {
-        let repo = self.repo.deref();
         Ok(Iter {
-            inner: repo.refs.iter(self.packed_refs.buffer.as_ref())?,
-            packed_refs: self.packed_refs.buffer.as_ref(),
+            inner: self.platform.all()?,
             peel: false,
             access: self.access,
         })
@@ -51,10 +43,8 @@ where
     ///
     /// These are of the form `refs/heads` or `refs/remotes/origin`, and must not contain relative paths components like `.` or `..`.
     pub fn prefixed(&self, prefix: impl AsRef<Path>) -> Result<Iter<'_, A>, init::Error> {
-        let repo = self.repo.deref();
         Ok(Iter {
-            inner: repo.refs.iter_prefixed(self.packed_refs.buffer.as_ref(), prefix)?,
-            packed_refs: self.packed_refs.buffer.as_ref(),
+            inner: self.platform.prefixed(prefix)?,
             peel: false,
             access: self.access,
         })
@@ -90,7 +80,7 @@ where
                         let repo = self.access.repo()?;
                         let state = self.access.state();
                         let mut pack_cache = state.try_borrow_mut_pack_cache()?;
-                        r.peel_to_id_in_place(&repo.refs, self.packed_refs, |oid, buf| {
+                        r.peel_to_id_in_place(&state.refs, |oid, buf| {
                             repo.odb
                                 .try_find(oid, buf, pack_cache.deref_mut())
                                 .map(|po| po.map(|o| (o.kind, o.data)))
@@ -131,15 +121,6 @@ mod error {
         BorrowState(#[from] easy::borrow::state::Error),
         #[error("BUG: The repository could not be borrowed")]
         BorrowRepo(#[from] easy::borrow::repo::Error),
-    }
-
-    impl From<easy::reference::packed::Error> for Error {
-        fn from(err: easy::reference::packed::Error) -> Self {
-            match err {
-                easy::reference::packed::Error::PackedRefsOpen(err) => Error::PackedRefsOpen(err),
-                easy::reference::packed::Error::BorrowState(err) => Error::BorrowState(err),
-            }
-        }
     }
 }
 pub use error::Error;

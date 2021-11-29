@@ -1,6 +1,6 @@
 use crate::{
     packed,
-    store::{
+    store_impl::{
         file,
         file::{
             loose,
@@ -194,7 +194,10 @@ impl<'s> Transaction<'s> {
             .pre_process(
                 |name| {
                     let symbolic_refs_are_never_packed = None;
-                    store.find(name, symbolic_refs_are_never_packed).map(|r| r.target).ok()
+                    store
+                        .find_existing_inner(name, symbolic_refs_are_never_packed)
+                        .map(|r| r.target)
+                        .ok()
                 },
                 |idx, update| Edit {
                     update,
@@ -267,7 +270,7 @@ impl<'s> Transaction<'s> {
                     // A packed transaction is optional - we only have deletions that can't be made if
                     // no packed-ref file exists anyway
                     self.store
-                        .packed_buffer()?
+                        .assure_packed_refs_uptodate()?
                         .map(|p| {
                             p.into_transaction(lock_fail_mode)
                                 .map_err(Error::PackedTransactionAcquire)
@@ -342,7 +345,7 @@ mod error {
     use quick_error::quick_error;
 
     use crate::{
-        store::{file, packed},
+        store_impl::{file, packed},
         Target,
     };
 

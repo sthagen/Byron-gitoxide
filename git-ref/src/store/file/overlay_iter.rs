@@ -7,7 +7,7 @@ use std::{
 
 use crate::{
     file::{loose, path_to_name},
-    store::{file, packed},
+    store_impl::{file, packed},
     FullName, Namespace, Reference,
 };
 
@@ -17,10 +17,17 @@ use crate::{
 /// All errors will be returned verbatim, while packed errors are depleted first if loose refs also error.
 pub struct LooseThenPacked<'p, 's> {
     base: &'s Path,
+    namespace: Option<&'s Namespace>,
     packed: Option<Peekable<packed::Iter<'p>>>,
     loose: Peekable<loose::iter::SortedLoosePaths>,
     buf: Vec<u8>,
-    namespace: Option<&'s Namespace>,
+}
+
+/// An intermediate structure to hold shared state alive long enough for iteration to happen.
+#[must_use = "Iterators should be obtained from this platform"]
+pub struct Platform<'s> {
+    store: &'s file::Store,
+    packed: Option<OwnShared<packed::Buffer>>,
 }
 
 impl<'p, 's> LooseThenPacked<'p, 's> {
@@ -107,17 +114,44 @@ impl<'p, 's> Iterator for LooseThenPacked<'p, 's> {
     }
 }
 
+impl<'s> Platform<'s> {
+    /// Return an iterator over all references, loose or `packed`, sorted by their name.
+    ///
+    /// Errors are returned similarly to what would happen when loose and packed refs where iterated by themeselves.
+    pub fn all(&self) -> std::io::Result<LooseThenPacked<'_, '_>> {
+        self.store.iter_packed(self.packed.as_deref())
+    }
+
+    /// As [`iter(…)`][file::Store::iter()], but filters by `prefix`, i.e. "refs/heads".
+    ///
+    /// Please note that "refs/heads` or "refs\\heads" is equivalent to "refs/heads/"
+    pub fn prefixed(&self, prefix: impl AsRef<Path>) -> std::io::Result<LooseThenPacked<'_, '_>> {
+        self.store.iter_prefixed_packed(prefix, self.packed.as_deref())
+    }
+}
+
+impl file::Store {
+    /// Return a platform to obtain iterator over all references, or prefixed ones, loose or packed, sorted by their name.
+    ///
+    /// Errors are returned similarly to what would happen when loose and packed refs where iterated by themselves.
+    pub fn iter(&self) -> Result<Platform<'_>, packed::buffer::open::Error> {
+        Ok(Platform {
+            store: self,
+            packed: self.assure_packed_refs_uptodate()?,
+        })
+    }
+}
+
 impl file::Store {
     /// Return an iterator over all references, loose or `packed`, sorted by their name.
     ///
-    /// Note that the caller is responsible for the freshness of the `packed` references buffer.
-    /// If a reference cannot be parsed or read, the error will be visible to the caller and the iteration
-    /// continues.
-    ///
     /// Errors are returned similarly to what would happen when loose and packed refs where iterated by themeselves.
-    pub fn iter<'p, 's>(&'s self, packed: Option<&'p packed::Buffer>) -> std::io::Result<LooseThenPacked<'p, 's>> {
-        match &self.namespace {
-            Some(namespace) => self.iter_prefixed_unvalidated(packed, namespace.to_path(), (None, None)),
+    pub fn iter_packed<'s, 'p>(
+        &'s self,
+        packed: Option<&'p packed::Buffer>,
+    ) -> std::io::Result<LooseThenPacked<'p, 's>> {
+        match self.namespace.as_ref() {
+            Some(namespace) => self.iter_prefixed_unvalidated(namespace.to_path(), (None, None), packed),
             None => Ok(LooseThenPacked {
                 base: &self.base,
                 packed: match packed {
@@ -140,29 +174,29 @@ impl file::Store {
     /// As [`iter(…)`][file::Store::iter()], but filters by `prefix`, i.e. "refs/heads".
     ///
     /// Please note that "refs/heads` or "refs\\heads" is equivalent to "refs/heads/"
-    pub fn iter_prefixed<'p, 's>(
+    pub fn iter_prefixed_packed<'s, 'p>(
         &'s self,
-        packed: Option<&'p packed::Buffer>,
         prefix: impl AsRef<Path>,
+        packed: Option<&'p packed::Buffer>,
     ) -> std::io::Result<LooseThenPacked<'p, 's>> {
-        match &self.namespace {
+        match self.namespace.as_ref() {
             None => {
                 let (root, remainder) = self.validate_prefix(&self.base, prefix.as_ref())?;
-                self.iter_prefixed_unvalidated(packed, prefix, (root.into(), remainder))
+                self.iter_prefixed_unvalidated(prefix, (root.into(), remainder), packed)
             }
             Some(namespace) => {
                 let prefix = namespace.to_owned().into_namespaced_prefix(prefix);
                 let (root, remainder) = self.validate_prefix(&self.base, &prefix)?;
-                self.iter_prefixed_unvalidated(packed, prefix, (root.into(), remainder))
+                self.iter_prefixed_unvalidated(prefix, (root.into(), remainder), packed)
             }
         }
     }
 
-    fn iter_prefixed_unvalidated<'p, 's>(
+    fn iter_prefixed_unvalidated<'s, 'p>(
         &'s self,
-        packed: Option<&'p packed::Buffer>,
         prefix: impl AsRef<Path>,
         loose_root_and_filename_prefix: (Option<PathBuf>, Option<OsString>),
+        packed: Option<&'p packed::Buffer>,
     ) -> std::io::Result<LooseThenPacked<'p, 's>> {
         let packed_prefix = path_to_name(prefix.as_ref());
         Ok(LooseThenPacked {
@@ -196,7 +230,7 @@ mod error {
     use git_object::bstr::BString;
     use quick_error::quick_error;
 
-    use crate::store::file;
+    use crate::store_impl::file;
 
     quick_error! {
         /// The error returned by the [`LooseThenPacked`][super::LooseThenPacked] iterator.
@@ -225,3 +259,4 @@ mod error {
 use std::ffi::OsString;
 
 pub use error::Error;
+use git_features::threading::OwnShared;

@@ -113,7 +113,7 @@ type PackCache = Box<dyn git_pack::cache::DecodeEntry + Send + 'static>;
 pub struct State {
     /// As the packed-buffer may hold onto a memory map, so ideally this State is freed after use instead of keeping it around
     /// for too long. At least `packed_refs` is lazily initialized.
-    packed_refs: RefCell<reference::packed::ModifieablePackedRefsBuffer>,
+    refs: crate::RefStore,
     pack_cache: RefCell<PackCache>,
     object_cache: RefCell<Option<object::cache::MemoryCappedHashmap>>,
     buf: RefCell<Vec<u8>>,
@@ -147,6 +147,9 @@ pub trait Access {
     /// relevant for long-running applications that make changes to the repository.
     fn repo_mut(&self) -> borrow::repo::Result<Self::RepoRefMut>;
 
-    /// Return a shared borrow of the repository state, with support for interior mutability.
+    /// Return a shared borrow of the repository state.
     fn state(&self) -> &State;
+
+    /// Return a shared borrow of the repository state.
+    fn state_mut(&mut self) -> &mut State;
 }

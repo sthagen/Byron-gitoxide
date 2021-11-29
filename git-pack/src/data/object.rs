@@ -57,11 +57,7 @@ impl<'a> Object<'a> {
 
 /// Types supporting object hash verification
 pub mod verify {
-    use std::io;
-
     use git_features::hash;
-
-    use crate::loose;
 
     /// Returned by [`crate::data::Object::verify_checksum()`]
     #[derive(thiserror::Error, Debug)]
@@ -80,12 +76,11 @@ pub mod verify {
         /// hash of `self`.
         pub fn verify_checksum(&self, desired: impl AsRef<git_hash::oid>) -> Result<(), Error> {
             let desired = desired.as_ref();
-            let mut sink = hash::Write::new(io::sink(), desired.kind());
+            let mut hasher = hash::hasher(desired.kind());
+            hasher.update(&git_object::encode::loose_header(self.kind, self.data.len()));
+            hasher.update(self.data);
 
-            loose::object::header::encode(self.kind, self.data.len() as u64, &mut sink).expect("hash to always work");
-            sink.hash.update(self.data);
-
-            let actual_id = git_hash::ObjectId::from(sink.hash.digest());
+            let actual_id = git_hash::ObjectId::from(hasher.digest());
             if desired != actual_id {
                 return Err(Error::ChecksumMismatch {
                     desired: desired.into(),

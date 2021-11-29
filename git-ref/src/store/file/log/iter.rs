@@ -1,10 +1,12 @@
+use crate::file::loose::reference::logiter::must_be_io_err;
+use crate::{file, FullNameRef};
 use git_object::bstr::ByteSlice;
 
-use crate::store::file::{log, log::iter::decode::LineNumber};
+use crate::store_impl::file::{log, log::iter::decode::LineNumber};
 
 ///
 pub mod decode {
-    use crate::store::file::log;
+    use crate::store_impl::file::log;
 
     /// The error returned by items in the [forward][super::forward()] and [reverse][super::reverse()] iterators
     #[derive(Debug)]
@@ -69,6 +71,34 @@ impl<'a> Iterator for Forward<'a> {
         self.inner.next().map(|(ln, line)| {
             log::LineRef::from_bytes(line).map_err(|err| decode::Error::new(err, decode::LineNumber::FromStart(ln)))
         })
+    }
+}
+
+/// A platform to store a buffer to hold ref log lines for iteration.
+#[must_use = "Iterators should be obtained from this platform"]
+pub struct Platform<'a, 's> {
+    /// The store containing the reflogs
+    pub store: &'s file::Store,
+    /// The full name of the reference whose reflog to retrieve.
+    pub name: FullNameRef<'a>,
+    /// A reusable buffer for storing log lines read from disk.
+    pub buf: Vec<u8>,
+}
+
+impl<'a, 's> Platform<'a, 's> {
+    /// Return a forward iterator over all log-lines, most recent to oldest.
+    pub fn rev(&mut self) -> std::io::Result<Option<log::iter::Reverse<'_, std::fs::File>>> {
+        self.buf.clear();
+        self.buf.resize(512, 0);
+        self.store
+            .reflog_iter_rev(self.name, &mut self.buf)
+            .map_err(must_be_io_err)
+    }
+
+    /// Return a forward iterator over all log-lines, oldest to most recent.
+    pub fn all(&mut self) -> std::io::Result<Option<log::iter::Forward<'_>>> {
+        self.buf.clear();
+        self.store.reflog_iter(self.name, &mut self.buf).map_err(must_be_io_err)
     }
 }
 

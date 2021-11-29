@@ -12,14 +12,12 @@ use crate::{
 pub mod iter;
 
 mod errors;
-use std::{borrow::Borrow, cell::RefMut, marker::PhantomData};
 
-pub use errors::{edit, find, namespace, peel};
+pub use errors::{edit, find, peel};
 
 use crate::ext::ObjectIdExt;
 
 pub mod logs;
-pub(crate) mod packed;
 
 /// Access
 impl<'repo, A> Reference<'repo, A> {
@@ -37,17 +35,6 @@ impl<'repo, A> Reference<'repo, A> {
     pub fn detach(self) -> git_ref::Reference {
         self.inner
     }
-}
-
-/// A platform to obtain iterators over reference logs.
-#[must_use = "Iterators should be obtained from this log platform"]
-pub struct Logs<'repo, A: 'repo, R>
-where
-    R: Borrow<Reference<'repo, A>>,
-{
-    pub(crate) reference: R,
-    pub(crate) buf: RefMut<'repo, Vec<u8>>,
-    pub(crate) _phantom: PhantomData<A>,
 }
 
 impl<'repo, A> Reference<'repo, A>
@@ -77,15 +64,11 @@ where
         let repo = self.access.repo()?;
         let state = self.access.state();
         let mut pack_cache = state.try_borrow_mut_pack_cache()?;
-        let oid = self.inner.peel_to_id_in_place(
-            &repo.refs,
-            state.assure_packed_refs_uptodate(&repo.refs)?.buffer.as_ref(),
-            |oid, buf| {
-                repo.odb
-                    .try_find(oid, buf, pack_cache.deref_mut())
-                    .map(|po| po.map(|o| (o.kind, o.data)))
-            },
-        )?;
+        let oid = self.inner.peel_to_id_in_place(&state.refs, |oid, buf| {
+            repo.odb
+                .try_find(oid, buf, pack_cache.deref_mut())
+                .map(|po| po.map(|o| (o.kind, o.data)))
+        })?;
         Ok(Oid::from_id(oid, self.access))
     }
 

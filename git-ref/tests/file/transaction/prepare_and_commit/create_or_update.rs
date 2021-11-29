@@ -1,23 +1,23 @@
+use std::convert::TryInto;
+
+use git_hash::ObjectId;
+use git_lock::acquire::Fail;
+use git_object::bstr::{BString, ByteSlice};
+use git_ref::{
+    file::{
+        transaction::{self, PackedRefs},
+        ReferenceExt,
+    },
+    store::WriteReflog,
+    transaction::{Change, LogChange, PreviousValue, RefEdit, RefLog},
+    Target,
+};
+use git_testtools::hex_to_id;
+
 use crate::file::{
     store_with_packed_refs, store_writable,
     transaction::prepare_and_commit::{committer, empty_store, log_line, reflog_lines},
 };
-use git_hash::ObjectId;
-use git_lock::acquire::Fail;
-use git_object::bstr::BString;
-use git_object::bstr::ByteSlice;
-use git_ref::file::ReferenceExt;
-use git_ref::transaction::PreviousValue;
-use git_ref::{
-    file::{
-        transaction::{self, PackedRefs},
-        WriteReflog,
-    },
-    transaction::{Change, LogChange, RefEdit, RefLog},
-    Target,
-};
-use git_testtools::hex_to_id;
-use std::convert::TryInto;
 
 #[test]
 fn reference_with_equally_named_empty_or_non_empty_directory_already_in_place_can_potentially_recover() -> crate::Result
@@ -633,7 +633,7 @@ fn packed_refs_are_looked_up_when_checking_existing_values() -> crate::Result {
 
     assert_eq!(edits.len(), 1, "only one edit was performed in the loose refs store");
 
-    let packed = store.packed_buffer().unwrap().expect("packed refs is available");
+    let packed = store.open_packed_buffer().unwrap().expect("packed refs is available");
     assert_eq!(
         packed.find("main")?.target(),
         old_id,
@@ -656,10 +656,10 @@ fn packed_refs_creation_with_tag_loop_are_not_handled_and_cannot_exist_due_to_ob
 fn packed_refs_creation_with_packed_refs_mode_prune_removes_original_loose_refs() -> crate::Result {
     let (_keep, store) = store_writable("make_ref_repository.sh")?;
     assert!(
-        store.packed_buffer()?.is_none(),
+        store.open_packed_buffer()?.is_none(),
         "there should be no packed refs to start out with"
     );
-    let odb = git_odb::compound::Store::at(store.base.join("objects"))?;
+    let odb = git_odb::compound::Store::at(store.base().join("objects"))?;
     let edits = store
         .transaction()
         .packed_refs(PackedRefs::DeletionsAndNonSymbolicUpdatesRemoveLooseSourceReference(
@@ -713,15 +713,14 @@ fn packed_refs_creation_with_packed_refs_mode_prune_removes_original_loose_refs(
 #[test]
 fn packed_refs_creation_with_packed_refs_mode_leave_keeps_original_loose_refs() -> crate::Result {
     let (_keep, store) = store_writable("make_packed_ref_repository_for_overlay.sh")?;
-    let branch = store.find("newer-as-loose", None)?;
-    let packed = store.packed_buffer()?.expect("packed-refs");
+    let branch = store.find("newer-as-loose")?;
+    let packed = store.open_packed_buffer()?.expect("packed-refs");
     assert_ne!(
         packed.find("newer-as-loose")?.target(),
         branch.target.as_id().expect("peeled"),
         "the packed ref is outdated"
     );
-    let mut buf = Vec::new();
-    let previous_reflog_entries = branch.log_iter(&store, &mut buf)?.expect("log").count();
+    let previous_reflog_entries = branch.log_iter(&store).all()?.expect("log").count();
     let previous_packed_refs = packed.iter()?.filter_map(Result::ok).count();
 
     let edits = store.loose_iter()?.map(|r| r.expect("valid ref")).map(|r| RefEdit {
@@ -753,12 +752,12 @@ fn packed_refs_creation_with_packed_refs_mode_leave_keeps_original_loose_refs() 
         "the amount of loose refs didn't change and having symbolic ones isn't a problem"
     );
     assert_eq!(
-        branch.log_iter(&store, &mut buf)?.expect("log").count(),
+        branch.log_iter(&store).all()?.expect("log").count(),
         previous_reflog_entries,
         "reflog isn't adjusted as there is no change"
     );
 
-    let packed = store.packed_buffer()?.expect("packed-refs");
+    let packed = store.open_packed_buffer()?.expect("packed-refs");
     assert_eq!(
         packed.iter()?.filter_map(Result::ok).count(),
         previous_packed_refs,
@@ -766,7 +765,7 @@ fn packed_refs_creation_with_packed_refs_mode_leave_keeps_original_loose_refs() 
     );
     assert_eq!(
         packed.find("newer-as-loose")?.target(),
-        store.find("newer-as-loose", None)?.target.into_id(),
+        store.find("newer-as-loose")?.target.into_id(),
         "the packed ref is now up to date and the loose ref definitely still exists"
     );
     Ok(())

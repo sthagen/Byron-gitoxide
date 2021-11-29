@@ -14,6 +14,7 @@ use git_repository::{
         transport,
         transport::client::Capabilities,
     },
+    Progress,
 };
 
 use crate::{remote::refs::JsonRef, OutputFormat};
@@ -322,7 +323,7 @@ fn receive_pack_blocking<W: io::Write>(
     mut refs_directory: Option<PathBuf>,
     ctx: &mut Context<W>,
     input: impl io::BufRead,
-    progress: impl git_repository::Progress,
+    progress: impl Progress,
     refs: &[Ref],
 ) -> io::Result<()> {
     let options = pack::bundle::write::Options {

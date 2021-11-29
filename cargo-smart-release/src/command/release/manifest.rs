@@ -11,12 +11,11 @@ use git_repository::lock::File;
 use semver::{Version, VersionReq};
 
 use super::{cargo, git, Context, Oid, Options};
-use crate::utils::version_req_unset_or_default;
 use crate::{
     changelog,
     changelog::{write::Linkables, Section},
     traverse::Dependency,
-    utils::{names_and_versions, try_to_published_crate_and_new_version, will},
+    utils::{names_and_versions, try_to_published_crate_and_new_version, version_req_unset_or_default, will},
     version, ChangeLog,
 };
 
@@ -419,11 +418,6 @@ fn gather_changelog_data<'a, 'meta>(
             );
 
             let (recent_idx, recent_release_section_in_log) = log.most_recent_release_section_mut();
-            if !recent_release_section_in_log.is_essential() {
-                changelog_ids_with_statistical_segments_only.push(pending_changelogs.len());
-            } else if recent_release_section_in_log.is_probably_lacking_user_edits() {
-                changelog_ids_probably_lacking_user_edits.push(pending_changelogs.len());
-            }
             match recent_release_section_in_log {
                 changelog::Section::Release {
                     name: name @ changelog::Version::Unreleased,
@@ -448,16 +442,6 @@ fn gather_changelog_data<'a, 'meta>(
                     {
                         Some(version_section) => {
                             version_section.merge(recent_section);
-                            let pop_if_changelog_id_is_last = |v: &mut Vec<usize>| {
-                                if v.last().filter(|&&idx| idx == pending_changelogs.len()).is_some() {
-                                    v.pop();
-                                }
-                            };
-                            if version_section.is_essential() {
-                                pop_if_changelog_id_is_last(changelog_ids_with_statistical_segments_only);
-                            } else if !version_section.is_probably_lacking_user_edits() {
-                                pop_if_changelog_id_is_last(changelog_ids_probably_lacking_user_edits);
-                            }
                         }
                         None => log.sections.insert(recent_idx, recent_section),
                     }
@@ -479,6 +463,14 @@ fn gather_changelog_data<'a, 'meta>(
                 }
                 changelog::Section::Verbatim { .. } => unreachable!("BUG: checked in prior function"),
             };
+            {
+                let (_, recent_release_section_in_log) = log.most_recent_release_section_mut();
+                if !recent_release_section_in_log.is_essential() {
+                    changelog_ids_with_statistical_segments_only.push(pending_changelogs.len());
+                } else if recent_release_section_in_log.is_probably_lacking_user_edits() {
+                    changelog_ids_probably_lacking_user_edits.push(pending_changelogs.len());
+                }
+            }
             let mut write_buf = String::new();
             log.write_to(
                 &mut write_buf,
@@ -544,7 +536,8 @@ fn set_version_and_update_package_dependency(
                     let version_req = VersionReq::parse(current_version_req.as_str().expect("versions are strings"))?;
                     let force_update = conservative_pre_release_version_handling
                         && version::is_pre_release(new_version) // setting the lower bound unnecessarily can be harmful
-                        && !version::rhs_is_breaking_bump_for_lhs(&req_as_version(&version_req), new_version); // don't claim to be conservative if this is necessary anyway
+                        // don't claim to be conservative if this is necessary anyway
+                        && req_as_version(&version_req).map(|req_version|!version::rhs_is_breaking_bump_for_lhs(&req_version, new_version)).unwrap_or(false);
                     if !version_req.matches(new_version) || force_update {
                         if !version_req_unset_or_default(&version_req) {
                             bail!(
@@ -578,13 +571,12 @@ fn set_version_and_update_package_dependency(
     Ok(manifest != new_manifest)
 }
 
-fn req_as_version(req: &VersionReq) -> Version {
-    let comp = &req.comparators.get(0).expect("at least one version comparator");
-    Version {
+fn req_as_version(req: &VersionReq) -> Option<Version> {
+    req.comparators.get(0).map(|comp| Version {
         major: comp.major,
         minor: comp.minor.unwrap_or(0),
         patch: comp.patch.unwrap_or(0),
         pre: comp.pre.clone(),
         build: Default::default(),
-    }
+    })
 }

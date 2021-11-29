@@ -9,12 +9,12 @@ use git_object::bstr::ByteSlice;
 use os_str_bytes::OsStrBytes;
 
 use crate::{
-    store::file::{self, loose::Reference},
+    store_impl::file::{self, loose::Reference},
     FullName,
 };
 
 /// An iterator over all valid loose reference paths as seen from a particular base directory.
-pub(in crate::store::file) struct SortedLoosePaths {
+pub(in crate::store_impl::file) struct SortedLoosePaths {
     pub(crate) base: PathBuf,
     filename_prefix: Option<OsString>,
     file_walk: DirEntryIter,
@@ -146,7 +146,7 @@ impl file::Store {
     ///
     /// There is no namespace support in loose file iterators. It can be emulated using `loose_iter_prefixed(…)`.
     ///
-    /// See [`Store::packed()`][file::Store::packed_buffer()] for interacting with packed references.
+    /// See [`Store::packed()`][file::Store::open_packed_buffer()] for interacting with packed references.
     pub fn loose_iter(&self) -> std::io::Result<Loose> {
         let refs = self.refs_dir();
         if !refs.is_dir() {
@@ -163,10 +163,10 @@ impl file::Store {
         Ok(Loose::at_root_with_filename_prefix(root, self.base.clone(), remainder))
     }
 
-    pub(in crate::store::file) fn refs_dir(&self) -> PathBuf {
+    pub(in crate::store_impl::file) fn refs_dir(&self) -> PathBuf {
         self.base.join("refs")
     }
-    pub(in crate::store::file) fn validate_prefix(
+    pub(in crate::store_impl::file) fn validate_prefix(
         &self,
         base: &Path,
         prefix: &Path,

@@ -25,8 +25,9 @@ use git_hash::{oid, ObjectId};
 pub use git_object::bstr;
 use git_object::bstr::{BStr, BString};
 
-mod store;
-pub use store::{file, packed};
+#[path = "store/mod.rs"]
+mod store_impl;
+pub use store_impl::{file, packed};
 
 mod fullname;
 ///
@@ -48,6 +49,47 @@ pub mod log;
 
 ///
 pub mod peel;
+
+///
+pub mod store {
+    /// The way a file store handles the reflog
+    #[derive(Debug, PartialOrd, PartialEq, Ord, Eq, Hash, Clone, Copy)]
+    pub enum WriteReflog {
+        /// Write a ref log for ref edits according to the standard rules.
+        Normal,
+        /// Never write a ref log.
+        Disable,
+    }
+
+    /// A thread-local handle for interacting with a [`Store`][crate::Store] to find and iterate references.
+    #[derive(Clone)]
+    pub struct Handle {
+        /// A way to access shared state with the requirement that interior mutability doesn't leak or is incorporated into error types
+        /// if it could. The latter can't happen if references to said internal aren't ever returned.
+        state: handle::State,
+    }
+
+    pub(crate) enum State {
+        Loose { store: file::Store },
+    }
+
+    #[path = "general/mod.rs"]
+    pub(crate) mod general;
+
+    ///
+    #[path = "general/handle/mod.rs"]
+    mod handle;
+
+    pub use handle::find;
+
+    use crate::file;
+}
+
+/// The git reference store.
+/// TODO: Figure out if handles are needed at all, which depends on the ref-table implementation.
+pub struct Store {
+    inner: store::State,
+}
 
 /// Indicate that the given BString is a validate reference name or path that can be used as path on disk or written as target
 /// of a symbolic reference

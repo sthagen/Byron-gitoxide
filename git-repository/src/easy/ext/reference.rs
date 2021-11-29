@@ -1,7 +1,4 @@
-use std::{
-    convert::TryInto,
-    ops::{Deref, DerefMut},
-};
+use std::convert::TryInto;
 
 use git_actor as actor;
 use git_hash::ObjectId;
@@ -60,27 +57,29 @@ pub trait ReferenceAccessExt: easy::Access + Sized {
 
     /// Returns the currently set namespace for references, or `None` if it is not set.
     ///
-    /// Namespaces allow to partition references.
-    fn namespace(&self) -> Result<Option<git_ref::Namespace>, easy::borrow::repo::Error> {
-        self.repo().map(|repo| repo.deref().refs.namespace.clone())
+    /// Namespaces allow to partition references, and is configured per `Easy`.
+    fn namespace(&self) -> Option<&git_ref::Namespace> {
+        self.state().refs.namespace.as_ref()
     }
 
-    /// Remove the currently set reference namespace and return it.
-    fn clear_namespace(&mut self) -> Result<Option<git_ref::Namespace>, easy::borrow::repo::Error> {
-        self.repo_mut().map(|mut repo| repo.deref_mut().refs.namespace.take())
+    /// Remove the currently set reference namespace and return it, affecting only this `Easy`.
+    fn clear_namespace(&mut self) -> Option<git_ref::Namespace> {
+        self.state_mut().refs.namespace.take()
     }
 
     /// Set the reference namespace to the given value, like `"foo"` or `"foo/bar"`.
+    ///
+    /// Note that this value is shared across all `Easy…` instances as the value is stored in the shared `Repository`.
     fn set_namespace<'a, Name, E>(
         &mut self,
         namespace: Name,
-    ) -> Result<Option<git_ref::Namespace>, easy::reference::namespace::set::Error>
+    ) -> Result<Option<git_ref::Namespace>, git_validate::refname::Error>
     where
         Name: TryInto<PartialNameRef<'a>, Error = E>,
         git_validate::refname::Error: From<E>,
     {
         let namespace = git_ref::namespace::expand(namespace)?;
-        Ok(self.repo_mut()?.deref_mut().refs.namespace.replace(namespace))
+        Ok(self.state_mut().refs.namespace.replace(namespace))
     }
 
     // TODO: more tests or usage
@@ -164,8 +163,8 @@ pub trait ReferenceAccessExt: easy::Access + Sized {
                 &committer_storage
             }
         };
-        let repo = self.repo()?;
-        repo.refs
+        self.state()
+            .refs
             .transaction()
             .prepare(edits, lock_mode)?
             .commit(committer)
@@ -210,12 +209,8 @@ pub trait ReferenceAccessExt: easy::Access + Sized {
     /// Common kinds of iteration are [all][easy::reference::iter::Platform::all()] or [prefixed][easy::reference::iter::Platform::prefixed()]
     /// references.
     fn references(&self) -> Result<easy::reference::iter::Platform<'_, Self>, easy::reference::iter::Error> {
-        let state = self.state();
-        let repo = self.repo()?;
-        let packed_refs = state.assure_packed_refs_uptodate(&repo.refs)?;
         Ok(easy::reference::iter::Platform {
-            repo,
-            packed_refs,
+            platform: self.state().refs.iter()?,
             access: self,
         })
     }
@@ -230,11 +225,7 @@ pub trait ReferenceAccessExt: easy::Access + Sized {
         git_ref::file::find::Error: From<E>,
     {
         let state = self.state();
-        let repo = self.repo()?;
-        match repo
-            .refs
-            .try_find(name, state.assure_packed_refs_uptodate(&repo.refs)?.buffer.as_ref())
-        {
+        match state.refs.try_find(name) {
             Ok(r) => match r {
                 Some(r) => Ok(Some(Reference::from_ref(r, self))),
                 None => Ok(None),

@@ -1,11 +1,13 @@
 use std::path::PathBuf;
 
 use filebuffer::FileBuffer;
+use git_features::threading::OwnShared;
 use git_hash::ObjectId;
 use git_object::bstr::{BStr, BString};
 
 use crate::{transaction::RefEdit, FullNameRef};
 
+#[derive(Debug)]
 enum Backing {
     /// The buffer is loaded entirely in memory, along with the `offset` to the first record past the header.
     InMemory(Vec<u8>),
@@ -16,6 +18,7 @@ enum Backing {
 /// A buffer containing a packed-ref file that is either memory mapped or fully in-memory depending on a cutoff.
 ///
 /// The buffer is guaranteed to be sorted as per the packed-ref rules which allows some operations to be more efficient.
+#[derive(Debug)]
 pub struct Buffer {
     data: Backing,
     /// The offset to the first record, how many bytes to skip past the header
@@ -31,8 +34,7 @@ struct Edit {
 
 /// A transaction for editing packed references
 pub(crate) struct Transaction {
-    /// Probably soon private and returned as part of a commit
-    buffer: Option<Buffer>,
+    buffer: Option<OwnShared<Buffer>>,
     edits: Option<Vec<Edit>>,
     lock: Option<git_lock::File>,
     #[allow(dead_code)] // It just has to be kept alive, hence no reads

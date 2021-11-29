@@ -37,14 +37,17 @@ impl crate::Bundle {
     /// * the resulting pack may be empty, that is, contains zero objects in some situations. This is a valid reply by a server and should
     ///   be accounted for.
     ///   - Empty packs always have the same name and not handling this case will result in at most one superfluous pack.
-    pub fn write_to_directory(
+    pub fn write_to_directory<P>(
         pack: impl io::BufRead,
         directory: Option<impl AsRef<Path>>,
-        mut progress: impl Progress,
+        mut progress: P,
         should_interrupt: &AtomicBool,
         thin_pack_base_object_lookup_fn: Option<ThinPackLookupFn>,
         options: Options,
-    ) -> Result<Outcome, Error> {
+    ) -> Result<Outcome, Error>
+    where
+        P: Progress,
+    {
         let mut read_progress = progress.add_child("read pack");
         read_progress.init(None, progress::bytes());
         let pack = progress::Read {
@@ -280,8 +283,8 @@ impl crate::Bundle {
 
 fn new_pack_file_resolver(
     data_file: Arc<parking_lot::Mutex<git_tempfile::Handle<Writable>>>,
-) -> io::Result<impl Fn(data::EntryRange, &mut Vec<u8>) -> Option<()> + Send + Sync> {
-    let mapped_file = FileBuffer::open(data_file.lock().with_mut(|f| f.path().to_owned())?)?;
+) -> io::Result<impl Fn(data::EntryRange, &mut Vec<u8>) -> Option<()> + Send + Clone> {
+    let mapped_file = Arc::new(FileBuffer::open(data_file.lock().with_mut(|f| f.path().to_owned())?)?);
     let pack_data_lookup = move |range: std::ops::Range<u64>, out: &mut Vec<u8>| -> Option<()> {
         mapped_file
             .get(range.start as usize..range.end as usize)

@@ -101,12 +101,12 @@ pub mod open {
 
             Ok(crate::Repository {
                 odb: git_odb::linked::Store::at(git_dir.join("objects"))?,
-                refs: git_ref::file::Store::at(
+                refs: crate::RefStore::at(
                     git_dir,
                     if worktree_dir.is_none() {
-                        git_ref::file::WriteReflog::Disable
+                        git_ref::store::WriteReflog::Disable
                     } else {
-                        git_ref::file::WriteReflog::Normal
+                        git_ref::store::WriteReflog::Normal
                     },
                 ),
                 work_tree: worktree_dir,
@@ -150,14 +150,14 @@ mod location {
     impl Repository {
         /// The path to the `.git` directory itself, or equivalent if this is a bare repository.
         pub fn path(&self) -> &std::path::Path {
-            &self.refs.base
+            self.git_dir()
         }
 
         /// Return the path to the repository itself, containing objects, references, configuration, and more.
         ///
         /// Synonymous to [`path()`][Repository::path()].
         pub fn git_dir(&self) -> &std::path::Path {
-            &self.refs.base
+            self.refs.base()
         }
 
         /// Return the path to the working directory if this is not a bare repository.

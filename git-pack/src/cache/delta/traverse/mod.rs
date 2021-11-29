@@ -7,6 +7,7 @@ use git_features::{
     parallel,
     parallel::in_parallel_if,
     progress::{self, Progress},
+    threading::{lock, Mutable, OwnShared},
 };
 
 use crate::{
@@ -73,66 +74,73 @@ where
     ///
     /// _Note_ that this method consumed the Tree to assure safe parallel traversal with mutation support.
     #[allow(clippy::too_many_arguments)]
-    pub fn traverse<F, P, MBFN, S, E>(
+    pub fn traverse<F, P1, P2, MBFN, S, E>(
         mut self,
         should_run_in_parallel: impl FnOnce() -> bool,
         resolve: F,
-        object_progress: P,
-        size_progress: P,
+        object_progress: P1,
+        size_progress: P2,
         thread_limit: Option<usize>,
         should_interrupt: &AtomicBool,
         pack_entries_end: u64,
-        new_thread_state: impl Fn() -> S + Send + Sync,
+        new_thread_state: impl Fn() -> S + Send + Clone,
         inspect_object: MBFN,
     ) -> Result<VecDeque<Item<T>>, Error>
     where
-        F: for<'r> Fn(EntryRange, &'r mut Vec<u8>) -> Option<()> + Send + Sync,
-        P: Progress + Send,
-        MBFN: Fn(&mut T, &mut <P as Progress>::SubProgress, Context<'_, S>) -> Result<(), E> + Send + Sync,
+        F: for<'r> Fn(EntryRange, &'r mut Vec<u8>) -> Option<()> + Send + Clone,
+        P1: Progress,
+        P2: Progress,
+        MBFN: Fn(&mut T, &mut <P1 as Progress>::SubProgress, Context<'_, S>) -> Result<(), E> + Send + Clone,
         E: std::error::Error + Send + Sync + 'static,
     {
         self.set_pack_entries_end(pack_entries_end);
         let (chunk_size, thread_limit, _) = parallel::optimize_chunk_size_and_thread_limit(1, None, thread_limit, None);
-        let object_progress = parking_lot::Mutex::new(object_progress);
+        let object_progress = OwnShared::new(Mutable::new(object_progress));
 
         let num_objects = self.items.len();
         in_parallel_if(
             should_run_in_parallel,
             self.iter_root_chunks(chunk_size),
             thread_limit,
-            |thread_index| {
-                (
-                    Vec::<u8>::with_capacity(4096),
-                    object_progress.lock().add_child(format!("thread {}", thread_index)),
-                    new_thread_state(),
-                )
+            {
+                let object_progress = object_progress.clone();
+                move |thread_index| {
+                    (
+                        Vec::<u8>::with_capacity(4096),
+                        lock(&object_progress).add_child(format!("thread {}", thread_index)),
+                        new_thread_state(),
+                        resolve.clone(),
+                        inspect_object.clone(),
+                    )
+                }
             },
-            |root_nodes, state| resolve::deltas(root_nodes, state, &resolve, &inspect_object),
-            Reducer::new(num_objects, &object_progress, size_progress, should_interrupt),
+            move |root_nodes, state| resolve::deltas(root_nodes, state),
+            Reducer::new(num_objects, object_progress, size_progress, should_interrupt),
         )?;
         Ok(self.into_items())
     }
 }
 
-struct Reducer<'a, P> {
+struct Reducer<'a, P1, P2> {
     item_count: usize,
-    progress: &'a parking_lot::Mutex<P>,
+    progress: OwnShared<Mutable<P1>>,
     start: std::time::Instant,
-    size_progress: P,
+    size_progress: P2,
     should_interrupt: &'a AtomicBool,
 }
 
-impl<'a, P> Reducer<'a, P>
+impl<'a, P1, P2> Reducer<'a, P1, P2>
 where
-    P: Progress,
+    P1: Progress,
+    P2: Progress,
 {
     pub fn new(
         num_objects: usize,
-        progress: &'a parking_lot::Mutex<P>,
-        mut size_progress: P,
+        progress: OwnShared<Mutable<P1>>,
+        mut size_progress: P2,
         should_interrupt: &'a AtomicBool,
     ) -> Self {
-        progress.lock().init(Some(num_objects), progress::count("objects"));
+        lock(&progress).init(Some(num_objects), progress::count("objects"));
         size_progress.init(None, progress::bytes());
         Reducer {
             item_count: 0,
@@ -144,9 +152,10 @@ where
     }
 }
 
-impl<'a, P> parallel::Reduce for Reducer<'a, P>
+impl<'a, P1, P2> parallel::Reduce for Reducer<'a, P1, P2>
 where
-    P: Progress,
+    P1: Progress,
+    P2: Progress,
 {
     type Input = Result<(usize, u64), Error>;
     type FeedProduce = ();
@@ -157,7 +166,7 @@ where
         let (num_objects, decompressed_size) = input?;
         self.item_count += num_objects;
         self.size_progress.inc_by(decompressed_size as usize);
-        self.progress.lock().set(self.item_count);
+        lock(&self.progress).set(self.item_count);
         if self.should_interrupt.load(Ordering::SeqCst) {
             return Err(Error::Interrupted);
         }
@@ -165,7 +174,7 @@ where
     }
 
     fn finalize(mut self) -> Result<Self::Output, Self::Error> {
-        self.progress.lock().show_throughput(self.start);
+        lock(&self.progress).show_throughput(self.start);
         self.size_progress.show_throughput(self.start);
         Ok(())
     }

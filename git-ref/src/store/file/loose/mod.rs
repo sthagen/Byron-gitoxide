@@ -27,7 +27,7 @@ pub mod reference;
 mod init {
     use std::path::PathBuf;
 
-    use crate::store::file;
+    use crate::store_impl::file;
 
     impl file::Store {
         /// Create a new instance at the given `git_dir`, which commonly is a standard git repository with a
@@ -37,16 +37,8 @@ mod init {
                 base: git_dir.into(),
                 write_reflog,
                 namespace: None,
+                packed: Default::default(),
             }
-        }
-    }
-
-    impl<P> From<P> for file::Store
-    where
-        P: Into<PathBuf>,
-    {
-        fn from(path: P) -> Self {
-            file::Store::at(path, Default::default())
         }
     }
 }
