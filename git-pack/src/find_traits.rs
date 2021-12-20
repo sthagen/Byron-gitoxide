@@ -1,4 +1,4 @@
-use crate::{data, find};
+use crate::find;
 
 /// Describe how object can be located in an object store with built-in facilities to supports packs specifically.
 ///
@@ -12,6 +12,9 @@ pub trait Find {
     /// The error returned by [`try_find()`][Find::try_find()]
     type Error: std::error::Error + 'static;
 
+    /// Returns true if the object exists in the database.
+    fn contains(&self, id: impl AsRef<git_hash::oid>) -> bool;
+
     /// Find an object matching `id` in the database while placing its raw, undecoded data into `buffer`.
     /// A `pack_cache` can be used to speed up subsequent lookups, set it to [`crate::cache::Never`] if the
     /// workload isn't suitable for caching.
@@ -22,36 +25,49 @@ pub trait Find {
         &self,
         id: impl AsRef<git_hash::oid>,
         buffer: &'a mut Vec<u8>,
+    ) -> Result<Option<(git_object::Data<'a>, Option<crate::data::entry::Location>)>, Self::Error> {
+        self.try_find_cached(id, buffer, &mut crate::cache::Never)
+    }
+
+    /// Like [`Find::try_find()`], but with support for controlling the pack cache.
+    /// A `pack_cache` can be used to speed up subsequent lookups, set it to [`crate::cache::Never`] if the
+    /// workload isn't suitable for caching.
+    ///
+    /// Returns `Some` object if it was present in the database, or the error that occurred during lookup or object
+    /// retrieval.
+    fn try_find_cached<'a>(
+        &self,
+        id: impl AsRef<git_hash::oid>,
+        buffer: &'a mut Vec<u8>,
         pack_cache: &mut impl crate::cache::DecodeEntry,
-    ) -> Result<Option<data::Object<'a>>, Self::Error>;
+    ) -> Result<Option<(git_object::Data<'a>, Option<crate::data::entry::Location>)>, Self::Error>;
 
     /// Find the packs location where an object with `id` can be found in the database, or `None` if there is no pack
     /// holding the object.
     ///
-    /// _Note_ that the object database may have no notion of packs and thus always returns `None`.
-    fn location_by_oid(&self, id: impl AsRef<git_hash::oid>, buf: &mut Vec<u8>) -> Option<crate::bundle::Location>;
+    /// _Note_ that this is always None if the object isn't packed.
+    fn location_by_oid(&self, id: impl AsRef<git_hash::oid>, buf: &mut Vec<u8>)
+        -> Option<crate::data::entry::Location>;
 
-    /// Find the bundle matching `pack_id`, or `None` if there is no such pack.
-    ///
-    /// _Note_ that the object database may have no notion of packs and thus always returns `None`.
-    fn bundle_by_pack_id(&self, pack_id: u32) -> Option<&crate::Bundle>;
+    /// Obtain a vector of all offsets, in index order, along with their object id.
+    fn pack_offsets_and_oid(&self, pack_id: u32) -> Option<Vec<(u64, git_hash::ObjectId)>>;
 
     /// Return the [`find::Entry`] for `location` if it is backed by a pack.
     ///
     /// Note that this is only in the interest of avoiding duplicate work during pack generation.
-    /// Pack locations can be obtained from a [`data::Object`].
+    /// Pack locations can be obtained from [`Find::try_find()`].
     ///
     /// # Notes
     ///
     /// Custom implementations might be interested in providing their own meta-data with `object`,
     /// which currently isn't possible as the `Locate` trait requires GATs to work like that.
-    fn entry_by_location(&self, location: &crate::bundle::Location) -> Option<find::Entry<'_>>;
+    fn entry_by_location(&self, location: &crate::data::entry::Location) -> Option<find::Entry>;
 }
 
 mod ext {
     use git_object::{BlobRef, CommitRef, CommitRefIter, Kind, ObjectRef, TagRef, TagRefIter, TreeRef, TreeRefIter};
 
-    use crate::{data, find};
+    use crate::find;
 
     macro_rules! make_obj_lookup {
         ($method:ident, $object_variant:path, $object_kind:path, $object_type:ty) => {
@@ -61,17 +77,21 @@ mod ext {
                 &self,
                 id: impl AsRef<git_hash::oid>,
                 buffer: &'a mut Vec<u8>,
-                pack_cache: &mut impl crate::cache::DecodeEntry,
-            ) -> Result<$object_type, find::existing_object::Error<Self::Error>> {
+            ) -> Result<($object_type, Option<crate::data::entry::Location>), find::existing_object::Error<Self::Error>>
+            {
                 let id = id.as_ref();
-                self.try_find(id, buffer, pack_cache)
+                self.try_find(id, buffer)
                     .map_err(find::existing_object::Error::Find)?
                     .ok_or_else(|| find::existing_object::Error::NotFound {
                         oid: id.as_ref().to_owned(),
                     })
-                    .and_then(|o| o.decode().map_err(find::existing_object::Error::Decode))
-                    .and_then(|o| match o {
-                        $object_variant(o) => return Ok(o),
+                    .and_then(|(o, l)| {
+                        o.decode()
+                            .map_err(find::existing_object::Error::Decode)
+                            .map(|o| (o, l))
+                    })
+                    .and_then(|(o, l)| match o {
+                        $object_variant(o) => return Ok((o, l)),
                         _other => Err(find::existing_object::Error::ObjectKind {
                             expected: $object_kind,
                         }),
@@ -88,19 +108,19 @@ mod ext {
                 &self,
                 id: impl AsRef<git_hash::oid>,
                 buffer: &'a mut Vec<u8>,
-                pack_cache: &mut impl crate::cache::DecodeEntry,
-            ) -> Result<$object_type, find::existing_iter::Error<Self::Error>> {
+            ) -> Result<($object_type, Option<crate::data::entry::Location>), find::existing_iter::Error<Self::Error>> {
                 let id = id.as_ref();
-                self.try_find(id, buffer, pack_cache)
+                self.try_find(id, buffer)
                     .map_err(find::existing_iter::Error::Find)?
                     .ok_or_else(|| find::existing_iter::Error::NotFound {
                         oid: id.as_ref().to_owned(),
                     })
-                    .and_then(|o| {
+                    .and_then(|(o, l)| {
                         o.$into_iter()
                             .ok_or_else(|| find::existing_iter::Error::ObjectKind {
                                 expected: $object_kind,
                             })
+                            .map(|i| (i, l))
                     })
             }
         };
@@ -113,10 +133,10 @@ mod ext {
             &self,
             id: impl AsRef<git_hash::oid>,
             buffer: &'a mut Vec<u8>,
-            pack_cache: &mut impl crate::cache::DecodeEntry,
-        ) -> Result<data::Object<'a>, find::existing::Error<Self::Error>> {
+        ) -> Result<(git_object::Data<'a>, Option<crate::data::entry::Location>), find::existing::Error<Self::Error>>
+        {
             let id = id.as_ref();
-            self.try_find(id, buffer, pack_cache)
+            self.try_find(id, buffer)
                 .map_err(find::existing::Error::Find)?
                 .ok_or_else(|| find::existing::Error::NotFound {
                     oid: id.as_ref().to_owned(),
@@ -137,11 +157,43 @@ mod ext {
 pub use ext::FindExt;
 
 mod find_impls {
-    use std::ops::Deref;
+    use std::{ops::Deref, rc::Rc};
 
     use git_hash::oid;
 
-    use crate::{bundle::Location, data::Object, find, Bundle};
+    use crate::{data::entry::Location, find};
+
+    impl<T> crate::Find for &T
+    where
+        T: crate::Find,
+    {
+        type Error = T::Error;
+
+        fn contains(&self, id: impl AsRef<oid>) -> bool {
+            (*self).contains(id)
+        }
+
+        fn try_find_cached<'a>(
+            &self,
+            id: impl AsRef<oid>,
+            buffer: &'a mut Vec<u8>,
+            pack_cache: &mut impl crate::cache::DecodeEntry,
+        ) -> Result<Option<(git_object::Data<'a>, Option<crate::data::entry::Location>)>, Self::Error> {
+            (*self).try_find_cached(id, buffer, pack_cache)
+        }
+
+        fn location_by_oid(&self, id: impl AsRef<oid>, buf: &mut Vec<u8>) -> Option<crate::data::entry::Location> {
+            (*self).location_by_oid(id, buf)
+        }
+
+        fn pack_offsets_and_oid(&self, pack_id: u32) -> Option<Vec<(u64, git_hash::ObjectId)>> {
+            (*self).pack_offsets_and_oid(pack_id)
+        }
+
+        fn entry_by_location(&self, location: &crate::data::entry::Location) -> Option<crate::find::Entry> {
+            (*self).entry_by_location(location)
+        }
+    }
 
     impl<T> super::Find for std::sync::Arc<T>
     where
@@ -149,25 +201,61 @@ mod find_impls {
     {
         type Error = T::Error;
 
-        fn try_find<'a>(
+        fn contains(&self, id: impl AsRef<oid>) -> bool {
+            self.deref().contains(id)
+        }
+
+        fn try_find_cached<'a>(
             &self,
             id: impl AsRef<oid>,
             buffer: &'a mut Vec<u8>,
             pack_cache: &mut impl crate::cache::DecodeEntry,
-        ) -> Result<Option<Object<'a>>, Self::Error> {
-            self.deref().try_find(id, buffer, pack_cache)
+        ) -> Result<Option<(git_object::Data<'a>, Option<crate::data::entry::Location>)>, Self::Error> {
+            self.deref().try_find_cached(id, buffer, pack_cache)
         }
 
         fn location_by_oid(&self, id: impl AsRef<oid>, buf: &mut Vec<u8>) -> Option<Location> {
             self.deref().location_by_oid(id, buf)
         }
 
-        fn bundle_by_pack_id(&self, pack_id: u32) -> Option<&Bundle> {
-            self.deref().bundle_by_pack_id(pack_id)
+        fn pack_offsets_and_oid(&self, pack_id: u32) -> Option<Vec<(u64, git_hash::ObjectId)>> {
+            self.deref().pack_offsets_and_oid(pack_id)
         }
 
-        fn entry_by_location(&self, object: &crate::bundle::Location) -> Option<find::Entry<'_>> {
+        fn entry_by_location(&self, object: &crate::data::entry::Location) -> Option<find::Entry> {
             self.deref().entry_by_location(object)
+        }
+    }
+
+    impl<T> super::Find for Rc<T>
+    where
+        T: super::Find,
+    {
+        type Error = T::Error;
+
+        fn contains(&self, id: impl AsRef<oid>) -> bool {
+            self.deref().contains(id)
+        }
+
+        fn try_find_cached<'a>(
+            &self,
+            id: impl AsRef<oid>,
+            buffer: &'a mut Vec<u8>,
+            pack_cache: &mut impl crate::cache::DecodeEntry,
+        ) -> Result<Option<(git_object::Data<'a>, Option<crate::data::entry::Location>)>, Self::Error> {
+            self.deref().try_find_cached(id, buffer, pack_cache)
+        }
+
+        fn location_by_oid(&self, id: impl AsRef<oid>, buf: &mut Vec<u8>) -> Option<Location> {
+            self.deref().location_by_oid(id, buf)
+        }
+
+        fn pack_offsets_and_oid(&self, pack_id: u32) -> Option<Vec<(u64, git_hash::ObjectId)>> {
+            self.deref().pack_offsets_and_oid(pack_id)
+        }
+
+        fn entry_by_location(&self, location: &crate::data::entry::Location) -> Option<find::Entry> {
+            self.deref().entry_by_location(location)
         }
     }
 
@@ -177,24 +265,28 @@ mod find_impls {
     {
         type Error = T::Error;
 
-        fn try_find<'a>(
+        fn contains(&self, id: impl AsRef<oid>) -> bool {
+            self.deref().contains(id)
+        }
+
+        fn try_find_cached<'a>(
             &self,
             id: impl AsRef<oid>,
             buffer: &'a mut Vec<u8>,
             pack_cache: &mut impl crate::cache::DecodeEntry,
-        ) -> Result<Option<Object<'a>>, Self::Error> {
-            self.deref().try_find(id, buffer, pack_cache)
+        ) -> Result<Option<(git_object::Data<'a>, Option<crate::data::entry::Location>)>, Self::Error> {
+            self.deref().try_find_cached(id, buffer, pack_cache)
         }
 
         fn location_by_oid(&self, id: impl AsRef<oid>, buf: &mut Vec<u8>) -> Option<Location> {
             self.deref().location_by_oid(id, buf)
         }
 
-        fn bundle_by_pack_id(&self, pack_id: u32) -> Option<&Bundle> {
-            self.deref().bundle_by_pack_id(pack_id)
+        fn pack_offsets_and_oid(&self, pack_id: u32) -> Option<Vec<(u64, git_hash::ObjectId)>> {
+            self.deref().pack_offsets_and_oid(pack_id)
         }
 
-        fn entry_by_location(&self, location: &crate::bundle::Location) -> Option<find::Entry<'_>> {
+        fn entry_by_location(&self, location: &crate::data::entry::Location) -> Option<find::Entry> {
             self.deref().entry_by_location(location)
         }
     }

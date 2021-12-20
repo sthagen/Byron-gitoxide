@@ -2,9 +2,9 @@ use std::{convert::TryInto, process::Command};
 
 use anyhow::bail;
 use cargo_metadata::Package;
-use git_repository::{bstr::ByteSlice, prelude::ReferenceAccessExt, refs, refs::transaction::PreviousValue};
+use git_repository::{bstr::ByteSlice, easy::Oid, refs, refs::transaction::PreviousValue};
 
-use super::{tag_name, Oid, Options};
+use super::{tag_name, Options};
 use crate::utils::will;
 
 pub(in crate::command::release_impl) fn commit_changes(
@@ -61,8 +61,7 @@ pub(in crate::command::release_impl) fn create_version_tag<'repo>(
         let constraint = PreviousValue::Any;
         let tag = match tag_message {
             Some(message) => {
-                let tag = git_repository::prelude::ObjectAccessExt::tag(
-                    &ctx.repo,
+                let tag = ctx.repo.tag(
                     tag_name,
                     target,
                     git_repository::objs::Kind::Commit,

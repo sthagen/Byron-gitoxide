@@ -1,11 +1,11 @@
-use git_odb::{linked::Store, pack, FindExt};
+use git_odb::pack::FindExt;
 use git_traverse::tree;
 
 use crate::hex_to_id;
 
-fn db() -> crate::Result<Store> {
+fn db() -> crate::Result<git_odb::Handle> {
     let dir = git_testtools::scripted_fixture_repo_read_only("make_traversal_repo_for_trees.sh")?;
-    let db = Store::at(dir.join(".git").join("objects"))?;
+    let db = git_odb::at(dir.join(".git").join("objects"))?;
     Ok(db)
 }
 
@@ -14,20 +14,15 @@ fn basic_nesting() -> crate::Result<()> {
     let db = db()?;
     let mut buf = Vec::new();
     let mut buf2 = Vec::new();
-    let mut commit = db.find_commit_iter(
-        hex_to_id("85df34aa34848b8138b2b3dcff5fb5c2b734e0ce"),
-        &mut buf,
-        &mut pack::cache::Never,
-    )?;
+    let mut commit = db
+        .find_commit_iter(hex_to_id("85df34aa34848b8138b2b3dcff5fb5c2b734e0ce"), &mut buf)?
+        .0;
     let mut recorder = tree::Recorder::default();
     git_traverse::tree::breadthfirst(
-        db.find_tree_iter(
-            commit.tree_id().expect("a tree is available in a commit"),
-            &mut buf2,
-            &mut pack::cache::Never,
-        )?,
+        db.find_tree_iter(commit.tree_id().expect("a tree is available in a commit"), &mut buf2)?
+            .0,
         tree::breadthfirst::State::default(),
-        |oid, buf| db.find_tree_iter(oid, buf, &mut pack::cache::Never).ok(),
+        |oid, buf| db.find_tree_iter(oid, buf).ok().map(|t| t.0),
         &mut recorder,
     )?;
 

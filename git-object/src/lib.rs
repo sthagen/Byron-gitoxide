@@ -19,6 +19,8 @@ pub mod tag;
 pub mod tree;
 
 mod blob;
+///
+pub mod data;
 
 mod traits;
 pub use traits::WriteTo;
@@ -204,7 +206,7 @@ pub struct TreeRef<'a> {
 }
 
 /// A directory snapshot containing files (blobs), directories (trees) and submodules (commits), lazily evaluated.
-#[derive(PartialEq, Eq, Debug, Hash, Ord, PartialOrd, Clone)]
+#[derive(Default, PartialEq, Eq, Debug, Hash, Ord, PartialOrd, Clone)]
 #[cfg_attr(feature = "serde1", derive(serde::Serialize, serde::Deserialize))]
 pub struct TreeRefIter<'a> {
     /// The directories and files contained in this tree.
@@ -225,6 +227,15 @@ impl Tree {
     pub fn empty() -> Self {
         Tree { entries: Vec::new() }
     }
+}
+
+/// A borrowed object using a slice as backing buffer, or in other words a bytes buffer that knows the kind of object it represents.
+#[derive(PartialEq, Eq, Debug, Hash, Ord, PartialOrd, Clone)]
+pub struct Data<'a> {
+    /// kind of object
+    pub kind: Kind,
+    /// decoded, decompressed data, owned by a backing store.
+    pub data: &'a [u8],
 }
 
 ///

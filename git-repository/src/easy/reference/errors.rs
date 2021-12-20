@@ -1,8 +1,6 @@
 ///
 pub mod edit {
-    use crate::easy;
-
-    /// The error returned by [ReferenceAccessExt::edit_references(…)][easy::ext::ReferenceAccessExt::edit_references()], and others
+    /// The error returned by [edit_references(…)][crate::easy::Handle::edit_references()], and others
     /// which ultimately create a reference.
     #[derive(Debug, thiserror::Error)]
     #[allow(missing_docs)]
@@ -13,17 +11,13 @@ pub mod edit {
         FileTransactionCommit(#[from] git_ref::file::transaction::commit::Error),
         #[error(transparent)]
         NameValidation(#[from] git_validate::reference::name::Error),
-        #[error("BUG: The repository could not be borrowed")]
-        BorrowRepo(#[from] easy::borrow::repo::Error),
     }
 }
 
 ///
 pub mod peel {
-    use crate::easy;
-
-    /// The error returned by [Reference::peel_to_id_in_place(…)][easy::Reference::peel_to_id_in_place()] and
-    /// [Reference::into_fully_peeled_id(…)][easy::Reference::into_fully_peeled_id()].
+    /// The error returned by [Reference::peel_to_id_in_place(…)][crate::easy::Reference::peel_to_id_in_place()] and
+    /// [Reference::into_fully_peeled_id(…)][crate::easy::Reference::into_fully_peeled_id()].
     #[derive(Debug, thiserror::Error)]
     #[allow(missing_docs)]
     pub enum Error {
@@ -31,22 +25,16 @@ pub mod peel {
         ToId(#[from] git_ref::peel::to_id::Error),
         #[error(transparent)]
         PackedRefsOpen(#[from] git_ref::packed::buffer::open::Error),
-        #[error("BUG: Part of interior state could not be borrowed.")]
-        BorrowState(#[from] easy::borrow::state::Error),
-        #[error("BUG: The repository could not be borrowed")]
-        BorrowRepo(#[from] easy::borrow::repo::Error),
     }
 }
 
 ///
 pub mod find {
-    use crate::easy;
-
     ///
     pub mod existing {
         use crate::easy;
 
-        /// The error returned by [ReferenceAccessExt::find_reference(…)][easy::ext::ReferenceAccessExt::find_reference()], and others.
+        /// The error returned by [find_reference(…)][easy::Handle::find_reference()], and others.
         #[derive(Debug, thiserror::Error)]
         #[allow(missing_docs)]
         pub enum Error {
@@ -57,7 +45,7 @@ pub mod find {
         }
     }
 
-    /// The error returned by [ReferenceAccessExt::try_find_reference(…)][easy::ext::ReferenceAccessExt::try_find_reference()].
+    /// The error returned by [try_find_reference(…)][crate::easy::Handle::try_find_reference()].
     #[derive(Debug, thiserror::Error)]
     #[allow(missing_docs)]
     pub enum Error {
@@ -65,9 +53,5 @@ pub mod find {
         Find(#[from] git_ref::file::find::Error),
         #[error(transparent)]
         PackedRefsOpen(#[from] git_ref::packed::buffer::open::Error),
-        #[error("BUG: Part of interior state could not be borrowed.")]
-        BorrowState(#[from] easy::borrow::state::Error),
-        #[error("BUG: The repository could not be borrowed")]
-        BorrowRepo(#[from] easy::borrow::repo::Error),
     }
 }

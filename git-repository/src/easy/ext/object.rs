@@ -1,8 +1,7 @@
-use std::{convert::TryInto, ops::DerefMut};
+use std::convert::TryInto;
 
 use git_hash::{oid, ObjectId};
 use git_odb::{Find, FindExt};
-use git_pack::cache::Object;
 use git_ref::{
     transaction::{LogChange, PreviousValue, RefLog},
     FullName,
@@ -10,51 +9,32 @@ use git_ref::{
 
 use crate::{
     easy,
-    easy::{commit, object, tag, ObjectRef, Oid, Reference},
+    easy::{commit, object, tag, Object, Oid, Reference},
     ext::ObjectIdExt,
 };
 
 /// Methods related to object creation.
-pub trait ObjectAccessExt: easy::Access + Sized {
+impl easy::Handle {
     /// Find the object with `id` in the object database or return an error if it could not be found.
     ///
     /// There are various legitimate reasons for an object to not be present, which is why
-    /// [`try_find_object(…)`][ObjectAccessExt::try_find_object()] might be preferable instead.
+    /// [`try_find_object(…)`][easy::Handle::try_find_object()] might be preferable instead.
     ///
     /// # Important
     ///
     /// As a shared buffer is written to back the object data, the returned `ObjectRef` will prevent other
     /// `find_object()` operations from succeeding while alive.
-    /// To bypass this limit, clone this `easy::Access` instance.
+    /// To bypass this limit, clone this `easy::Handle` instance.
     ///
     /// # Performance Note
     ///
     /// In order to get the kind of the object, is must be fully decoded from storage if it is packed with deltas.
     /// Loose object could be partially decoded, even though that's not implemented.
-    fn find_object(&self, id: impl Into<ObjectId>) -> Result<ObjectRef<'_, Self>, object::find::existing::Error> {
-        let state = self.state();
+    pub fn find_object(&self, id: impl Into<ObjectId>) -> Result<Object<'_>, object::find::existing::OdbError> {
         let id = id.into();
-        let kind = {
-            let mut buf = self.state().try_borrow_mut_buf()?;
-            let mut object_cache = state.try_borrow_mut_object_cache()?;
-            if let Some(c) = object_cache.deref_mut() {
-                if let Some(kind) = c.get(&id, &mut buf) {
-                    drop(buf);
-                    return ObjectRef::from_current_buf(id, kind, self).map_err(Into::into);
-                }
-            }
-            let kind = self
-                .repo()?
-                .odb
-                .find(&id, &mut buf, state.try_borrow_mut_pack_cache()?.deref_mut())?
-                .kind;
-
-            if let Some(c) = object_cache.deref_mut() {
-                c.put(id, kind, &buf);
-            }
-            kind
-        };
-        ObjectRef::from_current_buf(id, kind, self).map_err(Into::into)
+        let mut buf = self.free_buf();
+        let kind = self.objects.find(&id, &mut buf)?.kind;
+        Ok(Object::from_data(id, kind, buf, self))
     }
 
     /// Try to find the object with `id` or return `None` it it wasn't found.
@@ -63,44 +43,30 @@ pub trait ObjectAccessExt: easy::Access + Sized {
     ///
     /// As a shared buffer is written to back the object data, the returned `ObjectRef` will prevent other
     /// `try_find_object()` operations from succeeding while alive.
-    /// To bypass this limit, clone this `easy::Access` instance.
-    fn try_find_object(&self, id: impl Into<ObjectId>) -> Result<Option<ObjectRef<'_, Self>>, object::find::Error> {
-        let state = self.state();
+    /// To bypass this limit, clone this `easy::Handle` instance.
+    pub fn try_find_object(&self, id: impl Into<ObjectId>) -> Result<Option<Object<'_>>, object::find::OdbError> {
+        let state = self;
         let id = id.into();
 
-        let mut object_cache = state.try_borrow_mut_object_cache()?;
-        let mut buf = state.try_borrow_mut_buf()?;
-        if let Some(c) = object_cache.deref_mut() {
-            if let Some(kind) = c.get(&id, &mut buf) {
-                drop(buf);
-                return Ok(Some(ObjectRef::from_current_buf(id, kind, self)?));
-            }
-        }
-        match self
-            .repo()?
-            .odb
-            .try_find(&id, &mut buf, state.try_borrow_mut_pack_cache()?.deref_mut())?
-        {
+        let mut buf = state.free_buf();
+        match self.objects.try_find(&id, &mut buf)? {
             Some(obj) => {
                 let kind = obj.kind;
                 drop(obj);
-                if let Some(c) = object_cache.deref_mut() {
-                    c.put(id, kind, &buf);
-                }
-                drop(buf);
-                Ok(Some(ObjectRef::from_current_buf(id, kind, self)?))
+                Ok(Some(Object::from_data(id, kind, buf, self)))
             }
             None => Ok(None),
         }
     }
 
     /// Write the given object into the object database and return its object id.
-    fn write_object(&self, object: impl git_object::WriteTo) -> Result<Oid<'_, Self>, object::write::Error> {
+    pub fn write_object(&self, object: impl git_object::WriteTo) -> Result<Oid<'_>, object::write::Error> {
         use git_odb::Write;
 
-        let repo = self.repo()?;
-        repo.odb
-            .write(object, repo.hash_kind)
+        let state = self;
+        state
+            .objects
+            .write(object, state.hash_kind)
             .map(|oid| oid.attach(self))
             .map_err(Into::into)
     }
@@ -110,7 +76,7 @@ pub trait ObjectAccessExt: easy::Access + Sized {
     ///
     /// It will be created with `constraint` which is most commonly to [only create it][PreviousValue::MustNotExist]
     /// or to [force overwriting a possibly existing tag](PreviousValue::Any).
-    fn tag(
+    pub fn tag(
         &self,
         name: impl AsRef<str>,
         target: impl AsRef<oid>,
@@ -118,7 +84,7 @@ pub trait ObjectAccessExt: easy::Access + Sized {
         tagger: Option<&git_actor::SignatureRef<'_>>,
         message: impl AsRef<str>,
         constraint: PreviousValue,
-    ) -> Result<Reference<'_, Self>, tag::Error> {
+    ) -> Result<Reference<'_>, tag::Error> {
         // NOTE: This could be more efficient if we use a TagRef instead.
         let tag = git_object::Tag {
             target: target.as_ref().into(),
@@ -129,7 +95,7 @@ pub trait ObjectAccessExt: easy::Access + Sized {
             pgp_signature: None,
         };
         let tag_id = self.write_object(&tag)?;
-        super::ReferenceAccessExt::tag_reference(self, name, tag_id, constraint).map_err(Into::into)
+        self.tag_reference(name, tag_id, constraint).map_err(Into::into)
     }
 
     /// Create a new commit object with `author`, `committer` and `message` referring to `tree` with `parents`, and point `reference`
@@ -143,7 +109,7 @@ pub trait ObjectAccessExt: easy::Access + Sized {
     /// If there is no parent, the `reference` is expected to not exist yet.
     ///
     /// The method fails immediately if a `reference` lock can't be acquired.
-    fn commit<Name, E>(
+    pub fn commit<Name, E>(
         &self,
         reference: Name,
         author: &git_actor::SignatureRef<'_>,
@@ -151,7 +117,7 @@ pub trait ObjectAccessExt: easy::Access + Sized {
         message: impl AsRef<str>,
         tree: impl Into<ObjectId>,
         parents: impl IntoIterator<Item = impl Into<ObjectId>>,
-    ) -> Result<Oid<'_, Self>, commit::Error>
+    ) -> Result<Oid<'_>, commit::Error>
     where
         Name: TryInto<FullName, Error = E>,
         commit::Error: From<E>,
@@ -160,8 +126,6 @@ pub trait ObjectAccessExt: easy::Access + Sized {
             transaction::{Change, RefEdit},
             Target,
         };
-
-        use crate::easy::ext::ReferenceAccessExt;
 
         // TODO: possibly use CommitRef to save a few allocations (but will have to allocate for object ids anyway.
         //       This can be made vastly more efficient though if we wanted to, so we lie in the API
@@ -210,5 +174,3 @@ pub trait ObjectAccessExt: easy::Access + Sized {
         Ok(commit_id)
     }
 }
-
-impl<A> ObjectAccessExt for A where A: easy::Access + Sized {}

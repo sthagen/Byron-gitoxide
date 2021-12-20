@@ -1,4 +1,4 @@
-use std::{convert::TryFrom, ffi::OsStr, io, path::Path, str::FromStr, sync::Arc, time::Instant};
+use std::{ffi::OsStr, io, path::Path, str::FromStr, time::Instant};
 
 use anyhow::anyhow;
 use git_repository as git;
@@ -7,8 +7,8 @@ use git_repository::{
     hash::ObjectId,
     interrupt,
     objs::bstr::ByteVec,
-    odb::{pack, pack::cache::DecodeEntry, FindExt},
-    prelude::{Finalize, ReferenceAccessExt},
+    odb::{pack, pack::FindExt},
+    prelude::Finalize,
     progress, traverse, Progress,
 };
 
@@ -90,6 +90,7 @@ pub struct Context<W> {
     /// Note that caches also incur a cost and poorly used caches may reduce overall performance.
     ///
     /// This is a total, shared among all threads if `thread_limit` permits.
+    /// Only used when known to be effective, namely when `expansion == ObjectExpansion::TreeDiff`.
     pub object_cache_size_in_bytes: usize,
     /// The output stream for use of additional information
     pub out: W,
@@ -119,7 +120,7 @@ where
     progress.init(Some(2), progress::steps());
     let tips = tips.into_iter();
     let make_cancellation_err = || anyhow!("Cancelled by user");
-    let (odb, input): (
+    let (mut handle, input): (
         _,
         Box<dyn Iterator<Item = Result<ObjectId, input_iteration::Error>> + Send>,
     ) = match input {
@@ -127,42 +128,47 @@ where
             use git::bstr::ByteSlice;
             use os_str_bytes::OsStrBytes;
             let mut progress = progress.add_child("traversing");
-            let repo = repo.into_easy();
             progress.init(None, progress::count("commits"));
             let tips = tips
-                .map(|tip| {
-                    ObjectId::from_hex(&Vec::from_os_str_lossy(tip.as_ref())).or_else(|_| {
-                        repo.find_reference(tip.as_ref().to_raw_bytes().as_bstr())
-                            .map_err(anyhow::Error::from)
-                            .and_then(|r| r.into_fully_peeled_id().map(|oid| oid.detach()).map_err(Into::into))
-                    })
+                .map({
+                    let easy = repo.to_easy();
+                    move |tip| {
+                        ObjectId::from_hex(&Vec::from_os_str_lossy(tip.as_ref())).or_else(|_| {
+                            easy.find_reference(tip.as_ref().to_raw_bytes().as_bstr())
+                                .map_err(anyhow::Error::from)
+                                .and_then(|r| r.into_fully_peeled_id().map(|oid| oid.detach()).map_err(Into::into))
+                        })
+                    }
                 })
                 .collect::<Result<Vec<_>, _>>()?;
-            let odb = Arc::new(git::Repository::try_from(repo)?.odb);
+            let handle = repo.objects.into_shared_arc().to_cache_arc();
             let iter = Box::new(
                 traverse::commit::Ancestors::new(tips, traverse::commit::ancestors::State::default(), {
-                    let db = Arc::clone(&odb);
-                    move |oid, buf| db.find_commit_iter(oid, buf, &mut pack::cache::Never).ok()
+                    let handle = handle.clone();
+                    move |oid, buf| handle.find_commit_iter(oid, buf).ok().map(|t| t.0)
                 })
                 .map(|res| res.map_err(Into::into))
                 .inspect(move |_| progress.inc()),
             );
-            (odb, iter)
+            (handle, iter)
         }
         Some(input) => {
             let mut progress = progress.add_child("iterating");
             progress.init(None, progress::count("objects"));
-            let iter = Box::new(
-                input
-                    .lines()
-                    .map(|hex_id| {
-                        hex_id
-                            .map_err(Into::into)
-                            .and_then(|hex_id| ObjectId::from_hex(hex_id.as_bytes()).map_err(Into::into))
-                    })
-                    .inspect(move |_| progress.inc()),
-            );
-            (Arc::new(repo.odb), iter)
+            let handle = repo.objects.into_shared_arc().to_cache_arc();
+            (
+                handle,
+                Box::new(
+                    input
+                        .lines()
+                        .map(|hex_id| {
+                            hex_id
+                                .map_err(Into::into)
+                                .and_then(|hex_id| ObjectId::from_hex(hex_id.as_bytes()).map_err(Into::into))
+                        })
+                        .inspect(move |_| progress.inc()),
+                ),
+            )
         }
     };
 
@@ -177,30 +183,33 @@ where
         } else {
             Some(1)
         };
+        if nondeterministic_count && !may_use_multiple_threads {
+            progress.fail("Cannot use multi-threaded counting in tree-diff object expansion mode as it may yield way too many objects.");
+        }
         let (_, _, thread_count) = git::parallel::optimize_chunk_size_and_thread_limit(50, None, thread_limit, None);
-        let make_caches = move || {
-            let per_thread_object_cache_size = object_cache_size_in_bytes / thread_count;
-            let object_cache: Box<dyn pack::cache::Object> = if per_thread_object_cache_size < 10_000 {
-                Box::new(pack::cache::object::Never) as Box<dyn pack::cache::Object>
-            } else {
-                Box::new(pack::cache::object::MemoryCappedHashmap::new(
-                    per_thread_object_cache_size,
-                ))
-            };
-            let per_thread_object_pack_size = pack_cache_size_in_bytes / thread_count;
-            let pack_cache: Box<dyn DecodeEntry> = if per_thread_object_pack_size < 10_000 {
-                Box::new(pack::cache::Never) as Box<dyn DecodeEntry>
-            } else {
-                Box::new(pack::cache::lru::MemoryCappedHashmap::new(per_thread_object_pack_size))
-            };
-            (pack_cache, object_cache)
-        };
         let progress = progress::ThroughputOnDrop::new(progress);
+
+        {
+            let per_thread_object_pack_size = pack_cache_size_in_bytes / thread_count;
+            if per_thread_object_pack_size >= 10_000 {
+                handle.set_pack_cache(move || {
+                    Box::new(pack::cache::lru::MemoryCappedHashmap::new(per_thread_object_pack_size))
+                });
+            }
+            if matches!(expansion, ObjectExpansion::TreeDiff) {
+                handle.set_object_cache(move || {
+                    let per_thread_object_cache_size = object_cache_size_in_bytes / thread_count;
+                    Box::new(pack::cache::object::MemoryCappedHashmap::new(
+                        per_thread_object_cache_size,
+                    ))
+                });
+            }
+        }
         let input_object_expansion = expansion.into();
+        handle.inner.prevent_pack_unload();
         let (mut counts, count_stats) = if may_use_multiple_threads {
             pack::data::output::count::objects(
-                Arc::clone(&odb),
-                make_caches,
+                handle.clone(),
                 input,
                 progress,
                 &interrupt::IS_INTERRUPTED,
@@ -211,10 +220,8 @@ where
                 },
             )?
         } else {
-            let mut caches = make_caches();
             pack::data::output::count::objects_unthreaded(
-                Arc::clone(&odb),
-                (&mut caches.0, &mut caches.1),
+                handle.clone(),
                 input,
                 progress,
                 &interrupt::IS_INTERRUPTED,
@@ -232,8 +239,7 @@ where
         let progress = progress.add_child("creating entries");
         pack::data::output::InOrderIter::from(pack::data::output::entry::iter_from_counts(
             counts,
-            Arc::clone(&odb),
-            || pack::cache::Never,
+            handle,
             progress,
             pack::data::output::entry::iter_from_counts::Options {
                 thread_limit,

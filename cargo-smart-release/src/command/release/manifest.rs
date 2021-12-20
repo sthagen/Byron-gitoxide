@@ -7,10 +7,10 @@ use std::{
 
 use anyhow::bail;
 use cargo_metadata::{camino::Utf8PathBuf, Package};
-use git_repository::lock::File;
+use git_repository::{easy::Oid, lock::File};
 use semver::{Version, VersionReq};
 
-use super::{cargo, git, Context, Oid, Options};
+use super::{cargo, git, Context, Options};
 use crate::{
     changelog,
     changelog::{write::Linkables, Section},
@@ -32,7 +32,7 @@ pub(in crate::command::release_impl) fn edit_version_and_fixup_dependent_crates_
     let Options { dry_run, changelog, .. } = opts;
     let crates_and_versions_to_be_published: Vec<_> = crates
         .iter()
-        .filter_map(|c| try_to_published_crate_and_new_version(c))
+        .filter_map(try_to_published_crate_and_new_version)
         .collect();
     let GatherOutcome {
         pending_changelogs,
@@ -565,7 +565,7 @@ fn set_version_and_update_package_dependency(
             }
         }
     }
-    let new_manifest = doc.to_string_in_original_order();
+    let new_manifest = doc.to_string();
     out.write_all(new_manifest.as_bytes())?;
 
     Ok(manifest != new_manifest)

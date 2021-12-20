@@ -1,5 +1,4 @@
 use std::{
-    cell::RefCell,
     collections::{BTreeMap, HashMap},
     iter::FromIterator,
     path::PathBuf,
@@ -11,7 +10,7 @@ use git_repository as git;
 use git_repository::{
     bstr::ByteSlice,
     easy::head,
-    prelude::{CacheAccessExt, ObjectAccessExt, ObjectIdExt, ReferenceAccessExt, ReferenceExt},
+    prelude::{ObjectIdExt, ReferenceExt},
 };
 
 use crate::{
@@ -29,17 +28,23 @@ pub enum SegmentScope {
     EntireHistory,
 }
 
-pub fn collect(repo: &git::Easy) -> anyhow::Result<Option<commit::History>> {
-    let prev = repo.object_cache_size(64 * 1024)?;
+pub fn collect(handle: &git::easy::Handle) -> anyhow::Result<Option<commit::History>> {
+    let mut repo = handle.clone();
+    repo.object_cache_size(64 * 1024);
     let reference = match repo.head()?.peeled()?.kind {
         head::Kind::Detached { .. } => bail!("Refusing to operate on a detached head."),
         head::Kind::Unborn { .. } => return Ok(None),
-        head::Kind::Symbolic(r) => r.attach(repo),
+        head::Kind::Symbolic(r) => r.attach(&repo),
     };
 
     let mut items = Vec::new();
     let mut data_by_tree_id = HashMap::default();
-    for commit_id in reference.id().ancestors()?.all() {
+    for commit_id in reference
+        .id()
+        .ancestors()
+        .sorting(git::traverse::commit::Sorting::ByCommitterDate)
+        .all()
+    {
         let commit_id = commit_id?;
         let (message, tree_id, parent_tree_id, commit_time) = {
             let (message, tree_id, commit_time, parent_commit_id) = {
@@ -55,7 +60,7 @@ pub fn collect(repo: &git::Easy) -> anyhow::Result<Option<commit::History>> {
             (
                 message,
                 tree_id,
-                parent_commit_id.map(|id| id.attach(repo).object().expect("present").to_commit().tree()),
+                parent_commit_id.map(|id| id.attach(&repo).object().expect("present").to_commit().tree()),
                 commit_time,
             )
         };
@@ -82,12 +87,6 @@ pub fn collect(repo: &git::Easy) -> anyhow::Result<Option<commit::History>> {
             parent_tree_id,
         });
     }
-    repo.object_cache_size(prev)?;
-    items.sort_by(|lhs, rhs| {
-        (lhs.commit_time.time as i64 + lhs.commit_time.offset as i64)
-            .cmp(&(rhs.commit_time.time as i64 + rhs.commit_time.offset as i64))
-            .reverse()
-    });
 
     Ok(Some(commit::History {
         head: reference.detach(),
@@ -235,24 +234,13 @@ fn add_item_if_package_changed<'a>(
             };
         }
         Filter::Slow(ref components) => {
-            let prev = ctx.repo.object_cache_size(1024 * 1024)?;
-            let current_data = RefCell::new(item.tree_id);
-            let current = git::easy::TreeRef::from_id_and_data(
-                item.id,
-                std::cell::Ref::map(current_data.borrow(), |v| v.as_slice()),
-                &ctx.repo,
-            )
-            .lookup_path(components.iter().copied())?;
+            let mut repo = ctx.repo.clone();
+            repo.object_cache_size(1024 * 1024);
+            let current = git::easy::Tree::from_data(item.id, data_by_tree_id[&item.tree_id].to_owned(), &ctx.repo)
+                .lookup_path(components.iter().copied())?;
             let parent = match item.parent_tree_id {
-                Some(tree_id) => {
-                    let parent_data = RefCell::new(data_by_tree_id[&tree_id].to_owned());
-                    git::easy::TreeRef::from_id_and_data(
-                        tree_id,
-                        std::cell::Ref::map(parent_data.borrow(), |v| v.as_slice()),
-                        &ctx.repo,
-                    )
-                    .lookup_path(components.iter().copied())?
-                }
+                Some(tree_id) => git::easy::Tree::from_data(tree_id, data_by_tree_id[&tree_id].to_owned(), &ctx.repo)
+                    .lookup_path(components.iter().copied())?,
                 None => None,
             };
             match (current, parent) {
@@ -264,7 +252,6 @@ fn add_item_if_package_changed<'a>(
                 (Some(_), None) => history.push(item),
                 (None, Some(_)) | (None, None) => {}
             };
-            ctx.repo.object_cache_size(prev)?;
         }
     };
     Ok(())

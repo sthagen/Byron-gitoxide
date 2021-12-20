@@ -4,7 +4,6 @@ use anyhow::anyhow;
 use diff::tree::visit::{Action, Change};
 use git_repository::{
     diff,
-    easy::object,
     hash::{oid, ObjectId},
     objs::{bstr::BStr, TreeRefIter},
     odb,
@@ -34,11 +33,16 @@ fn main() -> anyhow::Result<()> {
         .find(&name)?
         .peel_to_id_in_place(&repo.refs, peel::none)?
         .to_owned();
-    let db = &repo.odb;
+    let db = &repo.objects;
 
     let start = Instant::now();
     let all_commits = commit_id
-        .ancestors(|oid, buf| db.find_commit_iter(oid, buf, &mut odb::pack::cache::Never).ok())
+        .ancestors({
+            let db = db
+                .to_cache()
+                .with_pack_cache(|| Box::new(odb::pack::cache::lru::StaticLinkedList::<64>::default()));
+            move |oid, buf| db.find_commit_iter(oid, buf).ok()
+        })
         .collect::<Result<Vec<_>, _>>()?;
     let num_diffs = all_commits.len();
     let elapsed = start.elapsed();
@@ -49,53 +53,15 @@ fn main() -> anyhow::Result<()> {
         all_commits.len() as f32 / elapsed.as_secs_f32()
     );
 
-    struct ObjectInfo {
-        kind: object::Kind,
-        data: Vec<u8>,
-    }
-    impl memory_lru::ResidentSize for ObjectInfo {
-        fn resident_size(&self) -> usize {
-            self.data.len()
-        }
-    }
-    fn find_with_lru_mem_cache<'b>(
-        oid: &oid,
-        buf: &'b mut Vec<u8>,
-        obj_cache: &mut memory_lru::MemoryLruCache<ObjectId, ObjectInfo>,
-        db: &odb::linked::Store,
-        pack_cache: &mut impl odb::pack::cache::DecodeEntry,
-    ) -> Option<odb::data::Object<'b>> {
-        let oid = oid.to_owned();
-        match obj_cache.get(&oid) {
-            Some(ObjectInfo { kind, data }) => {
-                buf.resize(data.len(), 0);
-                buf.copy_from_slice(data);
-                Some(odb::data::Object::new(*kind, buf))
-            }
-            None => {
-                let obj = db.find(oid, buf, pack_cache).ok();
-                if let Some(ref obj) = obj {
-                    obj_cache.insert(
-                        oid,
-                        ObjectInfo {
-                            kind: obj.kind,
-                            data: obj.data.to_owned(),
-                        },
-                    );
-                }
-                obj
-            }
-        }
-    }
-
     let start = Instant::now();
     let num_deltas = do_gitoxide_tree_diff(
         &all_commits,
         || {
-            let mut pack_cache = odb::pack::cache::lru::MemoryCappedHashmap::new(cache_size());
-            let db = &db;
-            let mut obj_cache = memory_lru::MemoryLruCache::new(cache_size());
-            move |oid, buf: &mut Vec<u8>| find_with_lru_mem_cache(oid, buf, &mut obj_cache, db, &mut pack_cache)
+            let handle = db
+                .to_cache()
+                .with_pack_cache(|| Box::new(odb::pack::cache::lru::MemoryCappedHashmap::new(cache_size())))
+                .with_object_cache(|| Box::new(odb::pack::cache::object::MemoryCappedHashmap::new(cache_size())));
+            move |oid, buf: &mut Vec<u8>| handle.find(oid, buf).ok()
         },
         Computation::MultiThreaded,
     )?;
@@ -115,17 +81,38 @@ fn main() -> anyhow::Result<()> {
     let num_deltas = do_gitoxide_tree_diff(
         &all_commits,
         || {
-            let mut pack_cache = odb::pack::cache::lru::MemoryCappedHashmap::new(cache_size());
-            let db = &db;
-            let mut obj_cache = memory_lru::MemoryLruCache::new(cache_size());
-            move |oid, buf: &mut Vec<u8>| find_with_lru_mem_cache(oid, buf, &mut obj_cache, db, &mut pack_cache)
+            let handle = db
+                .to_cache()
+                .with_object_cache(|| Box::new(odb::pack::cache::object::MemoryCappedHashmap::new(cache_size())));
+            move |oid, buf: &mut Vec<u8>| handle.find(oid, buf).ok()
+        },
+        Computation::MultiThreaded,
+    )?;
+    let elapsed = start.elapsed();
+    println!(
+        "gitoxide-deltas PARALLEL (cache = memory-LRU -> {:.0}MB ): collect {} tree deltas of {} trees-diffs in {:?} ({:0.0} deltas/s, {:0.0} tree-diffs/s)",
+        cache_size() as f32 / (1024 * 1024) as f32,
+        num_deltas,
+        num_diffs,
+        elapsed,
+        num_deltas as f32 / elapsed.as_secs_f32(),
+        num_diffs as f32 / elapsed.as_secs_f32()
+    );
+
+    let start = Instant::now();
+    let num_deltas = do_gitoxide_tree_diff(
+        &all_commits,
+        || {
+            let handle = db
+                .to_cache()
+                .with_object_cache(|| Box::new(odb::pack::cache::object::MemoryCappedHashmap::new(cache_size())));
+            move |oid, buf: &mut Vec<u8>| handle.find(oid, buf).ok()
         },
         Computation::SingleThreaded,
     )?;
     let elapsed = start.elapsed();
     println!(
-        "gitoxide-deltas (cache = memory-LRU -> {:.0}MB | pack -> {:.0}MB): collect {} tree deltas of {} trees-diffs in {:?} ({:0.0} deltas/s, {:0.0} tree-diffs/s)",
-        cache_size() as f32 / (1024 * 1024) as f32,
+        "gitoxide-deltas (cache = memory-LRU -> {:.0}MB): collect {} tree deltas of {} trees-diffs in {:?} ({:0.0} deltas/s, {:0.0} tree-diffs/s)",
         cache_size() as f32 / (1024 * 1024) as f32,
         num_deltas,
         num_diffs,
@@ -201,7 +188,7 @@ fn do_libgit2_treediff(commits: &[ObjectId], repo_dir: &std::path::Path, mode: C
 fn do_gitoxide_tree_diff<C, L>(commits: &[ObjectId], make_find: C, mode: Computation) -> anyhow::Result<usize>
 where
     C: Fn() -> L + Sync,
-    L: for<'b> FnMut(&oid, &'b mut Vec<u8>) -> Option<odb::data::Object<'b>>,
+    L: for<'b> FnMut(&oid, &'b mut Vec<u8>) -> Option<git_repository::objs::Data<'b>>,
 {
     let changes: usize = match mode {
         Computation::MultiThreaded => {
@@ -252,14 +239,14 @@ where
 
     fn find_tree_iter<'b, L>(id: &oid, buf: &'b mut Vec<u8>, mut find: L) -> Option<TreeRefIter<'b>>
     where
-        L: for<'a> FnMut(&oid, &'a mut Vec<u8>) -> Option<odb::data::Object<'a>>,
+        L: for<'a> FnMut(&oid, &'a mut Vec<u8>) -> Option<git_repository::objs::Data<'a>>,
     {
         find(id, buf).and_then(|o| o.try_into_tree_iter())
     }
 
     fn tree_iter_by_commit<'b, L>(id: &oid, buf: &'b mut Vec<u8>, mut find: L) -> TreeRefIter<'b>
     where
-        L: for<'a> FnMut(&oid, &'a mut Vec<u8>) -> Option<odb::data::Object<'a>>,
+        L: for<'a> FnMut(&oid, &'a mut Vec<u8>) -> Option<git_repository::objs::Data<'a>>,
     {
         let tid = find(id, buf)
             .expect("commit present")

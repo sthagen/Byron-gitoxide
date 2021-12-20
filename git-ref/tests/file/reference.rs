@@ -47,7 +47,7 @@ mod reflog {
 }
 
 mod peel {
-    use git_odb::Find;
+    use git_odb::pack::Find;
     use git_ref::{file::ReferenceExt, peel, Reference};
     use git_testtools::hex_to_id;
 
@@ -130,12 +130,12 @@ mod peel {
             "points to a tag object without actual object lookup"
         );
 
-        let odb = git_odb::linked::Store::at(store.base().join("objects"))?;
+        let odb = git_odb::at(store.base().join("objects"))?;
         let mut r: Reference = store.find_loose("dt1")?.into();
         assert_eq!(
             r.peel_to_id_in_place(&store, |oid, buf| {
-                odb.try_find(oid, buf, &mut git_odb::pack::cache::Never)
-                    .map(|obj| obj.map(|obj| (obj.kind, obj.data)))
+                odb.try_find(oid, buf)
+                    .map(|obj| obj.map(|(obj, _)| (obj.kind, obj.data)))
             })?,
             commit,
             "points to the commit with lookup"

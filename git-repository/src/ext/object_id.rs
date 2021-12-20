@@ -12,8 +12,8 @@ pub trait ObjectIdExt: Sealed {
     where
         Find: for<'a> FnMut(&git_hash::oid, &'a mut Vec<u8>) -> Option<git_object::CommitRefIter<'a>>;
 
-    /// Infuse this object id with an [`easy::Access`].
-    fn attach<A: easy::Access + Sized>(self, access: &A) -> easy::Oid<'_, A>;
+    /// Infuse this object id with an [`easy::Handle`].
+    fn attach(self, handle: &easy::Handle) -> easy::Oid<'_>;
 }
 
 impl Sealed for ObjectId {}
@@ -26,7 +26,7 @@ impl ObjectIdExt for ObjectId {
         Ancestors::new(Some(self), ancestors::State::default(), find)
     }
 
-    fn attach<A: easy::Access + Sized>(self, access: &A) -> easy::Oid<'_, A> {
-        easy::Oid::from_id(self, access)
+    fn attach(self, handle: &easy::Handle) -> easy::Oid<'_> {
+        easy::Oid::from_id(self, handle)
     }
 }

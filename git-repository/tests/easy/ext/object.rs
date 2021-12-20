@@ -1,14 +1,12 @@
 mod write_object {
-    use git_repository::prelude::{ObjectAccessExt, RepositoryAccessExt};
-
     #[test]
     fn empty_tree() -> crate::Result {
         let tmp = tempfile::tempdir()?;
-        let repo = git_repository::init_bare(&tmp)?.into_easy();
+        let repo = git_repository::init_bare(&tmp)?.to_easy();
         let oid = repo.write_object(&git_repository::objs::TreeRef::empty())?;
         assert_eq!(
             oid,
-            git_repository::hash::ObjectId::empty_tree(repo.hash_kind()?),
+            git_repository::hash::ObjectId::empty_tree(repo.hash_kind()),
             "it produces a well-known empty tree id"
         );
         Ok(())
@@ -16,23 +14,17 @@ mod write_object {
 }
 
 mod find {
-    use git_repository::prelude::{CacheAccessExt, ReferenceAccessExt};
 
     #[test]
     fn find_and_try_find_with_and_without_object_cache() -> crate::Result {
-        let repo = crate::basic_repo()?;
+        let mut repo = crate::basic_repo()?;
         for round in 1..=2 {
             match round {
-                1 => assert!(
-                    repo.object_cache_size(None)?.is_none(),
-                    "default is to have no object cache"
-                ),
-                2 => {
-                    repo.object_cache_size(128 * 1024)?;
-                }
+                1 => repo.object_cache_size(None),
+                2 => repo.object_cache_size(128 * 1024),
                 _ => unreachable!("BUG"),
             }
-            for commit_id in repo.head()?.peeled()?.id().expect("born").ancestors()?.all() {
+            for commit_id in repo.head()?.peeled()?.id().expect("born").ancestors().all() {
                 let commit = commit_id?;
                 assert_eq!(commit.object()?.kind, git_object::Kind::Commit);
                 if round == 2 {
@@ -44,22 +36,12 @@ mod find {
                 }
                 assert_eq!(commit.try_object()?.expect("exists").kind, git_object::Kind::Commit,);
             }
-
-            if round == 2 {
-                assert_eq!(
-                    repo.object_cache_size(None)?,
-                    Some(128 * 1024),
-                    "it returns the previous cache"
-                );
-            }
         }
         Ok(())
     }
 }
 
 mod tag {
-    use git_repository::prelude::{ObjectAccessExt, ReferenceAccessExt, RepositoryAccessExt};
-
     #[test]
     fn simple() -> crate::Result {
         let (repo, _keep) = crate::easy_repo_rw("make_basic_repo.sh")?;
@@ -69,7 +51,7 @@ mod tag {
             "v1.0.0",
             &current_head_id,
             git_object::Kind::Commit,
-            Some(&repo.committer()?.to_ref()),
+            Some(&repo.committer().to_ref()),
             message,
             git_ref::transaction::PreviousValue::MustNotExist,
         )?;
@@ -80,7 +62,7 @@ mod tag {
         assert_eq!(tag.name, "v1.0.0");
         assert_eq!(current_head_id, tag.target(), "the tag points to the commit");
         assert_eq!(tag.target_kind, git_object::Kind::Commit);
-        assert_eq!(*tag.tagger.as_ref().expect("tagger"), repo.committer()?.to_ref());
+        assert_eq!(*tag.tagger.as_ref().expect("tagger"), repo.committer().to_ref());
         assert_eq!(tag.message, message);
         Ok(())
     }
@@ -88,12 +70,11 @@ mod tag {
 
 mod commit {
     use git_repository as git;
-    use git_repository::prelude::{ObjectAccessExt, ReferenceAccessExt};
     use git_testtools::hex_to_id;
     #[test]
     fn parent_in_initial_commit_causes_failure() {
         let tmp = tempfile::tempdir().unwrap();
-        let repo = git::init(&tmp).unwrap().into_easy();
+        let repo = git::init(&tmp).unwrap().to_easy();
         let empty_tree_id = repo.write_object(&git::objs::Tree::empty()).unwrap().detach();
         let author = git::actor::Signature::empty();
         let err = repo
@@ -116,7 +97,7 @@ mod commit {
     #[test]
     fn single_line_initial_commit_empty_tree_ref_nonexisting() -> crate::Result {
         let tmp = tempfile::tempdir()?;
-        let repo = git::init(&tmp)?.into_easy();
+        let repo = git::init(&tmp)?.to_easy();
         let empty_tree_id = repo.write_object(&git::objs::Tree::empty())?;
         let author = git::actor::Signature::empty();
         let commit_id = repo.commit(

@@ -22,14 +22,8 @@ release-all: release release-lean release-small ## all release builds
 release: always ## the default build, big but pretty (builds in ~2min 35s)
 	cargo build --release
 
-release-unix: always ## the default build, big but pretty, unix only (builds in ~2min 35s)
-	cargo build --release --no-default-features --features max-termion
-
 release-lean: always ## lean and fast, with line renderer (builds in ~1min 30s)
 	cargo build --release --no-default-features --features lean
-
-release-light: always ## lean and fast, log only (builds in ~1min 14s)
-	cargo build --release --no-default-features --features light
 
 release-small: always ## minimal dependencies, at cost of performance (builds in ~46s)
 	cargo build --release --no-default-features --features small
@@ -39,14 +33,8 @@ release-small: always ## minimal dependencies, at cost of performance (builds in
 debug: always ## the default build, big but pretty
 	cargo build
 
-debug-unix: always ## the default build, big but pretty, unix only
-	cargo build --no-default-features --features max-termion
-
 debug-lean: always ## lean and fast, with line renderer
 	cargo build --no-default-features --features lean
-
-debug-light: always ## lean and fast
-	cargo build --no-default-features --features light
 
 debug-small: always ## minimal dependencies, at cost of performance
 	cargo build --no-default-features --features small
@@ -69,23 +57,20 @@ audit: ## run various auditing tools to assure we are legal and safe
 
 doc: ## Run cargo doc on all crates
 	cargo doc
-	cargo doc --features=max,lean,light,small
+	cargo doc --features=max,lean,small
 
 clippy: ## Run cargo clippy on all crates
 	cargo clippy --all --tests
 	cargo clippy --all --no-default-features --features small
-	cargo clippy --all --no-default-features --features light-async --tests
+	cargo clippy --all --no-default-features --features lean-async --tests
 
 check: ## Build all code in suitable configurations
 	cargo check --all
 	cargo check --no-default-features --features small
-	cargo check --no-default-features --features light
-	cargo check --no-default-features --features light-async
-	if cargo check --features light-async 2>/dev/null; then false; else true; fi
+	if cargo check --features lean-async 2>/dev/null; then false; else true; fi
 	cargo check --no-default-features --features lean
-	cargo check --no-default-features --features lean-termion
+	cargo check --no-default-features --features lean-async
 	cargo check --no-default-features --features max
-	cargo check --no-default-features --features max-termion
 	cd git-actor && cargo check \
 				 && cargo check --features local-time-support
 	cd gitoxide-core && cargo check \
@@ -171,17 +156,17 @@ jtt = target/debug/jtt
 journey-tests: always  ## run journey tests (max)
 	cargo build
 	cargo build --package git-testtools --bin jtt
-	./tests/journey.sh target/debug/gix target/debug/gix $(jtt) max
+	./tests/journey.sh target/debug/ein target/debug/gix $(jtt) max
 
 journey-tests-small: always ## run journey tests (lean-cli)
 	cargo build --no-default-features --features small
 	cd tests/tools && cargo build
-	./tests/journey.sh target/debug/gix target/debug/gix $(jtt) small
+	./tests/journey.sh target/debug/ein target/debug/gix $(jtt) small
 
-journey-tests-async: always ## run journey tests (light-async)
-	cargo build --no-default-features --features light-async
+journey-tests-async: always ## run journey tests (lean-async)
+	cargo build --no-default-features --features lean-async
 	cd tests/tools && cargo build
-	./tests/journey.sh target/debug/gix target/debug/gix $(jtt) async
+	./tests/journey.sh target/debug/ein target/debug/gix $(jtt) async
 
 journey-tests-smart-release:
 	cargo build --package cargo-smart-release

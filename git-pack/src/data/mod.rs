@@ -16,17 +16,6 @@ pub struct Entry {
     pub data_offset: u64,
 }
 
-/// A borrowed object using a borrowed slice as backing buffer.
-#[derive(PartialEq, Eq, Debug, Hash, Ord, PartialOrd, Clone)]
-pub struct Object<'a> {
-    /// kind of object
-    pub kind: git_object::Kind,
-    /// decoded, decompressed data, owned by a backing store.
-    pub data: &'a [u8],
-    /// If `Some`, this object is from a pack whose pack location can be used to look up pack related information
-    pub pack_location: Option<crate::bundle::Location>,
-}
-
 mod file;
 pub use file::{decode_entry, verify, ResolvedBase};
 ///
@@ -34,8 +23,6 @@ pub mod header;
 
 ///
 pub mod entry;
-
-pub mod object;
 
 ///
 pub mod input;
@@ -67,11 +54,13 @@ impl Default for Version {
 pub struct File {
     data: FileBuffer,
     path: std::path::PathBuf,
-    /// A hash to represent the `path` field when used with cache lookup, or a way to identify this pack by its location on disk.
+    /// A value to represent this pack uniquely when used with cache lookup, or a way to identify this pack by its location on disk.
+    /// The same location on disk should yield the same id.
     ///
-    /// Note that `path` might not be canonicalized, thus different hashes might actually refer to the same pack on disk. This will
-    /// only lead to less efficient cache usage.
-    /// TODO: remove this intrinsic id as it will henceforth be handled separately by the object store
+    /// These must be unique per pack and must be stable, that is they don't change if the pack doesn't change.
+    /// If the same id is assigned (or reassigned) to different packs, pack creation or cache access will fail in hard-to-debug ways.
+    ///
+    /// This value is controlled by the owning object store, which can use it in whichever way it wants as long as the above constraints are met.
     pub id: u32,
     version: Version,
     num_objects: u32,

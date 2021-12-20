@@ -3,19 +3,16 @@ use git_object::{bstr::BStr, TreeRefIter};
 
 use crate::{
     easy,
-    easy::{ext::ObjectAccessExt, object::find, TreeRef},
+    easy::{object::find, Tree},
 };
 
-impl<'repo, A> TreeRef<'repo, A>
-where
-    A: easy::Access + Sized,
-{
+impl<'repo> Tree<'repo> {
     /// Obtain a tree instance by handing in all components that it is made up of.
-    pub fn from_id_and_data(id: impl Into<ObjectId>, data: std::cell::Ref<'repo, [u8]>, access: &'repo A) -> Self {
-        TreeRef {
+    pub fn from_data(id: impl Into<ObjectId>, data: Vec<u8>, handle: &'repo easy::Handle) -> Self {
+        Tree {
             id: id.into(),
             data,
-            access,
+            handle,
         }
     }
     // TODO: move implementation to git-object, tests.
@@ -27,7 +24,7 @@ where
     /// Searching tree entries is currently done in sequence, which allows to the search to be allocation free. It would be possible
     /// to re-use a vector and use a binary search instead, which might be able to improve performance over all.
     /// However, a benchmark should be created first to have some data and see which trade-off to choose here.
-    pub fn lookup_path<I, P>(mut self, path: I) -> Result<Option<git_object::tree::Entry>, find::existing::Error>
+    pub fn lookup_path<I, P>(mut self, path: I) -> Result<Option<git_object::tree::Entry>, find::existing::OdbError>
     where
         I: IntoIterator<Item = P>,
         P: PartialEq<BStr>,
@@ -44,10 +41,10 @@ where
                         return Ok(Some(entry.into()));
                     } else {
                         let next_id = entry.oid.to_owned();
-                        let access = self.access;
+                        let handle = self.handle;
                         drop(entry);
                         drop(self);
-                        self = match access.find_object(next_id)?.try_into_tree() {
+                        self = match handle.find_object(next_id)?.try_into_tree() {
                             Ok(tree) => tree,
                             Err(_) => return Ok(None),
                         };

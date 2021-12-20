@@ -22,11 +22,6 @@ use crate::data::{output, output::ChunkId};
 ///
 /// ## Discussion
 ///
-/// ### Caches
-///
-/// `make_cache` is only suitable for speeding up cache access of blobs as these are not looked up during counting anymore - it only
-/// sees trees as only these are needed for traversal/object counting.
-///
 /// ### Advantages
 ///
 /// * Begins writing immediately and supports back-pressure.
@@ -34,15 +29,13 @@ use crate::data::{output, output::ChunkId};
 ///
 /// ### Disadvantages
 ///
-/// * **does not yet support thin packs** as we don't have a way to determine which objects are supposed to be thin.
 /// * ~~currently there is no way to easily write the pack index, even though the state here is uniquely positioned to do
 ///   so with minimal overhead (especially compared to `gix index-from-pack`)~~ Probably works now by chaining Iterators
 ///  or keeping enough state to write a pack and then generate an index with recorded data.
 ///
-pub fn iter_from_counts<Find, Cache>(
+pub fn iter_from_counts<Find>(
     mut counts: Vec<output::Count>,
     db: Find,
-    make_cache: impl Fn() -> Cache + Send + Clone + 'static,
     mut progress: impl Progress,
     Options {
         version,
@@ -56,7 +49,6 @@ pub fn iter_from_counts<Find, Cache>(
 where
     Find: crate::Find + Send + Clone + 'static,
     <Find as crate::Find>::Error: Send,
-    Cache: crate::cache::DecodeEntry,
 {
     assert!(
         matches!(version, crate::data::Version::V2),
@@ -153,15 +145,14 @@ where
             let progress = Arc::clone(&progress);
             move |n| {
                 (
-                    Vec::new(),   // object data buffer
-                    make_cache(), // cache to speed up pack operations
+                    Vec::new(), // object data buffer
                     progress.lock().add_child(format!("thread {}", n)),
                 )
             }
         },
         {
             let counts = Arc::clone(&counts);
-            move |(chunk_id, chunk_range): (ChunkId, std::ops::Range<usize>), (buf, cache, progress)| {
+            move |(chunk_id, chunk_range): (ChunkId, std::ops::Range<usize>), (buf, progress)| {
                 let mut out = Vec::new();
                 let chunk = &counts[chunk_range];
                 let mut stats = Outcome::default();
@@ -195,13 +186,8 @@ where
                                 allow_thin_pack.then(|| {
                                     |pack_id, base_offset| {
                                         let (cached_pack_id, cache) = pack_offsets_to_id.get_or_insert_with(|| {
-                                            db.bundle_by_pack_id(pack_id)
-                                                .map(|b| {
-                                                    let mut v = b
-                                                        .index
-                                                        .iter()
-                                                        .map(|e| (e.pack_offset, e.oid))
-                                                        .collect::<Vec<_>>();
+                                            db.pack_offsets_and_oid(pack_id)
+                                                .map(|mut v| {
                                                     v.sort_by_key(|e| e.0);
                                                     (pack_id, v)
                                                 })
@@ -221,8 +207,8 @@ where
                                     stats.objects_copied_from_pack += 1;
                                     entry
                                 }
-                                None => match db.try_find(count.id, buf, cache).map_err(Error::FindExisting)? {
-                                    Some(obj) => {
+                                None => match db.try_find(count.id, buf).map_err(Error::FindExisting)? {
+                                    Some((obj, _location)) => {
                                         stats.decoded_and_recompressed_objects += 1;
                                         output::Entry::from_data(count, &obj)
                                     }
@@ -233,8 +219,8 @@ where
                                 },
                             }
                         }
-                        None => match db.try_find(count.id, buf, cache).map_err(Error::FindExisting)? {
-                            Some(obj) => {
+                        None => match db.try_find(count.id, buf).map_err(Error::FindExisting)? {
+                            Some((obj, _location)) => {
                                 stats.decoded_and_recompressed_objects += 1;
                                 output::Entry::from_data(count, &obj)
                             }
@@ -368,7 +354,7 @@ mod types {
     #[cfg_attr(feature = "serde1", derive(serde::Serialize, serde::Deserialize))]
     pub enum Mode {
         /// Copy base objects and deltas from packs, while non-packed objects will be treated as base objects
-        /// (i.e. without trying to delta compress them). This is a fast way of obtaining a back while benefitting
+        /// (i.e. without trying to delta compress them). This is a fast way of obtaining a back while benefiting
         /// from existing pack compression and spending the smallest possible time on compressing unpacked objects at
         /// the cost of bandwidth.
         PackCopyAndBaseObjects,

@@ -1,40 +1,63 @@
 use std::convert::TryFrom;
 
-use crate::easy::{object, Object, ObjectRef, TreeRef};
+use crate::easy::{object, Commit, DetachedObject, Object, Tree};
 
-impl<'repo, A> std::fmt::Debug for ObjectRef<'repo, A> {
+impl<'repo> std::fmt::Debug for Object<'repo> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Debug::fmt(&self.id, f)
     }
 }
 
-impl<'repo, A> From<ObjectRef<'repo, A>> for Object {
-    fn from(r: ObjectRef<'repo, A>) -> Self {
+impl<'repo> From<Object<'repo>> for DetachedObject {
+    fn from(r: Object<'repo>) -> Self {
         r.into_owned()
     }
 }
 
-impl<'repo, A> AsRef<[u8]> for ObjectRef<'repo, A> {
+impl<'repo> AsRef<[u8]> for Object<'repo> {
     fn as_ref(&self) -> &[u8] {
         &self.data
     }
 }
 
-impl AsRef<[u8]> for Object {
+impl AsRef<[u8]> for DetachedObject {
     fn as_ref(&self) -> &[u8] {
         &self.data
     }
 }
 
-impl<'repo, A> TryFrom<ObjectRef<'repo, A>> for TreeRef<'repo, A> {
-    type Error = ObjectRef<'repo, A>;
+impl<'repo> TryFrom<Object<'repo>> for Commit<'repo> {
+    type Error = Object<'repo>;
 
-    fn try_from(value: ObjectRef<'repo, A>) -> Result<Self, Self::Error> {
+    fn try_from(value: Object<'repo>) -> Result<Self, Self::Error> {
+        let handle = value.handle;
         match value.kind {
-            object::Kind::Tree => Ok(TreeRef {
+            object::Kind::Commit => Ok(Commit {
                 id: value.id,
-                data: value.data,
-                access: value.access,
+                handle,
+                data: {
+                    drop(value);
+                    handle.free_buf()
+                },
+            }),
+            _ => Err(value),
+        }
+    }
+}
+
+impl<'repo> TryFrom<Object<'repo>> for Tree<'repo> {
+    type Error = Object<'repo>;
+
+    fn try_from(value: Object<'repo>) -> Result<Self, Self::Error> {
+        let handle = value.handle;
+        match value.kind {
+            object::Kind::Tree => Ok(Tree {
+                id: value.id,
+                handle,
+                data: {
+                    drop(value);
+                    handle.free_buf()
+                },
             }),
             _ => Err(value),
         }

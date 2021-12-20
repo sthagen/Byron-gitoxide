@@ -4,7 +4,7 @@ use std::{
 };
 
 use git_features::{parallel::reduce::Finalize, progress};
-use git_odb::{compound, linked, pack, FindExt};
+use git_odb::{compound, pack, pack::FindExt};
 use git_pack::data::{
     output,
     output::{count, entry},
@@ -238,8 +238,8 @@ fn traversals() -> crate::Result {
     {
         let head = hex_to_id("dfcb5e39ac6eb30179808bbab721e8a28ce1b52e");
         let mut commits = commit::Ancestors::new(Some(head), commit::ancestors::State::default(), {
-            let db = Arc::clone(&db);
-            move |oid, buf| db.find_commit_iter(oid, buf, &mut pack::cache::Never).ok()
+            let db = db.clone();
+            move |oid, buf| db.find_commit_iter(oid, buf).ok().map(|t| t.0)
         })
         .map(Result::unwrap)
         .collect::<Vec<_>>();
@@ -250,7 +250,6 @@ fn traversals() -> crate::Result {
         let deterministic_count_needs_single_thread = Some(1);
         let (counts, stats) = output::count::objects(
             db.clone(),
-            || (pack::cache::Never, pack::cache::object::Never),
             commits
                 .into_iter()
                 .chain(std::iter::once(hex_to_id(if take.is_some() {
@@ -270,7 +269,7 @@ fn traversals() -> crate::Result {
         )?;
         let actual_count = counts.iter().fold(ObjectCount::default(), |mut c, e| {
             let mut buf = Vec::new();
-            if let Some(obj) = db.find(e.id, &mut buf, &mut pack::cache::Never).ok() {
+            if let Some((obj, _location)) = db.find(e.id, &mut buf).ok() {
                 c.add(obj.kind);
             }
             c
@@ -285,7 +284,6 @@ fn traversals() -> crate::Result {
         let mut entries_iter = output::entry::iter_from_counts(
             counts,
             db.clone(),
-            || pack::cache::Never,
             progress::Discard,
             output::entry::iter_from_counts::Options {
                 allow_thin_pack,
@@ -312,14 +310,14 @@ fn traversals() -> crate::Result {
             "two different ways of counting, still the same in the end"
         );
 
-        write_and_verify(Arc::clone(&db), entries, expected_pack_hash, expected_thin_pack_hash)?;
+        write_and_verify(db.clone(), entries, expected_pack_hash, expected_thin_pack_hash)?;
     }
 
     Ok(())
 }
 
 fn write_and_verify(
-    db: Arc<linked::Store>,
+    db: git_odb::HandleArc,
     entries: Vec<output::Entry>,
     expected_pack_hash: git_hash::ObjectId,
     expected_thin_pack_hash: Option<git_hash::ObjectId>,
@@ -373,9 +371,7 @@ fn write_and_verify(
             Some(tmp_dir.path()),
             progress::Discard,
             &should_interrupt,
-            Some(Box::new(move |oid, buf| {
-                db.find(oid, buf, &mut git_pack::cache::Never).ok()
-            })),
+            Some(Box::new(move |oid, buf| db.find(oid, buf).ok().map(|t| t.0))),
             pack::bundle::write::Options::default(),
         )?
         .data_path

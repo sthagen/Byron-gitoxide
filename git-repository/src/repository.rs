@@ -1,5 +1,5 @@
 mod access {
-    use crate::{Kind, Repository};
+    use crate::{easy, Kind, Repository};
 
     impl Repository {
         /// Return the kind of repository, either bare or one with a work tree.
@@ -8,6 +8,11 @@ mod access {
                 Some(_) => Kind::WorkTree,
                 None => Kind::Bare,
             }
+        }
+
+        /// Add thread-local state to an easy-to-use handle for the most convenient API.
+        pub fn to_easy(&self) -> easy::Handle {
+            self.into()
         }
     }
 }
@@ -22,7 +27,7 @@ mod from_path {
 
         fn try_from(value: Path) -> Result<Self, Self::Error> {
             let (git_dir, worktree_dir) = value.into_repository_and_work_tree_directories();
-            crate::Repository::open_from_paths(git_dir, worktree_dir)
+            crate::Repository::open_from_paths(git_dir, worktree_dir, Default::default())
         }
     }
 }
@@ -32,8 +37,29 @@ pub mod open {
     use std::{borrow::Cow, path::PathBuf};
 
     use git_config::values::{Boolean, Integer};
+    use git_features::threading::OwnShared;
 
     use crate::Repository;
+
+    /// The options used in [`Repository::open_opts
+    #[derive(Default)]
+    pub struct Options {
+        object_store_slots: git_odb::store::init::Slots,
+    }
+
+    impl Options {
+        /// Set the amount of slots to use for the object database. It's a value that doesn't need changes on the client, typically,
+        /// but should be controlled on the server.
+        pub fn object_store_slots(mut self, slots: git_odb::store::init::Slots) -> Self {
+            self.object_store_slots = slots;
+            self
+        }
+
+        /// Open a repository at `path` with the options set so far.
+        pub fn open(self, path: impl Into<std::path::PathBuf>) -> Result<Repository, Error> {
+            Repository::open_opts(path, self)
+        }
+    }
 
     /// The error returned by [`Repository::open()`].
     #[derive(Debug, thiserror::Error)]
@@ -44,7 +70,7 @@ pub mod open {
         #[error(transparent)]
         NotARepository(#[from] crate::path::is::Error),
         #[error(transparent)]
-        ObjectStoreInitialization(#[from] git_odb::linked::init::Error),
+        ObjectStoreInitialization(#[from] std::io::Error),
         #[error("Cannot handle objects formatted as {:?}", .name)]
         UnsupportedObjectFormat { name: crate::bstr::BString },
     }
@@ -52,6 +78,11 @@ pub mod open {
     impl Repository {
         /// Open a git repository at the given `path`, possibly expanding it to `path/.git` if `path` is a work tree dir.
         pub fn open(path: impl Into<std::path::PathBuf>) -> Result<Self, Error> {
+            Self::open_opts(path, Options::default())
+        }
+
+        /// Open a git repository at the given `path`, possibly expanding it to `path/.git` if `path` is a work tree dir.
+        fn open_opts(path: impl Into<std::path::PathBuf>, options: Options) -> Result<Self, Error> {
             let path = path.into();
             let (path, kind) = match crate::path::is::git(&path) {
                 Ok(kind) => (path, kind),
@@ -62,12 +93,13 @@ pub mod open {
             };
             let (git_dir, worktree_dir) =
                 crate::Path::from_dot_git_dir(path, kind).into_repository_and_work_tree_directories();
-            Repository::open_from_paths(git_dir, worktree_dir)
+            Repository::open_from_paths(git_dir, worktree_dir, options)
         }
 
         pub(in crate::repository) fn open_from_paths(
             git_dir: PathBuf,
             mut worktree_dir: Option<PathBuf>,
+            Options { object_store_slots }: Options,
         ) -> Result<Self, Error> {
             let config = git_config::file::GitConfig::open(git_dir.join("config"))?;
             if worktree_dir.is_none() {
@@ -100,7 +132,7 @@ pub mod open {
             };
 
             Ok(crate::Repository {
-                odb: git_odb::linked::Store::at(git_dir.join("objects"))?,
+                objects: OwnShared::new(git_odb::Store::at_opts(git_dir.join("objects"), object_store_slots)?),
                 refs: crate::RefStore::at(
                     git_dir,
                     if worktree_dir.is_none() {
@@ -167,7 +199,7 @@ mod location {
 
         /// Return the path to the directory containing all objects.
         pub fn objects_dir(&self) -> &std::path::Path {
-            &self.odb.dbs[0].loose.path
+            self.objects.path()
         }
     }
 }

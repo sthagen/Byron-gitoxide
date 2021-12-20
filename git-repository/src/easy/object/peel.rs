@@ -1,12 +1,8 @@
 //!
-use crate::{
-    easy,
-    easy::{
-        ext::ObjectAccessExt,
-        object,
-        object::{peel, Kind},
-        ObjectRef,
-    },
+use crate::easy::{
+    object,
+    object::{peel, Kind},
+    Object,
 };
 
 ///
@@ -15,12 +11,12 @@ pub mod to_kind {
 
         use crate::easy::object;
 
-        /// The error returned by [`Object::peel_to_kind()`][crate::easy::ObjectRef::peel_to_kind()].
+        /// The error returned by [`Object::peel_to_kind()`][crate::easy::Object::peel_to_kind()].
         #[derive(Debug, thiserror::Error)]
         #[allow(missing_docs)]
         pub enum Error {
             #[error(transparent)]
-            FindExistingObject(#[from] object::find::existing::Error),
+            FindExistingObject(#[from] object::find::existing::OdbError),
             #[error("Last encountered object kind was {} while trying to peel to {}", .actual, .expected)]
             NotFound {
                 actual: object::Kind,
@@ -31,10 +27,7 @@ pub mod to_kind {
     pub use error::Error;
 }
 
-impl<'repo, A> ObjectRef<'repo, A>
-where
-    A: easy::Access + Sized,
-{
+impl<'repo> Object<'repo> {
     // TODO: tests
     /// Follow tags to their target and commits to trees until the given `kind` of object is encountered.
     ///
@@ -52,13 +45,13 @@ where
                         .expect("commit")
                         .tree_id()
                         .expect("valid commit");
-                    let access = self.access;
+                    let access = self.handle;
                     drop(self);
                     self = access.find_object(tree_id)?;
                 }
                 Kind::Tag => {
                     let target_id = self.to_tag_iter().target_id().expect("valid tag");
-                    let access = self.access;
+                    let access = self.handle;
                     drop(self);
                     self = access.find_object(target_id)?;
                 }
@@ -75,15 +68,15 @@ where
     // TODO: tests
     /// Follow all tag object targets until a commit, tree or blob is reached.
     ///
-    /// Note that this method is different from [`peel_to_kind(…)`][ObjectRef::peel_to_kind()] as it won't
+    /// Note that this method is different from [`peel_to_kind(…)`][Object::peel_to_kind()] as it won't
     /// peel commits to their tree, but handles tags only.
-    pub fn peel_tags_to_end(mut self) -> Result<Self, object::find::existing::Error> {
+    pub fn peel_tags_to_end(mut self) -> Result<Self, object::find::existing::OdbError> {
         loop {
             match self.kind {
                 Kind::Commit | Kind::Tree | Kind::Blob => break Ok(self),
                 Kind::Tag => {
                     let target_id = self.to_tag_iter().target_id().expect("valid tag");
-                    let access = self.access;
+                    let access = self.handle;
                     drop(self);
                     self = access.find_object(target_id)?;
                 }

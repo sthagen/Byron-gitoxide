@@ -49,7 +49,7 @@ impl<'a> CommitRefIter<'a> {
     /// call the method as intended. Such a squelched error cannot be recovered unless the objects data is retrieved and parsed again.
     /// `next()`.
     pub fn tree_id(&mut self) -> Option<ObjectId> {
-        self.next().and_then(Result::ok).and_then(Token::into_id)
+        self.next().and_then(Result::ok).and_then(Token::try_into_id)
     }
 
     /// Returns all signatures, first the author, then the committer, if there is no decoding error.
@@ -64,6 +64,15 @@ impl<'a> CommitRefIter<'a> {
                 Token::Author { signature } | Token::Committer { signature } => Some(signature),
                 _ => None,
             })
+    }
+
+    /// Returns the committer signature if there is no decoding error.
+    /// Errors are coerced into options, hiding whether there was an error or not. The caller knows if there was an error or not.
+    pub fn committer(&mut self) -> Option<git_actor::SignatureRef<'_>> {
+        self.find_map(|t| match t {
+            Ok(Token::Committer { signature }) => Some(signature),
+            _ => None,
+        })
     }
 }
 
@@ -219,7 +228,7 @@ impl<'a> Token<'a> {
     }
 
     /// Return the owned object id of this token if its a [tree][Token::Tree] or a [parent commit][Token::Parent].
-    pub fn into_id(self) -> Option<ObjectId> {
+    pub fn try_into_id(self) -> Option<ObjectId> {
         match self {
             Token::Tree { id } | Token::Parent { id } => Some(id),
             _ => None,
