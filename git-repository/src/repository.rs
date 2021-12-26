@@ -36,7 +36,10 @@ mod from_path {
 pub mod open {
     use std::{borrow::Cow, path::PathBuf};
 
-    use git_config::values::{Boolean, Integer};
+    use git_config::{
+        file::GitConfig,
+        values::{Boolean, Integer},
+    };
     use git_features::threading::OwnShared;
 
     use crate::Repository;
@@ -103,18 +106,16 @@ pub mod open {
         ) -> Result<Self, Error> {
             let config = git_config::file::GitConfig::open(git_dir.join("config"))?;
             if worktree_dir.is_none() {
-                let is_bare = config
-                    .value::<Boolean<'_>>("core", None, "bare")
-                    .map_or(false, |b| matches!(b, Boolean::True(_)));
+                let is_bare = config_bool(&config, "core.bare", false);
                 if !is_bare {
                     worktree_dir = Some(git_dir.parent().expect("parent is always available").to_owned());
                 }
             }
-            let hash_kind = if config
+            let use_multi_pack_index = config_bool(&config, "core.multiPackIndex", true);
+            let repo_format_version = config
                 .value::<Integer>("core", None, "repositoryFormatVersion")
-                .map_or(0, |v| v.value)
-                == 1
-            {
+                .map_or(0, |v| v.value);
+            let object_hash = if repo_format_version == 1 {
                 if let Ok(format) = config.value::<Cow<'_, [u8]>>("extensions", None, "objectFormat") {
                     match format.as_ref() {
                         b"sha1" => git_hash::Kind::Sha1,
@@ -132,7 +133,14 @@ pub mod open {
             };
 
             Ok(crate::Repository {
-                objects: OwnShared::new(git_odb::Store::at_opts(git_dir.join("objects"), object_store_slots)?),
+                objects: OwnShared::new(git_odb::Store::at_opts(
+                    git_dir.join("objects"),
+                    git_odb::store::init::Options {
+                        slots: object_store_slots,
+                        object_hash,
+                        use_multi_pack_index,
+                    },
+                )?),
                 refs: crate::RefStore::at(
                     git_dir,
                     if worktree_dir.is_none() {
@@ -140,11 +148,19 @@ pub mod open {
                     } else {
                         git_ref::store::WriteReflog::Normal
                     },
+                    object_hash,
                 ),
                 work_tree: worktree_dir,
-                hash_kind,
+                object_hash,
             })
         }
+    }
+
+    fn config_bool(config: &GitConfig<'_>, key: &str, default: bool) -> bool {
+        let (section, key) = key.split_once(".").expect("valid section.key format");
+        config
+            .value::<Boolean<'_>>(section, None, key)
+            .map_or(default, |b| matches!(b, Boolean::True(_)))
     }
 }
 

@@ -1,5 +1,4 @@
-use std::path::PathBuf;
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 
 use git_pack::data::output;
 
@@ -32,7 +31,7 @@ fn db(kind: DbKind) -> crate::Result<git_odb::HandleArc> {
             .join(".git")
             .join("objects"),
     };
-    git_odb::Store::at_opts(path, git_odb::store::init::Slots::default())
+    git_odb::Store::at_opts(path, git_odb::store::init::Options::default())
         .map_err(Into::into)
         .map(|store| {
             let mut cache = Arc::new(store).to_cache_arc();

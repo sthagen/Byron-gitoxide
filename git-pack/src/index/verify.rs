@@ -1,7 +1,6 @@
 use std::sync::{atomic::AtomicBool, Arc};
 
 use git_features::progress::{self, Progress};
-use git_hash::SIZE_OF_SHA1_DIGEST as SHA1_SIZE;
 use git_object::{
     bstr::{BString, ByteSlice},
     WriteTo,
@@ -54,15 +53,15 @@ impl index::File {
     ///
     /// It's a hash over all bytes of the index.
     pub fn index_checksum(&self) -> git_hash::ObjectId {
-        git_hash::ObjectId::from_20_bytes(&self.data[self.data.len() - SHA1_SIZE..])
+        git_hash::ObjectId::from(&self.data[self.data.len() - self.hash_len..])
     }
 
     /// Returns the hash of the pack data file that this index file corresponds to.
     ///
     /// It should [`crate::data::File::checksum()`] of the corresponding pack data file.
     pub fn pack_checksum(&self) -> git_hash::ObjectId {
-        let from = self.data.len() - SHA1_SIZE * 2;
-        git_hash::ObjectId::from_20_bytes(&self.data[from..from + SHA1_SIZE])
+        let from = self.data.len() - self.hash_len * 2;
+        git_hash::ObjectId::from(&self.data[from..][..self.hash_len])
     }
 
     /// Validate that our [`index_checksum()`][index::File::index_checksum()] matches the actual contents
@@ -72,7 +71,7 @@ impl index::File {
         mut progress: impl Progress,
         should_interrupt: &AtomicBool,
     ) -> Result<git_hash::ObjectId, Error> {
-        let data_len_without_trailer = self.data.len() - SHA1_SIZE;
+        let data_len_without_trailer = self.data.len() - self.hash_len;
         let actual = match git_features::hash::bytes_of_file(
             &self.path,
             data_len_without_trailer,
@@ -83,11 +82,11 @@ impl index::File {
             Ok(id) => id,
             Err(_io_err) => {
                 let start = std::time::Instant::now();
-                let mut hasher = git_features::hash::Sha1::default();
+                let mut hasher = git_features::hash::hasher(self.object_hash);
                 hasher.update(&self.data[..data_len_without_trailer]);
                 progress.inc_by(data_len_without_trailer);
                 progress.show_throughput(start);
-                git_hash::ObjectId::new_sha1(hasher.digest())
+                git_hash::ObjectId::from(hasher.digest())
             }
         };
 

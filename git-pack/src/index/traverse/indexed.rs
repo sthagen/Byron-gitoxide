@@ -62,12 +62,13 @@ impl index::File {
                 let sorted_entries =
                     index_entries_sorted_by_offset_ascending(self, progress.add_child("collecting sorted index"));
                 let tree = crate::cache::delta::Tree::from_offsets_in_pack(
-                    sorted_entries.into_iter().map(EntryWithDefault::from),
+                    sorted_entries.into_iter().map(Entry::from),
                     |e| e.index_entry.pack_offset,
                     pack.path(),
                     progress.add_child("indexing"),
                     &should_interrupt,
                     |id| self.lookup(id).map(|idx| self.pack_offset_at_index(idx)),
+                    self.object_hash,
                 )?;
                 let there_are_enough_objects = || self.num_objects > 10_000;
                 let mut outcome = digest_statistics(tree.traverse(
@@ -119,6 +120,7 @@ impl index::File {
                             res => res,
                         }
                     },
+                    self.object_hash,
                 )?);
                 outcome.pack_size = pack.data_len() as u64;
                 Ok(outcome)
@@ -130,7 +132,7 @@ impl index::File {
     }
 }
 
-struct EntryWithDefault {
+struct Entry {
     index_entry: crate::index::Entry,
     object_kind: git_object::Kind,
     object_size: u64,
@@ -139,26 +141,9 @@ struct EntryWithDefault {
     level: u16,
 }
 
-impl Default for EntryWithDefault {
-    fn default() -> Self {
-        EntryWithDefault {
-            index_entry: crate::index::Entry {
-                pack_offset: 0,
-                crc32: None,
-                oid: git_hash::ObjectId::null_sha1(),
-            },
-            level: 0,
-            object_kind: git_object::Kind::Tree,
-            object_size: 0,
-            decompressed_size: 0,
-            compressed_size: 0,
-        }
-    }
-}
-
-impl From<crate::index::Entry> for EntryWithDefault {
+impl From<crate::index::Entry> for Entry {
     fn from(index_entry: crate::index::Entry) -> Self {
-        EntryWithDefault {
+        Entry {
             index_entry,
             level: 0,
             object_kind: git_object::Kind::Tree,
@@ -169,7 +154,7 @@ impl From<crate::index::Entry> for EntryWithDefault {
     }
 }
 
-fn digest_statistics(items: VecDeque<crate::cache::delta::Item<EntryWithDefault>>) -> index::traverse::Outcome {
+fn digest_statistics(items: VecDeque<crate::cache::delta::Item<Entry>>) -> index::traverse::Outcome {
     let mut res = index::traverse::Outcome::default();
     let average = &mut res.average;
     for item in &items {

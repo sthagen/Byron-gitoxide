@@ -1,6 +1,6 @@
 use std::io;
 
-use super::{BLOB, COMMIT, OFS_DELTA, REF_DELTA, SHA1_SIZE, TAG, TREE};
+use super::{BLOB, COMMIT, OFS_DELTA, REF_DELTA, TAG, TREE};
 use crate::data;
 
 /// Decoding
@@ -10,7 +10,7 @@ impl data::Entry {
     /// # Panics
     ///
     /// If we cannot understand the header, garbage data is likely to trigger this.
-    pub fn from_bytes(d: &[u8], pack_offset: u64) -> data::Entry {
+    pub fn from_bytes(d: &[u8], pack_offset: data::Offset, hash_len: usize) -> data::Entry {
         let (type_id, size, mut consumed) = parse_header_info(d);
 
         use crate::data::entry::Header::*;
@@ -25,9 +25,9 @@ impl data::Entry {
             }
             REF_DELTA => {
                 let delta = RefDelta {
-                    base_id: git_hash::ObjectId::from_20_bytes(&d[consumed..consumed + SHA1_SIZE]),
+                    base_id: git_hash::ObjectId::from(&d[consumed..][..hash_len]),
                 };
-                consumed += SHA1_SIZE;
+                consumed += hash_len;
                 delta
             }
             BLOB => Blob,
@@ -44,7 +44,11 @@ impl data::Entry {
     }
 
     /// Instantiate an `Entry` from the reader `r`, providing the `pack_offset` to allow tracking the start of the entry data section.
-    pub fn from_read(mut r: impl io::Read, pack_offset: u64) -> Result<data::Entry, io::Error> {
+    pub fn from_read(
+        mut r: impl io::Read,
+        pack_offset: data::Offset,
+        hash_len: usize,
+    ) -> Result<data::Entry, io::Error> {
         let (type_id, size, mut consumed) = streaming_parse_header_info(&mut r)?;
 
         use crate::data::entry::Header::*;
@@ -58,12 +62,13 @@ impl data::Entry {
                 delta
             }
             REF_DELTA => {
-                let mut buf = [0u8; SHA1_SIZE];
-                r.read_exact(&mut buf)?;
+                let mut buf = git_hash::Kind::buf();
+                let hash = &mut buf[..hash_len];
+                r.read_exact(hash)?;
                 let delta = RefDelta {
-                    base_id: git_hash::ObjectId::new_sha1(buf),
+                    base_id: git_hash::ObjectId::from(&hash[..]),
                 };
-                consumed += SHA1_SIZE;
+                consumed += hash_len;
                 delta
             }
             BLOB => Blob,

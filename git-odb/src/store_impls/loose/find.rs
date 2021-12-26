@@ -2,7 +2,7 @@ use std::{fs, io::Read, path::PathBuf};
 
 use git_features::zlib;
 
-use crate::store_impls::loose::{sha1_path, Store, HEADER_READ_UNCOMPRESSED_BYTES};
+use crate::store_impls::loose::{hash_path, Store, HEADER_READ_UNCOMPRESSED_BYTES};
 
 /// Returned by [`Store::try_find()`]
 #[derive(thiserror::Error, Debug)]
@@ -29,7 +29,8 @@ impl Store {
 
     /// Returns true if the given id is contained in our repository.
     pub fn contains(&self, id: impl AsRef<git_hash::oid>) -> bool {
-        sha1_path(id.as_ref(), self.path.clone()).is_file()
+        debug_assert_eq!(self.object_hash, id.as_ref().kind());
+        hash_path(id.as_ref(), self.path.clone()).is_file()
     }
 
     /// Return the object identified by the given [`ObjectId`][git_hash::ObjectId] if present in this database,
@@ -42,6 +43,7 @@ impl Store {
         id: impl AsRef<git_hash::oid>,
         out: &'a mut Vec<u8>,
     ) -> Result<Option<git_object::Data<'a>>, Error> {
+        debug_assert_eq!(self.object_hash, id.as_ref().kind());
         match self.find_inner(id.as_ref(), out) {
             Ok(obj) => Ok(Some(obj)),
             Err(err) => match err {
@@ -66,7 +68,7 @@ impl Store {
     }
 
     fn find_inner<'a>(&self, id: &git_hash::oid, buf: &'a mut Vec<u8>) -> Result<git_object::Data<'a>, Error> {
-        let path = sha1_path(id, self.path.clone());
+        let path = hash_path(id, self.path.clone());
 
         let mut inflate = zlib::Inflate::default();
         let ((status, consumed_in, consumed_out), bytes_read) = {

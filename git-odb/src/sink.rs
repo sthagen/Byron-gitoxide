@@ -4,8 +4,9 @@ use std::{
     io::{self, Write},
 };
 
-use crate::Sink;
 use git_features::zlib::stream::deflate;
+
+use crate::Sink;
 
 impl Sink {
     /// Enable or disable compression. Compression is disabled by default
@@ -27,7 +28,6 @@ impl crate::traits::Write for Sink {
         kind: git_object::Kind,
         size: u64,
         mut from: impl io::Read,
-        hash: git_hash::Kind,
     ) -> Result<git_hash::ObjectId, Self::Error> {
         let mut size = size.try_into().expect("object size to fit into usize");
         use git_features::hash::Sha1;
@@ -40,7 +40,7 @@ impl crate::traits::Write for Sink {
             }
             Ok(())
         };
-        match hash {
+        match self.object_hash {
             git_hash::Kind::Sha1 => {
                 let mut hasher = Sha1::default();
                 hasher.update(&header);

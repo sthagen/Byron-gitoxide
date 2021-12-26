@@ -1,8 +1,10 @@
 //! a pack data file
 use std::{convert::TryInto, path::Path};
 
+/// The offset to an entry into the pack data file, relative to its beginning.
+pub type Offset = u64;
+
 use filebuffer::FileBuffer;
-use git_hash::SIZE_OF_SHA1_DIGEST as SHA1_SIZE;
 
 /// An representing an full- or delta-object within a pack
 #[derive(PartialEq, Eq, Debug, Hash, Ord, PartialOrd, Clone)]
@@ -13,7 +15,7 @@ pub struct Entry {
     /// The decompressed size of the object in bytes
     pub decompressed_size: u64,
     /// absolute offset to compressed object data in the pack, just behind the entry's header
-    pub data_offset: u64,
+    pub data_offset: Offset,
 }
 
 mod file;
@@ -33,7 +35,7 @@ pub mod output;
 /// A slice into a pack file denoting a pack entry.
 ///
 /// An entry can be decoded into an object.
-pub type EntryRange = std::ops::Range<u64>;
+pub type EntryRange = std::ops::Range<Offset>;
 
 /// Supported versions of a pack data file
 #[derive(PartialEq, Eq, Debug, Hash, Ord, PartialOrd, Clone, Copy)]
@@ -64,6 +66,10 @@ pub struct File {
     pub id: u32,
     version: Version,
     num_objects: u32,
+    /// The size of the hash contained within. This is entirely determined by the caller, and repositories have to know which hash to use
+    /// based on their configuration.
+    hash_len: usize,
+    object_hash: git_hash::Kind,
 }
 
 /// Information about the pack data file itself
@@ -80,10 +86,13 @@ impl File {
     pub fn data_len(&self) -> usize {
         self.data.len()
     }
-
+    /// The kind of hash we use internally.
+    pub fn object_hash(&self) -> git_hash::Kind {
+        self.object_hash
+    }
     /// The position of the byte one past the last pack entry, or in other terms, the first byte of the trailing hash.
     pub fn pack_end(&self) -> usize {
-        self.data.len() - SHA1_SIZE
+        self.data.len() - self.hash_len
     }
 
     /// The path to the pack data file on disk
@@ -106,7 +115,7 @@ impl File {
     /// # Panics
     ///
     /// If `pack_offset` or `size` are pointing to a range outside of the mapped pack data.
-    pub fn entry_crc32(&self, pack_offset: u64, size: usize) -> u32 {
+    pub fn entry_crc32(&self, pack_offset: Offset, size: usize) -> u32 {
         let pack_offset: usize = pack_offset.try_into().expect("pack_size fits into usize");
         git_features::hash::crc32(&self.data[pack_offset..pack_offset + size])
     }

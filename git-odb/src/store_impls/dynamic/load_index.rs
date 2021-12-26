@@ -112,7 +112,7 @@ impl super::Store {
                         if let Some(files) = bundle_mut.as_mut() {
                             // these are always expected to be set, unless somebody raced us. We handle this later by retrying.
                             let _loaded_count = IncOnDrop(&index.loaded_indices);
-                            match files.load_index() {
+                            match files.load_index(self.object_hash) {
                                 Ok(_) => {
                                     slot.files.store(bundle);
                                     break 'retry_with_next_slot_index;
@@ -187,13 +187,21 @@ impl super::Store {
                 .zip(index.loose_dbs.iter().map(|ldb| &ldb.path))
                 .any(|(lhs, rhs)| lhs != rhs)
         {
-            Arc::new(db_paths.iter().map(crate::loose::Store::at).collect::<Vec<_>>())
+            Arc::new(
+                db_paths
+                    .iter()
+                    .map(|path| crate::loose::Store::at(path, self.object_hash))
+                    .collect::<Vec<_>>(),
+            )
         } else {
             Arc::clone(&index.loose_dbs)
         };
 
-        let indices_by_modification_time =
-            Self::collect_indices_and_mtime_sorted_by_size(db_paths, index.slot_indices.len().into())?;
+        let indices_by_modification_time = Self::collect_indices_and_mtime_sorted_by_size(
+            db_paths,
+            index.slot_indices.len().into(),
+            self.use_multi_pack_index.then(|| self.object_hash),
+        )?;
         let mut idx_by_index_path: BTreeMap<_, _> = index
             .slot_indices
             .iter()
@@ -383,6 +391,7 @@ impl super::Store {
     pub(crate) fn collect_indices_and_mtime_sorted_by_size(
         db_paths: Vec<PathBuf>,
         initial_capacity: Option<usize>,
+        multi_pack_index_object_hash: Option<git_hash::Kind>,
     ) -> Result<Vec<(PathBuf, SystemTime, u64)>, Error> {
         let mut indices_by_modification_time = Vec::with_capacity(initial_capacity.unwrap_or_default());
         for db_path in db_paths {
@@ -399,7 +408,8 @@ impl super::Store {
                     .filter(|(_, md)| md.file_type().is_file())
                     .filter(|(p, _)| {
                         let ext = p.extension();
-                        ext == Some(OsStr::new("idx")) || (ext.is_none() && is_multipack_index(p))
+                        ext == Some(OsStr::new("idx"))
+                            || (multi_pack_index_object_hash.is_some() && ext.is_none() && is_multipack_index(p))
                     })
                     .map(|(p, md)| md.modified().map_err(Error::from).map(|mtime| (p, mtime, md.len())))
                     .collect::<Result<Vec<_>, _>>()?,

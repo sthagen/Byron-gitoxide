@@ -43,7 +43,7 @@ impl output::Entry {
     /// An object which can be identified as invalid easily which happens if objects didn't exist even if they were referred to.
     pub fn invalid() -> output::Entry {
         output::Entry {
-            id: ObjectId::null_sha1(),
+            id: git_hash::Kind::Sha1.null(), // NOTE: the actual object hash used in the repo doesn't matter here, this is a sentinel value.
             kind: Kind::Base(git_object::Kind::Blob),
             decompressed_size: 0,
             compressed_data: vec![],
@@ -73,7 +73,8 @@ impl output::Entry {
         };
 
         let pack_offset_must_be_zero = 0;
-        let pack_entry = crate::data::Entry::from_bytes(&entry.data, pack_offset_must_be_zero);
+        let pack_entry =
+            crate::data::Entry::from_bytes(&entry.data, pack_offset_must_be_zero, count.id.as_slice().len());
 
         use crate::data::entry::Header::*;
         match pack_entry.header {

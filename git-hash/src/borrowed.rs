@@ -31,27 +31,23 @@ pub struct HexDisplay<'a> {
 
 impl<'a> fmt::Display for HexDisplay<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.inner.kind() {
-            crate::Kind::Sha1 => {
-                let buf = self.inner.to_sha1_hex();
-                f.write_str(
-                    std::str::from_utf8(&buf[..self.hex_len.min(crate::Kind::Sha1.len_in_hex())])
-                        .expect("hex is always utf8 representable"),
-                )
-            }
-        }
+        let mut hex = crate::Kind::hex_buf();
+        let max_len = self.inner.hex_to_buf(hex.as_mut());
+        let hex = std::str::from_utf8(&hex[..self.hex_len.min(max_len)]).expect("ascii only in hex");
+        f.write_str(hex)
     }
 }
 
 impl fmt::Debug for oid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.kind() {
-            crate::Kind::Sha1 => f.write_str("Sha1(")?,
-        }
-        for b in self.as_bytes() {
-            write!(f, "{:02x}", b)?;
-        }
-        f.write_str(")")
+        write!(
+            f,
+            "{}({})",
+            match self.kind() {
+                crate::Kind::Sha1 => "Sha1",
+            },
+            self.to_hex(),
+        )
     }
 }
 
@@ -69,7 +65,8 @@ quick_error! {
 /// Conversion
 impl oid {
     /// Try to create a shared object id from a slice of bytes representing a hash `digest`
-    pub fn try_from(digest: &[u8]) -> Result<&Self, Error> {
+    #[inline]
+    pub fn try_from_bytes(digest: &[u8]) -> Result<&Self, Error> {
         match digest.len() {
             20 => Ok(
                 #[allow(unsafe_code)]
@@ -81,8 +78,14 @@ impl oid {
         }
     }
 
+    /// Create an OID from the input `value` slice without performing any safety check.
+    /// Use only once sure that `value` is a hash of valid length.
+    pub fn from_bytes_unchecked(value: &[u8]) -> &Self {
+        Self::from_bytes(value)
+    }
+
     /// Only from code that statically assures correct sizes using array conversions
-    fn from(value: &[u8]) -> &Self {
+    pub(crate) fn from_bytes(value: &[u8]) -> &Self {
         #[allow(unsafe_code)]
         unsafe {
             &*(value as *const [u8] as *const oid)
@@ -93,54 +96,68 @@ impl oid {
 /// Access
 impl oid {
     /// The kind of hash used for this Digest
+    #[inline]
     pub fn kind(&self) -> crate::Kind {
-        match self.bytes.len() {
-            20 => crate::Kind::Sha1,
-            _ => unreachable!("creating this instance is checked and fails on unknown lengths"),
-        }
+        crate::Kind::from_len_in_bytes(self.bytes.len())
     }
 
     /// The first byte of the hash, commonly used to partition a set of `Id`s
+    #[inline]
     pub fn first_byte(&self) -> u8 {
         self.bytes[0]
     }
 
     #[inline]
     /// Interpret this object id as raw byte slice.
+    #[inline]
     pub fn as_bytes(&self) -> &[u8] {
         &self.bytes
     }
 
     /// Return a type which can display itself in hexadecimal form with the `len` amount of characters.
-    pub fn to_hex(&self, len: usize) -> HexDisplay<'_> {
+    #[inline]
+    pub fn to_hex_with_len(&self, len: usize) -> HexDisplay<'_> {
         HexDisplay {
             inner: self,
             hex_len: len,
+        }
+    }
+
+    /// Return a type which displays this oid as hex in full.
+    #[inline]
+    pub fn to_hex(&self) -> HexDisplay<'_> {
+        HexDisplay {
+            inner: self,
+            hex_len: self.bytes.len() * 2,
         }
     }
 }
 
 /// Sha1 specific methods
 impl oid {
-    /// Returns an array with a hexadecimal encoded version of the Sha1 hash this `Id` represents.
+    /// Write ourselves to the `out` in hexadecimal notation, returning the amount of written bytes.
     ///
-    /// **Panics** if this is not a Sha1 hash, as identifiable by [`ObjectId::kind()`].
-    pub fn to_sha1_hex(&self) -> [u8; SIZE_OF_SHA1_DIGEST * 2] {
-        let mut buf = [0u8; SIZE_OF_SHA1_DIGEST * 2];
-        hex::encode_to_slice(&self.bytes, &mut buf).expect("to count correctly");
-        buf
+    /// **Panics** if the buffer isn't big enough to hold twice as many bytes as the current binary size.
+    #[inline]
+    #[must_use]
+    pub fn hex_to_buf(&self, buf: &mut [u8]) -> usize {
+        let num_hex_bytes = self.bytes.len() * 2;
+        hex::encode_to_slice(&self.bytes, &mut buf[..num_hex_bytes]).expect("to count correctly");
+        num_hex_bytes
     }
 
-    /// Returns the bytes making up the Sha1.
-    ///
-    /// **Panics** if this is not a Sha1 hash, as identifiable by [`ObjectId::kind()`].
-    pub fn sha1(&self) -> &[u8; SIZE_OF_SHA1_DIGEST] {
-        self.bytes.try_into().expect("correctly sized slice")
+    /// Write ourselves to `out` in hexadecimal notation
+    #[inline]
+    pub fn write_hex_to(&self, mut out: impl std::io::Write) -> std::io::Result<()> {
+        let mut hex = crate::Kind::hex_buf();
+        let hex_len = self.hex_to_buf(&mut hex);
+        out.write_all(&hex[..hex_len])
     }
 
     /// Returns a Sha1 digest with all bytes being initialized to zero.
-    pub fn null_sha1() -> &'static Self {
-        oid::from([0u8; SIZE_OF_SHA1_DIGEST].as_ref())
+    #[inline]
+    pub(crate) fn null_sha1() -> &'static Self {
+        oid::from_bytes([0u8; SIZE_OF_SHA1_DIGEST].as_ref())
     }
 }
 
@@ -162,7 +179,7 @@ impl ToOwned for oid {
 
 impl<'a> From<&'a [u8; SIZE_OF_SHA1_DIGEST]> for &'a oid {
     fn from(v: &'a [u8; SIZE_OF_SHA1_DIGEST]) -> Self {
-        oid::from(v.as_ref())
+        oid::from_bytes(v.as_ref())
     }
 }
 
@@ -210,7 +227,7 @@ impl<'de: 'a, 'a> serde::Deserialize<'de> for &'a oid {
                         return Err(__err);
                     }
                 };
-                Ok(oid::try_from(__field0).expect("exactly 20 bytes"))
+                Ok(oid::try_from_bytes(__field0).expect("hash of known length"))
             }
             #[inline]
             fn visit_seq<__A>(self, mut __seq: __A) -> std::result::Result<Self::Value, __A::Error>
@@ -231,7 +248,7 @@ impl<'de: 'a, 'a> serde::Deserialize<'de> for &'a oid {
                         ));
                     }
                 };
-                Ok(oid::try_from(__field0).expect("exactly 20 bytes"))
+                Ok(oid::try_from_bytes(__field0).expect("hash of known length"))
             }
         }
         serde::Deserializer::deserialize_newtype_struct(

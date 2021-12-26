@@ -12,14 +12,14 @@
 // TODO: actually remove the deprecated items and remove thos allow
 #![allow(deprecated)]
 
-use arc_swap::ArcSwap;
-use std::cell::RefCell;
-use std::path::PathBuf;
-use std::sync::atomic::AtomicUsize;
-use std::sync::Arc;
+use std::{
+    cell::RefCell,
+    path::PathBuf,
+    sync::{atomic::AtomicUsize, Arc},
+};
 
-use git_features::threading::OwnShared;
-use git_features::zlib::stream::deflate;
+use arc_swap::ArcSwap;
+use git_features::{threading::OwnShared, zlib::stream::deflate};
 pub use git_pack as pack;
 
 mod store_impls;
@@ -49,11 +49,15 @@ pub mod cache;
 ///
 pub struct Sink {
     compressor: Option<RefCell<deflate::Write<std::io::Sink>>>,
+    object_hash: git_hash::Kind,
 }
 
 /// Create a new [`Sink`] with compression disabled.
-pub fn sink() -> Sink {
-    Sink { compressor: None }
+pub fn sink(object_hash: git_hash::Kind) -> Sink {
+    Sink {
+        compressor: None,
+        object_hash,
+    }
 }
 
 ///
@@ -110,6 +114,10 @@ pub struct Store {
 
     /// The amount of times we re-read the disk state to consolidate our in-memory representation.
     pub(crate) num_disk_state_consolidation: AtomicUsize,
+    /// If true, we are allowed to use multi-pack indices and they must have the `object_hash` or be ignored.
+    use_multi_pack_index: bool,
+    /// The hash kind to use for some operations
+    object_hash: git_hash::Kind,
 }
 
 impl Store {
@@ -120,8 +128,8 @@ impl Store {
 }
 
 /// Create a new cached handle to the object store with support for additional options.
-pub fn at_opts(objects_dir: impl Into<PathBuf>, slots: store::init::Slots) -> std::io::Result<Handle> {
-    let handle = OwnShared::new(Store::at_opts(objects_dir, slots)?).to_handle();
+pub fn at_opts(objects_dir: impl Into<PathBuf>, options: store::init::Options) -> std::io::Result<Handle> {
+    let handle = OwnShared::new(Store::at_opts(objects_dir, options)?).to_handle();
     Ok(Cache::from(handle))
 }
 

@@ -1,4 +1,4 @@
-use std::{io, io::SeekFrom, path::PathBuf, sync::Arc};
+use std::{hash::Hash, io, io::SeekFrom, path::PathBuf, sync::Arc};
 
 use git_tempfile::handle::Writable;
 
@@ -12,6 +12,8 @@ pub struct Options {
     pub iteration_mode: crate::data::input::Mode,
     /// The version of pack index to write, should be [`crate::index::Version::default()`]
     pub index_kind: crate::index::Version,
+    /// The kind of hash to use when writing the bundle.
+    pub object_hash: git_hash::Kind,
 }
 
 impl Default for Options {
@@ -21,6 +23,7 @@ impl Default for Options {
             thread_limit: None,
             iteration_mode: crate::data::input::Mode::Verify,
             index_kind: Default::default(),
+            object_hash: Default::default(),
         }
     }
 }
@@ -34,6 +37,8 @@ pub struct Outcome {
     pub index: crate::index::write::Outcome,
     /// The version of the pack
     pub pack_kind: crate::data::Version,
+    /// The kind of hash stored within the pack and indices
+    pub object_hash: git_hash::Kind,
 
     /// The path to the pack index file
     pub index_path: Option<PathBuf>,
@@ -44,7 +49,9 @@ pub struct Outcome {
 impl Outcome {
     /// Instantiate a bundle from the newly written index and data file that are represented by this `Outcome`
     pub fn to_bundle(&self) -> Option<Result<crate::Bundle, crate::bundle::init::Error>> {
-        self.index_path.as_ref().map(crate::Bundle::at)
+        self.index_path
+            .as_ref()
+            .map(|path| crate::Bundle::at(path, self.object_hash))
     }
 }
 

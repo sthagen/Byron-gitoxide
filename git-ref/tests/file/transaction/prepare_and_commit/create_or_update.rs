@@ -71,11 +71,12 @@ fn reference_with_equally_named_empty_or_non_empty_directory_already_in_place_ca
 fn reference_with_old_value_must_exist_when_creating_it() -> crate::Result {
     let (_keep, store) = empty_store()?;
 
+    let new_target = Target::Peeled(git_hash::Kind::Sha1.null());
     let res = store.transaction().prepare(
         Some(RefEdit {
             change: Change::Update {
                 log: LogChange::default(),
-                new: Target::Peeled(ObjectId::null_sha1()),
+                new: new_target.clone(),
                 expected: PreviousValue::MustExist,
             },
             name: "HEAD".try_into()?,
@@ -87,7 +88,7 @@ fn reference_with_old_value_must_exist_when_creating_it() -> crate::Result {
     match res {
         Err(transaction::prepare::Error::MustExist { full_name, expected }) => {
             assert_eq!(full_name, "HEAD");
-            assert_eq!(expected, Target::must_exist());
+            assert_eq!(expected, new_target);
         }
         _ => unreachable!("unexpected result"),
     }
@@ -104,7 +105,7 @@ fn reference_with_explicit_value_must_match_the_value_on_update() -> crate::Resu
         Some(RefEdit {
             change: Change::Update {
                 log: LogChange::default(),
-                new: Target::Peeled(ObjectId::null_sha1()),
+                new: Target::Peeled(git_hash::Kind::Sha1.null()),
                 expected: PreviousValue::MustExistAndMatch(Target::Peeled(hex_to_id(
                     "28ce6a8b26aa170e1de65536fe8abe1832bd3242",
                 ))),
@@ -134,7 +135,7 @@ fn the_existing_must_match_constraint_allow_non_existing_references_to_be_create
             Some(RefEdit {
                 change: Change::Update {
                     log: LogChange::default(),
-                    new: Target::Peeled(ObjectId::null_sha1()),
+                    new: Target::Peeled(git_hash::Kind::Sha1.null()),
                     expected: expected.clone(),
                 },
                 name: "refs/heads/new".try_into()?,
@@ -149,7 +150,7 @@ fn the_existing_must_match_constraint_allow_non_existing_references_to_be_create
         vec![RefEdit {
             change: Change::Update {
                 log: LogChange::default(),
-                new: Target::Peeled(ObjectId::null_sha1()),
+                new: Target::Peeled(git_hash::Kind::Sha1.null()),
                 expected,
             },
             name: "refs/heads/new".try_into()?,
@@ -170,7 +171,7 @@ fn the_existing_must_match_constraint_requires_existing_references_to_have_the_g
         Some(RefEdit {
             change: Change::Update {
                 log: LogChange::default(),
-                new: Target::Peeled(ObjectId::null_sha1()),
+                new: Target::Peeled(git_hash::Kind::Sha1.null()),
                 expected: PreviousValue::ExistingMustMatch(Target::Peeled(hex_to_id(
                     "28ce6a8b26aa170e1de65536fe8abe1832bd3242",
                 ))),
@@ -200,7 +201,7 @@ fn reference_with_must_not_exist_constraint_cannot_be_created_if_it_exists_alrea
         Some(RefEdit {
             change: Change::Update {
                 log: LogChange::default(),
-                new: Target::Peeled(ObjectId::null_sha1()),
+                new: Target::Peeled(git_hash::Kind::Sha1.null()),
                 expected: PreviousValue::MustNotExist,
             },
             name: "HEAD".try_into()?,
@@ -522,7 +523,7 @@ fn symbolic_head_missing_referent_then_update_referent() -> crate::Result {
         for ref_name in &["HEAD", referent] {
             match reflog_writemode {
                 WriteReflog::Normal => {
-                    let expected_line = log_line(ObjectId::null_sha1(), new_oid, "an actual change");
+                    let expected_line = log_line(git_hash::Kind::Sha1.null(), new_oid, "an actual change");
                     assert_eq!(reflog_lines(&store, *ref_name)?, vec![expected_line]);
                 }
                 WriteReflog::Disable => {

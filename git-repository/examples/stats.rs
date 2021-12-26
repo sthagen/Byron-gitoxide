@@ -28,16 +28,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", commit.message_raw()?);
 
     let tree = commit.tree()?;
-    let root = git::objs::TreeRefIter::from_bytes(&tree.data);
 
     let mut delegate = visit::Tree::new(handle.clone());
-    let mut state = git_traverse::tree::breadthfirst::State::default();
-    git_traverse::tree::breadthfirst(
-        root,
-        state,
-        |oid, buf| handle.objects.find_tree_iter(oid, buf).ok(),
-        &mut delegate,
-    )?;
+    tree.traverse().breadthfirst(&mut delegate)?;
+    let _files = tree.traverse().breadthfirst.files()?;
+
     println!("num trees: {}", delegate.num_trees);
     println!("num blobs: {}", delegate.num_blobs);
     println!("num blobs_executable: {}", delegate.num_blobs_exec);
@@ -49,12 +44,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 mod visit {
-    use git_hash::oid;
-    use git_repository as git;
     use std::process::id;
 
-    use git_object::bstr::BStr;
-    use git_object::tree::EntryRef;
+    use git_hash::oid;
+    use git_object::{bstr::BStr, tree::EntryRef};
+    use git_repository as git;
     use git_traverse::tree::visit::Action;
 
     pub(crate) struct Tree {

@@ -1,8 +1,7 @@
-use std::{convert::TryFrom, mem::size_of, path::Path};
+use std::{mem::size_of, path::Path};
 
 use byteorder::{BigEndian, ByteOrder};
 use filebuffer::FileBuffer;
-use git_hash::SIZE_OF_SHA1_DIGEST as SHA1_SIZE;
 
 use crate::index::{self, Version, FAN_LEN, V2_SIGNATURE};
 
@@ -22,26 +21,27 @@ pub enum Error {
 }
 
 const N32_SIZE: usize = size_of::<u32>();
-const FOOTER_SIZE: usize = SHA1_SIZE * 2;
 
 /// Instantiation
 impl index::File {
     /// Open the pack index file at the given `path`.
-    pub fn at(path: impl AsRef<Path>) -> Result<index::File, Error> {
-        Self::try_from(path.as_ref())
+    ///
+    /// The `object_hash` is a way to read (and write) the same file format with different hashes, as the hash kind
+    /// isn't stored within the file format itself.
+    pub fn at(path: impl AsRef<Path>, object_hash: git_hash::Kind) -> Result<index::File, Error> {
+        Self::at_inner(path.as_ref(), object_hash)
     }
-}
 
-impl TryFrom<&Path> for index::File {
-    type Error = Error;
-
-    fn try_from(path: &Path) -> Result<Self, Self::Error> {
-        let data = FileBuffer::open(&path).map_err(|e| Error::Io {
-            source: e,
+    fn at_inner(path: &Path, object_hash: git_hash::Kind) -> Result<index::File, Error> {
+        let data = FileBuffer::open(&path).map_err(|source| Error::Io {
+            source,
             path: path.to_owned(),
         })?;
         let idx_len = data.len();
-        if idx_len < FAN_LEN * N32_SIZE + FOOTER_SIZE {
+        let hash_len = object_hash.len_in_bytes();
+
+        let footer_size = hash_len * 2;
+        if idx_len < FAN_LEN * N32_SIZE + footer_size {
             return Err(Error::Corrupt {
                 message: format!("Pack index of size {} is too small for even an empty index", idx_len),
             });
@@ -79,6 +79,8 @@ impl TryFrom<&Path> for index::File {
             version: kind,
             num_objects,
             fan,
+            hash_len,
+            object_hash,
         })
     }
 }

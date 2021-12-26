@@ -13,15 +13,6 @@ pub(crate) struct TreeEntry {
     pub crc32: u32,
 }
 
-impl Default for TreeEntry {
-    fn default() -> Self {
-        TreeEntry {
-            id: git_hash::ObjectId::null_sha1(),
-            crc32: 0,
-        }
-    }
-}
-
 /// Information gathered while executing [`write_data_iter_to_stream()`][crate::index::File::write_data_iter_to_stream]
 #[derive(PartialEq, Eq, Debug, Hash, Ord, PartialOrd, Clone)]
 #[cfg_attr(feature = "serde1", derive(serde::Serialize, serde::Deserialize))]
@@ -47,6 +38,7 @@ impl crate::index::File {
     /// `tread_limit` is used for a parallel tree traversal for obtaining object hashes with optimal performance.
     /// `root_progress` is the top-level progress to stay informed about the progress of this potentially long-running
     /// computation.
+    /// `object_hash` defines what kind of object hash we write into the index file.
     ///
     /// # Remarks
     ///
@@ -55,6 +47,7 @@ impl crate::index::File {
     /// provides all bytes belonging to a pack entry writing them to the given mutable output `Vec`.
     /// It should return `None` if the entry cannot be resolved from the pack that produced the `entries` iterator, causing
     /// the write operation to fail.
+    #[allow(clippy::too_many_arguments)]
     pub fn write_data_iter_to_stream<F, F2>(
         kind: crate::index::Version,
         make_resolver: F,
@@ -63,6 +56,7 @@ impl crate::index::File {
         mut root_progress: impl Progress,
         out: impl io::Write,
         should_interrupt: &AtomicBool,
+        object_hash: git_hash::Kind,
     ) -> Result<Outcome, Error>
     where
         F: FnOnce() -> io::Result<F2>,
@@ -113,7 +107,7 @@ impl crate::index::File {
                     tree.add_root(
                         pack_offset,
                         TreeEntry {
-                            id: git_hash::ObjectId::null_sha1(),
+                            id: object_hash.null(),
                             crc32,
                         },
                     )?;
@@ -131,7 +125,7 @@ impl crate::index::File {
                         base_pack_offset,
                         pack_offset,
                         TreeEntry {
-                            id: git_hash::ObjectId::null_sha1(),
+                            id: object_hash.null(),
                             crc32,
                         },
                     )?;
@@ -181,6 +175,7 @@ impl crate::index::File {
                     modify_base(data, entry, bytes, kind.hash());
                     Ok::<_, Error>(())
                 },
+                object_hash,
             )?;
             root_progress.inc();
 
@@ -221,8 +216,8 @@ fn modify_base(
     decompressed: &[u8],
     hash: git_hash::Kind,
 ) {
-    fn compute_hash(kind: git_object::Kind, bytes: &[u8], hash_kind: git_hash::Kind) -> git_hash::ObjectId {
-        let mut hasher = git_features::hash::hasher(hash_kind);
+    fn compute_hash(kind: git_object::Kind, bytes: &[u8], object_hash: git_hash::Kind) -> git_hash::ObjectId {
+        let mut hasher = git_features::hash::hasher(object_hash);
         hasher.update(&git_object::encode::loose_header(kind, bytes.len()));
         hasher.update(bytes);
         git_hash::ObjectId::from(hasher.digest())

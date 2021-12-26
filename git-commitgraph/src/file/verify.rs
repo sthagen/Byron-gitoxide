@@ -5,9 +5,6 @@ use std::{
     path::Path,
 };
 
-use bstr::ByteSlice;
-use git_hash::SIZE_OF_SHA1_DIGEST as SHA1_SIZE;
-
 use crate::{
     file::{self, File},
     GENERATION_NUMBER_INFINITY, GENERATION_NUMBER_MAX,
@@ -68,7 +65,7 @@ pub struct Outcome {
 impl File {
     /// Returns the trailing checksum over the entire content of this file.
     pub fn checksum(&self) -> &git_hash::oid {
-        git_hash::oid::try_from(&self.data[self.data.len() - SHA1_SIZE..]).expect("file to be large enough for a hash")
+        git_hash::oid::from_bytes_unchecked(&self.data[self.data.len() - self.hash_len..])
     }
 
     /// Traverse all [commits][file::Commit] stored in this file and call `processor(commit) -> Result<(), Error>` on it.
@@ -83,7 +80,7 @@ impl File {
             .map_err(|(actual, expected)| Error::Mismatch { actual, expected })?;
         verify_split_chain_filename_hash(&self.path, self.checksum()).map_err(Error::Filename)?;
 
-        let null_id = git_hash::oid::null_sha1();
+        let null_id = self.object_hash().null_ref();
 
         let mut stats = Outcome {
             max_generation: 0,
@@ -150,10 +147,10 @@ impl File {
         // Error type to support io::Error and Mismatch. As we only gain progress, there probably isn't much value
         // as these files are usually small enough to process them in less than a second, even for the large ones.
         // But it's possible, once a progress instance is passed.
-        let data_len_without_trailer = self.data.len() - SHA1_SIZE;
-        let mut hasher = git_features::hash::Sha1::default();
+        let data_len_without_trailer = self.data.len() - self.hash_len;
+        let mut hasher = git_features::hash::hasher(self.object_hash());
         hasher.update(&self.data[..data_len_without_trailer]);
-        let actual = git_hash::ObjectId::new_sha1(hasher.digest());
+        let actual = git_hash::ObjectId::from(hasher.digest().as_ref());
 
         let expected = self.checksum();
         if actual == expected {
@@ -174,6 +171,6 @@ fn verify_split_chain_filename_hash(path: impl AsRef<Path>, expected: &git_hash:
         .and_then(|stem| stem.strip_prefix("graph-"))
         .map_or(Ok(()), |hex| match git_hash::ObjectId::from_hex(hex.as_bytes()) {
             Ok(actual) if actual == expected => Ok(()),
-            _ => Err(format!("graph-{}.graph", expected.to_sha1_hex().as_bstr())),
+            _ => Err(format!("graph-{}.graph", expected.to_hex())),
         })
 }

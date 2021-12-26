@@ -4,7 +4,7 @@ use pretty_assertions::assert_eq;
 use crate::{fixture_path, hex_to_id};
 
 fn ldb() -> Store {
-    Store::at(fixture_path("objects"))
+    Store::at(fixture_path("objects"), git_hash::Kind::Sha1)
 }
 
 pub fn object_ids() -> Vec<git_hash::ObjectId> {
@@ -37,19 +37,19 @@ mod write {
     #[test]
     fn read_and_write() -> Result<(), Box<dyn std::error::Error>> {
         let dir = tempfile::tempdir()?;
-        let db = loose::Store::at(dir.path());
+        let db = loose::Store::at(dir.path(), git_hash::Kind::Sha1);
         let mut buf = Vec::new();
         let mut buf2 = Vec::new();
 
         for oid in object_ids() {
             let obj = locate_oid(oid, &mut buf);
-            let actual = db.write(&obj.decode()?, git_hash::Kind::Sha1)?;
+            let actual = db.write(&obj.decode()?)?;
             assert_eq!(actual, oid);
             assert_eq!(
                 db.try_find(oid, &mut buf2)?.expect("id present").decode()?,
                 obj.decode()?
             );
-            let actual = db.write_buf(obj.kind, obj.data, git_hash::Kind::Sha1)?;
+            let actual = db.write_buf(obj.kind, obj.data)?;
             assert_eq!(actual, oid);
             assert_eq!(
                 db.try_find(oid, &mut buf2)?.expect("id present").decode()?,

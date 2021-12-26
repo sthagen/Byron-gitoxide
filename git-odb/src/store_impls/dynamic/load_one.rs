@@ -1,5 +1,7 @@
-use std::sync::atomic::Ordering;
-use std::{path::Path, sync::Arc};
+use std::{
+    path::Path,
+    sync::{atomic::Ordering, Arc},
+};
 
 use crate::store::{handle, types};
 
@@ -18,8 +20,12 @@ impl super::Store {
         if index.generation != marker.generation {
             return Ok(None);
         }
-        fn load_pack(path: &Path, id: types::PackId) -> std::io::Result<Arc<git_pack::data::File>> {
-            git_pack::data::File::at(path)
+        fn load_pack(
+            path: &Path,
+            id: types::PackId,
+            object_hash: git_hash::Kind,
+        ) -> std::io::Result<Arc<git_pack::data::File>> {
+            git_pack::data::File::at(path, object_hash)
                 .map(|mut pack| {
                     pack.id = id.to_intrinsic_pack_id();
                     Arc::new(pack)
@@ -48,9 +54,9 @@ impl super::Store {
                                 let mut files = slot.files.load_full();
                                 let files_mut = Arc::make_mut(&mut files);
                                 let pack = match files_mut {
-                                    Some(types::IndexAndPacks::Index(bundle)) => {
-                                        bundle.data.load_with_recovery(|path| load_pack(path, id))?
-                                    }
+                                    Some(types::IndexAndPacks::Index(bundle)) => bundle
+                                        .data
+                                        .load_with_recovery(|path| load_pack(path, id, self.object_hash))?,
                                     Some(types::IndexAndPacks::MultiIndex(_)) => {
                                         // something changed between us getting the lock, trigger a complete index refresh.
                                         None

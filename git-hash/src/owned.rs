@@ -1,4 +1,4 @@
-use std::{borrow::Borrow, convert::TryInto, fmt, io, ops::Deref};
+use std::{borrow::Borrow, convert::TryInto, fmt, ops::Deref};
 
 use crate::{borrowed::oid, Kind, SIZE_OF_SHA1_DIGEST};
 
@@ -25,28 +25,29 @@ impl std::fmt::Debug for ObjectId {
 /// Access and conversion
 impl ObjectId {
     /// Returns the kind of hash used in this `Id`
+    #[inline]
     pub fn kind(&self) -> crate::Kind {
-        crate::Kind::Sha1
+        match self {
+            ObjectId::Sha1(_) => crate::Kind::Sha1,
+        }
     }
     /// Return the raw byte slice representing this hash
+    #[inline]
     pub fn as_slice(&self) -> &[u8] {
         match self {
             Self::Sha1(b) => b.as_ref(),
         }
     }
     /// Return the raw mutable byte slice representing this hash
+    #[inline]
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
         match self {
             Self::Sha1(b) => b.as_mut(),
         }
     }
 
-    /// Write ourselves to `out` in hexadecimal notation
-    pub fn write_hex_to(&self, mut out: impl io::Write) -> io::Result<()> {
-        out.write_all(&self.to_sha1_hex())
-    }
-
     /// The hash of an empty tree
+    #[inline]
     pub const fn empty_tree(hash: Kind) -> ObjectId {
         match hash {
             Kind::Sha1 => {
@@ -56,13 +57,15 @@ impl ObjectId {
     }
 
     /// Returns true if this hash consists of all null bytes
+    #[inline]
     pub fn is_null(&self) -> bool {
         match self {
-            ObjectId::Sha1(digest) => &digest[..] == Self::null_sha1().as_bytes(),
+            ObjectId::Sha1(digest) => &digest[..] == oid::null_sha1().as_bytes(),
         }
     }
 
     /// Returns an Digest representing a hash with whose memory is zeroed.
+    #[inline]
     pub const fn null(kind: crate::Kind) -> ObjectId {
         match kind {
             crate::Kind::Sha1 => Self::null_sha1(),
@@ -72,59 +75,25 @@ impl ObjectId {
 
 /// Sha1 hash specific methods
 impl ObjectId {
-    /// Returns ourselves as slice of 20 bytes.
-    ///
-    /// Panics if this instance is not a sha1 hash.
-    pub fn sha1(&self) -> &[u8; SIZE_OF_SHA1_DIGEST] {
-        match self {
-            Self::Sha1(b) => b,
-        }
-    }
-
-    /// Return ourselves as array of 40 hexadecimal bytes.
-    ///
-    /// Panics if this instance is not a sha1 hash.
-    pub fn to_sha1_hex(self) -> [u8; SIZE_OF_SHA1_DIGEST * 2] {
-        match self {
-            Self::Sha1(b) => {
-                let mut hex_buf = [0u8; 40];
-                hex::encode_to_slice(b, &mut hex_buf).expect("we can count");
-                hex_buf
-            }
-        }
-    }
-
-    /// Return ourselves as hexadecimal string with a length of 40 bytes.
-    ///
-    /// Panics if this instance is not a sha1 hash.
-    pub fn to_sha1_hex_string(self) -> String {
-        let buf = self.to_sha1_hex();
-        std::str::from_utf8(&buf).expect("hex is valid UTF-8").to_string()
-    }
-
     /// Instantiate an Digest from 20 bytes of a Sha1 digest.
-    pub fn new_sha1(id: [u8; SIZE_OF_SHA1_DIGEST]) -> Self {
+    #[inline]
+    fn new_sha1(id: [u8; SIZE_OF_SHA1_DIGEST]) -> Self {
         ObjectId::Sha1(id)
     }
 
     /// Instantiate an Digest from a slice 20 borrowed bytes of a Sha1 digest.
     ///
     /// Panics of the slice doesn't have a length of 20.
-    pub fn from_20_bytes(b: &[u8]) -> ObjectId {
+    #[inline]
+    pub(crate) fn from_20_bytes(b: &[u8]) -> ObjectId {
         let mut id = [0; SIZE_OF_SHA1_DIGEST];
         id.copy_from_slice(b);
         ObjectId::Sha1(id)
     }
 
-    /// Instantiate an Digest from a borrowed array of 20 bytes of a Sha1 digest.
-    pub fn from_borrowed_sha1(b: &[u8; SIZE_OF_SHA1_DIGEST]) -> ObjectId {
-        let mut id = [0; SIZE_OF_SHA1_DIGEST];
-        id.copy_from_slice(&b[..]);
-        ObjectId::Sha1(id)
-    }
-
     /// Returns an Digest representing a Sha1 with whose memory is zeroed.
-    pub const fn null_sha1() -> ObjectId {
+    #[inline]
+    pub(crate) const fn null_sha1() -> ObjectId {
         ObjectId::Sha1([0u8; 20])
     }
 }
@@ -162,7 +131,7 @@ impl Deref for ObjectId {
 
 impl AsRef<crate::oid> for ObjectId {
     fn as_ref(&self) -> &oid {
-        oid::try_from(self.as_slice()).expect("sibling type always implements all hashes we support")
+        oid::from_bytes_unchecked(self.as_slice())
     }
 }
 
@@ -174,10 +143,7 @@ impl Borrow<crate::oid> for ObjectId {
 
 impl fmt::Display for ObjectId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for b in self.as_bytes() {
-            write!(f, "{:02x}", b)?;
-        }
-        Ok(())
+        write!(f, "{}", self.to_hex())
     }
 }
 

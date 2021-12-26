@@ -55,6 +55,7 @@ impl crate::Bundle {
             progress: progress::ThroughputOnDrop::new(read_progress),
         };
 
+        let object_hash = options.object_hash;
         let data_file = Arc::new(parking_lot::Mutex::new(match directory.as_ref() {
             Some(directory) => git_tempfile::new(directory, ContainingDirectory::Exists, AutoRemove::Tempfile)?,
             None => git_tempfile::new(std::env::temp_dir(), ContainingDirectory::Exists, AutoRemove::Tempfile)?,
@@ -74,6 +75,7 @@ impl crate::Bundle {
                         buffered_pack,
                         options.iteration_mode,
                         data::input::EntryDataMode::KeepAndCrc32,
+                        object_hash,
                     )?,
                     thin_pack_lookup_fn,
                 );
@@ -105,6 +107,7 @@ impl crate::Bundle {
                     buffered_pack,
                     options.iteration_mode,
                     data::input::EntryDataMode::Crc32,
+                    object_hash,
                 )?;
                 let pack_kind = pack_entries_iter.kind();
                 (Box::new(pack_entries_iter), pack_kind)
@@ -121,6 +124,7 @@ impl crate::Bundle {
 
         Ok(Outcome {
             index: outcome,
+            object_hash,
             pack_kind,
             data_path,
             index_path,
@@ -154,6 +158,7 @@ impl crate::Bundle {
             Some(directory) => git_tempfile::new(directory, ContainingDirectory::Exists, AutoRemove::Tempfile)?,
             None => git_tempfile::new(std::env::temp_dir(), ContainingDirectory::Exists, AutoRemove::Tempfile)?,
         }));
+        let object_hash = options.object_hash;
         let eight_pages = 4096 * 8;
         let (pack_entries_iter, pack_kind): (
             Box<dyn Iterator<Item = Result<data::input::Entry, data::input::Error>> + Send + 'static>,
@@ -170,6 +175,7 @@ impl crate::Bundle {
                         buffered_pack,
                         options.iteration_mode,
                         data::input::EntryDataMode::KeepAndCrc32,
+                        object_hash,
                     )?,
                     thin_pack_lookup_fn,
                 );
@@ -189,6 +195,7 @@ impl crate::Bundle {
                     buffered_pack,
                     options.iteration_mode,
                     data::input::EntryDataMode::Crc32,
+                    object_hash,
                 )?;
                 let pack_kind = pack_entries_iter.kind();
                 (Box::new(pack_entries_iter), pack_kind)
@@ -209,6 +216,7 @@ impl crate::Bundle {
 
         Ok(Outcome {
             index: outcome,
+            object_hash,
             pack_kind,
             data_path,
             index_path,
@@ -222,6 +230,7 @@ impl crate::Bundle {
             thread_limit,
             iteration_mode: _,
             index_kind,
+            object_hash,
         }: Options,
         data_file: Arc<parking_lot::Mutex<git_tempfile::Handle<Writable>>>,
         pack_entries_iter: impl Iterator<Item = Result<data::input::Entry, data::input::Error>>,
@@ -244,9 +253,10 @@ impl crate::Bundle {
                     indexing_progress,
                     &mut index_file,
                     should_interrupt,
+                    object_hash,
                 )?;
 
-                let data_path = directory.join(format!("{}.pack", outcome.data_hash.to_sha1_hex_string()));
+                let data_path = directory.join(format!("{}.pack", outcome.data_hash.to_hex()));
                 let index_path = data_path.with_extension("idx");
 
                 Arc::try_unwrap(data_file)
@@ -273,6 +283,7 @@ impl crate::Bundle {
                     indexing_progress,
                     io::sink(),
                     should_interrupt,
+                    object_hash,
                 )?,
                 None,
                 None,

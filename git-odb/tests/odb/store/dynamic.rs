@@ -1,9 +1,10 @@
 #![allow(unused)]
 
+use std::process::Command;
+
 use git_features::threading::OwnShared;
 use git_odb::{store, Find, FindExt, Write};
 use git_testtools::{fixture_path, hex_to_id};
-use std::process::Command;
 
 fn db() -> git_odb::Handle {
     git_odb::at(fixture_path("objects")).expect("valid object path")
@@ -16,7 +17,7 @@ fn write() -> crate::Result {
     // It should refresh once even if the refresh mode is never, just to initialize the index
     handle.inner.refresh_mode = store::RefreshMode::Never;
 
-    let written_id = handle.write_buf(git_object::Kind::Blob, b"hello world", git_hash::Kind::Sha1)?;
+    let written_id = handle.write_buf(git_object::Kind::Blob, b"hello world")?;
     assert_eq!(written_id, hex_to_id("95d09f2b10159347eece71399a7e2e907ea3df4f"));
     Ok(())
 }
@@ -252,21 +253,19 @@ fn a_bunch_of_loose_and_packed_objects() -> crate::Result {
 }
 
 #[test]
-fn auto_refresh_with_and_without_id_stability() {
-    let tmp = git_testtools::tempfile::TempDir::new().unwrap();
+fn auto_refresh_with_and_without_id_stability() -> crate::Result {
+    let tmp = git_testtools::tempfile::TempDir::new()?;
     assert!(
         Command::new("git")
             .arg("-C")
             .arg(tmp.path())
             .arg("init")
             .arg("--bare")
-            .status()
-            .unwrap()
+            .status()?
             .success(),
         "git should work"
     );
-    git_testtools::copy_recursively_into_existing_dir(fixture_path("objects/pack"), tmp.path().join("objects/pack"))
-        .unwrap();
+    git_testtools::copy_recursively_into_existing_dir(fixture_path("objects/pack"), tmp.path().join("objects/pack"))?;
     let hide_pack = |name: &str| {
         let stem = tmp.path().join("objects/pack").join(name);
         std::fs::rename(stem.with_extension("idx"), stem.with_extension("idx.bak")).unwrap();
@@ -280,7 +279,7 @@ fn auto_refresh_with_and_without_id_stability() {
     hide_pack("pack-11fdfa9e156ab73caae3b6da867192221f2089c2");
     hide_pack("pack-a2bf8e71d8c18879e499335762dd95119d93d9f1");
 
-    let handle = git_odb::at(tmp.path().join("objects")).unwrap();
+    let handle = git_odb::at(tmp.path().join("objects"))?;
     let mut buf = Vec::new();
     assert!(
         handle
@@ -334,7 +333,7 @@ fn auto_refresh_with_and_without_id_stability() {
         stable_handle.inner.prevent_pack_unload();
         let location = stable_handle
             .location_by_oid(hex_to_id("501b297447a8255d3533c6858bb692575cdefaa0"), &mut buf)
-            .unwrap();
+            .expect("object exists");
         assert!(
             stable_handle.entry_by_location(&location).is_some(),
             "entries can be found by location as the pack is definitely still loaded, the index didn't change"
@@ -398,4 +397,5 @@ fn auto_refresh_with_and_without_id_stability() {
         },
         "garbaged slots aren't reclaimed until there is the need. Keeping indices open despite them not being accessible anymore."
     );
+    Ok(())
 }

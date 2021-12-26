@@ -1,7 +1,6 @@
 use std::sync::atomic::AtomicBool;
 
 use git_features::progress::Progress;
-use git_hash::SIZE_OF_SHA1_DIGEST as SHA1_SIZE;
 
 use crate::data::File;
 
@@ -22,7 +21,7 @@ pub enum Error {
 impl File {
     /// The checksum in the trailer of this pack data file
     pub fn checksum(&self) -> git_hash::ObjectId {
-        git_hash::ObjectId::from_20_bytes(&self.data[self.data.len() - SHA1_SIZE..])
+        git_hash::ObjectId::from(&self.data[self.data.len() - self.hash_len..])
     }
 
     /// Verifies that the checksum of the packfile over all bytes preceding it indeed matches the actual checksum,
@@ -38,7 +37,7 @@ impl File {
         mut progress: impl Progress,
         should_interrupt: &AtomicBool,
     ) -> Result<git_hash::ObjectId, Error> {
-        let right_before_trailer = self.data.len() - SHA1_SIZE;
+        let right_before_trailer = self.data.len() - self.hash_len;
         let actual = match git_features::hash::bytes_of_file(
             &self.path,
             right_before_trailer,
@@ -49,11 +48,11 @@ impl File {
             Ok(id) => id,
             Err(_io_err) => {
                 let start = std::time::Instant::now();
-                let mut hasher = git_features::hash::Sha1::default();
+                let mut hasher = git_features::hash::hasher(self.object_hash);
                 hasher.update(&self.data[..right_before_trailer]);
                 progress.inc_by(right_before_trailer);
                 progress.show_throughput(start);
-                git_hash::ObjectId::new_sha1(hasher.digest())
+                git_hash::ObjectId::from(hasher.digest())
             }
         };
 

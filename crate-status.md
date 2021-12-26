@@ -8,6 +8,10 @@
 * [x] API documentation
     * [ ] Some examples
 
+### git-chunk
+* [ ] decode the chunk file table of contents and provide convenient API
+* [ ] write the table of contents
+
 ### git-object
 * *decode (zero-copy)* borrowed objects
     * [x] commit
@@ -45,17 +49,20 @@
         * [x] Add support for zlib-ng for 2.5x _compression_ performance
         * [x] objects to entries iterator
             * [x] input objects as-is
-            * [ ] pack only changed objects as derived from input
+            * [x] pack only changed objects as derived from input
             * [x] base object compression
             * [ ] delta compression
             * [x] create 'thin' pack, i.e. deltas that are based on objects the other side has.
             * [x] parallel implementation that scales perfectly
         * [x] entries to pack data iterator
+        * [ ] write index along with the new pack
     * [x] **verify** pack with statistics
         * [x] brute force - less memory
-        * [x] indexed - faster, but more memory
+        * [x] indexed - optimal speed, but more memory
     * **advanced**
         * [ ] Multi-Pack index file (MIDX)
+            * [ ] read
+            * [ ] write 
         * [ ] 'bitmap' file
         * [ ] [special handling for networked packs](https://github.com/git/git/blob/89b43f80a514aee58b662ad606e6352e03eaeee4/packfile.c#L949:L949)
         * [ ] [detect and retry packed object reading](https://github.com/git/git/blob/89b43f80a514aee58b662ad606e6352e03eaeee4/packfile.c#L1268:L1268)
@@ -72,12 +79,12 @@
         * [x] verify checksum
     * [x] streaming write for blobs
     * [x] buffer write for small in-memory objects/non-blobs to bring IO down to open-read-close == 3 syscalls
-* **compound store**
-    * [x] everything loose object stores can do
-    * [x] lookup objects in packs
-* **linked store**
-    * [x] everything the first loose object store can do
-    * [x] lookup objects in multiple linked object stores
+* **dynamic store**
+    * [x] auto-refresh of on-disk state
+    * [x] handles alternates
+    * [ ] multi-pack indices
+    * [x] perfect scaling with cores
+    * [x] support for pack caches, object caches and MRU for best per-thread performance.
 * **sink**
     * [x] write objects and obtain id
 * **alternates**
