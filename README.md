@@ -35,12 +35,15 @@ Please see _'Development Status'_ for a listing of all crates and their capabili
       * [x] **create** - create a pack from given objects or tips of the commit graph.
       * [ ] **send** - create a pack and send it using the pack protocol to stdout, similar to 'git-upload-pack', 
             for consumption by **pack-receive** or _git-receive-pack_
-      * [x] [index from data](https://asciinema.org/a/352941) - create an index file by streaming a pack file as done during clone
-          * [ ] support for thin packs (as needed for fetch/pull)
+      * **index**
+      * [x] [create](https://asciinema.org/a/352941) - create an index file by streaming a pack file as done during clone
+          * [x] support for thin packs (as needed for fetch/pull)
     * **commit-graph**
       * [x] **verify** - assure that a commit-graph is consistent
-    * [remote-ref-list](https://asciinema.org/a/359320)
-      * [x] list all (or given) references from a remote at the given URL
+    * **repository**
+      * **verify** - validate a whole repository, for now only the object database.
+    * **remote**
+      * [ref-list](https://asciinema.org/a/359320) - list all (or given) references from a remote at the given URL
 
 [skim]: https://github.com/lotabout/skim
 [git-hours]: https://github.com/kimmobrunfeldt/git-hours/blob/8aaeee237cb9d9028e7a2592a25ad8468b1f45e4/index.js#L114-L143
@@ -212,6 +215,13 @@ For additional details, also take a look at the [collaboration guide].
 [project-board]: https://github.com/Byron/gitoxide/projects
 [discussions]: https://github.com/Byron/gitoxide/discussions
 [keybase]: https://keybase.io/byronbates
+
+### Getting started with Video Tutorials
+
+- [Learning Rust with Gitoxide](https://youtube.com/playlist?list=PLMHbQxe1e9Mk5kOHrm9v20-umkE2ck_gE)
+   - In 17 episodes you can learn all you need to meaningfully contirbute to `gitoxide`.
+- [Getting into Gitoxide](https://youtube.com/playlist?list=PLMHbQxe1e9MkEmuj9csczEK1O06l0Npy5)
+   - Get an introduction to `gitoxide` itself which should be a good foundation for any contribution, but isn't a requirement for contributions either.
 
 ## Roadmap
 

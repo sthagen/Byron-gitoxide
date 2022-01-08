@@ -1,7 +1,4 @@
-use std::{
-    collections::VecDeque,
-    sync::atomic::{AtomicBool, Ordering},
-};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use git_features::{
     parallel,
@@ -32,6 +29,13 @@ pub enum Error {
     Inspect(#[from] Box<dyn std::error::Error + Send + Sync>),
     #[error("Interrupted")]
     Interrupted,
+    #[error(
+    "The base at {base_pack_offset} was referred to by a ref-delta, but it was never added to the tree as if the pack was still thin."
+    )]
+    OutOfPackRefDelta {
+        /// The base's offset which was from a resolved ref-delta that didn't actually get added to the tree
+        base_pack_offset: crate::data::Offset,
+    },
 }
 
 /// Additional context passed to the `inspect_object(…)` function of the [`Tree::traverse()`] method.
@@ -49,6 +53,30 @@ pub struct Context<'a, S> {
     pub level: u16,
 }
 
+/// Options for [`Tree::traverse()`].
+pub struct Options<'a, P1, P2> {
+    /// is a progress instance to track progress for each object in the traversal.
+    pub object_progress: P1,
+    /// is a progress instance to track the overall progress.
+    pub size_progress: P2,
+    /// If `Some`, only use the given amount of threads. Otherwise, the amount of threads to use will be selected based on
+    /// the amount of available logical cores.
+    pub thread_limit: Option<usize>,
+    /// Abort the operation if the value is `true`.
+    pub should_interrupt: &'a AtomicBool,
+    /// specifies what kind of hashes we expect to be stored in oid-delta entries, which is viable to decoding them
+    /// with the correct size.
+    pub object_hash: git_hash::Kind,
+}
+
+/// The outcome of [`Tree::traverse()`]
+pub struct Outcome<T> {
+    /// The items that have no children in the pack, i.e. base objects.
+    pub roots: Vec<Item<T>>,
+    /// The items that children to a root object, i.e. delta objects.
+    pub children: Vec<Item<T>>,
+}
+
 impl<T> Tree<T>
 where
     T: Send,
@@ -59,9 +87,6 @@ where
     /// * `resolve(EntrySlice, &mut Vec<u8>) -> Option<()>` resolves the bytes in the pack for the given `EntrySlice` and stores them in the
     ///   output vector. It returns `Some(())` if the object existed in the pack, or `None` to indicate a resolution error, which would abort the
     ///   operation as well.
-    /// * `object_progress` is a progress instance to track progress for each object in the traversal.
-    /// * `size_progress` is a progress instance to track the overall progress.
-    /// * `tread_limit` is limits the amount of threads used if `Some` or otherwise defaults to all available logical cores.
     /// * `pack_entries_end` marks one-past-the-last byte of the last entry in the pack, as the last entries size would otherwise
     ///   be unknown as it's not part of the index file.
     /// * `new_thread_state() -> State` is a function to create state to be used in each thread, invoked once per thread.
@@ -69,26 +94,25 @@ where
     ///   running for each thread receiving fully decoded objects along with contextual information, which either succceeds with `Ok(())`
     ///   or returns a `CustomError`.
     ///   Note that `node_data` can be modified to allow storing maintaining computation results on a per-object basis.
-    /// * `object_hash` specifies what kind of hashes we expect to be stored in oid-delta entries, which is viable to decoding them
-    ///   with the correct size.
     ///
     /// This method returns a vector of all tree items, along with their potentially modified custom node data.
     ///
     /// _Note_ that this method consumed the Tree to assure safe parallel traversal with mutation support.
-    #[allow(clippy::too_many_arguments)]
     pub fn traverse<F, P1, P2, MBFN, S, E>(
         mut self,
         should_run_in_parallel: impl FnOnce() -> bool,
         resolve: F,
-        object_progress: P1,
-        size_progress: P2,
-        thread_limit: Option<usize>,
-        should_interrupt: &AtomicBool,
         pack_entries_end: u64,
         new_thread_state: impl Fn() -> S + Send + Clone,
         inspect_object: MBFN,
-        object_hash: git_hash::Kind,
-    ) -> Result<VecDeque<Item<T>>, Error>
+        Options {
+            thread_limit,
+            object_progress,
+            size_progress,
+            should_interrupt,
+            object_hash,
+        }: Options<'_, P1, P2>,
+    ) -> Result<Outcome<T>, Error>
     where
         F: for<'r> Fn(EntryRange, &'r mut Vec<u8>) -> Option<()> + Send + Clone,
         P1: Progress,
@@ -96,11 +120,11 @@ where
         MBFN: Fn(&mut T, &mut <P1 as Progress>::SubProgress, Context<'_, S>) -> Result<(), E> + Send + Clone,
         E: std::error::Error + Send + Sync + 'static,
     {
-        self.set_pack_entries_end(pack_entries_end);
+        self.set_pack_entries_end_and_resolve_ref_offsets(pack_entries_end)?;
         let (chunk_size, thread_limit, _) = parallel::optimize_chunk_size_and_thread_limit(1, None, thread_limit, None);
         let object_progress = OwnShared::new(Mutable::new(object_progress));
 
-        let num_objects = self.items.len();
+        let num_objects = self.num_items();
         in_parallel_if(
             should_run_in_parallel,
             self.iter_root_chunks(chunk_size),
@@ -120,7 +144,10 @@ where
             move |root_nodes, state| resolve::deltas(root_nodes, state, object_hash.len_in_bytes()),
             Reducer::new(num_objects, object_progress, size_progress, should_interrupt),
         )?;
-        Ok(self.into_items())
+        Ok(Outcome {
+            roots: self.root_items,
+            children: self.child_items,
+        })
     }
 }
 

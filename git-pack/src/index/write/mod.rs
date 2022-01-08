@@ -3,9 +3,9 @@ use std::{convert::TryInto, io, sync::atomic::AtomicBool};
 pub use error::Error;
 use git_features::progress::{self, Progress};
 
-use crate::cache::delta::{traverse::Context, Tree};
+use crate::cache::delta::{traverse, Tree};
 
-mod encode;
+pub(crate) mod encode;
 mod error;
 
 pub(crate) struct TreeEntry {
@@ -156,18 +156,14 @@ impl crate::index::File {
         let resolver = make_resolver()?;
         let sorted_pack_offsets_by_oid = {
             let in_parallel_if_pack_is_big_enough = || bytes_to_process > 5_000_000;
-            let mut items = tree.traverse(
+            let traverse::Outcome { roots, children } = tree.traverse(
                 in_parallel_if_pack_is_big_enough,
                 resolver,
-                root_progress.add_child("Resolving"),
-                root_progress.add_child("Decoding"),
-                thread_limit,
-                should_interrupt,
                 pack_entries_end,
                 || (),
                 |data,
                  _progress,
-                 Context {
+                 traverse::Context {
                      entry,
                      decompressed: bytes,
                      ..
@@ -175,13 +171,21 @@ impl crate::index::File {
                     modify_base(data, entry, bytes, kind.hash());
                     Ok::<_, Error>(())
                 },
-                object_hash,
+                crate::cache::delta::traverse::Options {
+                    object_progress: root_progress.add_child("Resolving"),
+                    size_progress: root_progress.add_child("Decoding"),
+                    thread_limit,
+                    should_interrupt,
+                    object_hash,
+                },
             )?;
             root_progress.inc();
 
+            let mut items = roots;
+            items.extend(children);
             {
                 let _progress = root_progress.add_child("sorting by id");
-                items.make_contiguous().sort_by_key(|e| e.data.id);
+                items.sort_by_key(|e| e.data.id);
             }
 
             root_progress.inc();
@@ -200,6 +204,7 @@ impl crate::index::File {
             indexing_start,
             num_objects as usize,
             progress::count("objects").expect("unit always set"),
+            progress::MessageLevel::Success,
         );
         Ok(Outcome {
             index_kind: kind,

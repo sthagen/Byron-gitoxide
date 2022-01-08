@@ -1,50 +1,103 @@
-use std::sync::{atomic::AtomicBool, Arc};
+use std::sync::atomic::AtomicBool;
 
-use git_features::progress::{self, Progress};
-use git_object::{
-    bstr::{BString, ByteSlice},
-    WriteTo,
-};
+use git_features::progress::Progress;
+use git_object::{bstr::ByteSlice, WriteTo};
 
 use crate::index;
 
-/// Returned by [`index::File::verify_checksum()`]
-#[derive(thiserror::Error, Debug)]
-#[allow(missing_docs)]
-pub enum Error {
-    #[error("index checksum mismatch: expected {expected}, got {actual}")]
-    Mismatch {
-        expected: git_hash::ObjectId,
-        actual: git_hash::ObjectId,
-    },
-    #[error("{kind} object {id} could not be decoded")]
-    ObjectDecode {
-        source: git_object::decode::Error,
-        kind: git_object::Kind,
-        id: git_hash::ObjectId,
-    },
-    #[error("{kind} object {id} wasn't re-encoded without change, wanted\n{expected}\n\nGOT\n\n{actual}")]
-    ObjectEncodeMismatch {
-        kind: git_object::Kind,
-        id: git_hash::ObjectId,
-        expected: BString,
-        actual: BString,
-    },
-    #[error(transparent)]
-    ObjectEncode(#[from] std::io::Error),
+///
+pub mod integrity {
+    use git_object::bstr::BString;
+
+    /// Returned by [`index::File::verify_integrity()`][crate::index::File::verify_integrity()].
+    #[derive(thiserror::Error, Debug)]
+    #[allow(missing_docs)]
+    pub enum Error {
+        #[error("The fan at index {index} is out of order as it's larger then the following value.")]
+        Fan { index: usize },
+        #[error("The index claims to have no objects")]
+        Empty,
+        #[error("{kind} object {id} could not be decoded")]
+        ObjectDecode {
+            source: git_object::decode::Error,
+            kind: git_object::Kind,
+            id: git_hash::ObjectId,
+        },
+        #[error("{kind} object {id} wasn't re-encoded without change, wanted\n{expected}\n\nGOT\n\n{actual}")]
+        ObjectEncodeMismatch {
+            kind: git_object::Kind,
+            id: git_hash::ObjectId,
+            expected: BString,
+            actual: BString,
+        },
+    }
+
+    /// Returned by [`index::File::verify_integrity()`][crate::index::File::verify_integrity()].
+    pub struct Outcome<P> {
+        /// The computed checksum of the index which matched the stored one.
+        pub actual_index_checksum: git_hash::ObjectId,
+        /// The packs traversal outcome, if one was provided
+        pub pack_traverse_statistics: Option<crate::index::traverse::Statistics>,
+        /// The provided progress instance.
+        pub progress: P,
+    }
+
+    /// Additional options to define how the integrity should be verified.
+    #[derive(Clone)]
+    pub struct Options<F> {
+        /// The thoroughness of the verification
+        pub verify_mode: crate::index::verify::Mode,
+        /// The way to traverse packs
+        pub traversal: crate::index::traverse::Algorithm,
+        /// The amount of theads to use of `Some(N)`, with `None|Some(0)` using all available cores are used.
+        pub thread_limit: Option<usize>,
+        /// A function to create a pack cache
+        pub make_pack_lookup_cache: F,
+    }
+
+    impl Default for Options<fn() -> crate::cache::Never> {
+        fn default() -> Self {
+            Options {
+                verify_mode: Default::default(),
+                traversal: Default::default(),
+                thread_limit: None,
+                make_pack_lookup_cache: || crate::cache::Never,
+            }
+        }
+    }
+}
+
+///
+pub mod checksum {
+    /// Returned by [`index::File::verify_checksum()`][crate::index::File::verify_checksum()].
+    pub type Error = crate::verify::checksum::Error;
 }
 
 /// Various ways in which a pack and index can be verified
 #[derive(Debug, Eq, PartialEq, Hash, Clone, Copy)]
 pub enum Mode {
-    /// Validate SHA1 and CRC32
-    Sha1Crc32,
-    /// Validate SHA1 and CRC32, and decode each non-Blob object.
+    /// Validate the object hash and CRC32
+    HashCrc32,
+    /// Validate hash and CRC32, and decode each non-Blob object.
     /// Each object should be valid, i.e. be decodable.
-    Sha1Crc32Decode,
-    /// Validate SHA1 and CRC32, and decode and encode each non-Blob object.
+    HashCrc32Decode,
+    /// Validate hash and CRC32, and decode and encode each non-Blob object.
     /// Each object should yield exactly the same hash when re-encoded.
-    Sha1Crc32DecodeEncode,
+    HashCrc32DecodeEncode,
+}
+
+impl Default for Mode {
+    fn default() -> Self {
+        Mode::HashCrc32DecodeEncode
+    }
+}
+
+/// Information to allow verifying the integrity of an index with the help of its corresponding pack.
+pub struct PackContext<'a, F> {
+    /// The pack data file itself.
+    pub data: &'a crate::data::File,
+    /// The options further configuring the pack traversal and verification
+    pub options: integrity::Options<F>,
 }
 
 /// Verify and validate the content of the index file
@@ -68,34 +121,17 @@ impl index::File {
     /// of this index file, and return it if it does.
     pub fn verify_checksum(
         &self,
-        mut progress: impl Progress,
+        progress: impl Progress,
         should_interrupt: &AtomicBool,
-    ) -> Result<git_hash::ObjectId, Error> {
-        let data_len_without_trailer = self.data.len() - self.hash_len;
-        let actual = match git_features::hash::bytes_of_file(
-            &self.path,
-            data_len_without_trailer,
-            git_hash::Kind::Sha1,
-            &mut progress,
+    ) -> Result<git_hash::ObjectId, checksum::Error> {
+        crate::verify::checksum_on_disk_or_mmap(
+            self.path(),
+            &self.data,
+            self.index_checksum(),
+            self.object_hash,
+            progress,
             should_interrupt,
-        ) {
-            Ok(id) => id,
-            Err(_io_err) => {
-                let start = std::time::Instant::now();
-                let mut hasher = git_features::hash::hasher(self.object_hash);
-                hasher.update(&self.data[..data_len_without_trailer]);
-                progress.inc_by(data_len_without_trailer);
-                progress.show_throughput(start);
-                git_hash::ObjectId::from(hasher.digest())
-            }
-        };
-
-        let expected = self.index_checksum();
-        if actual == expected {
-            Ok(actual)
-        } else {
-            Err(Error::Mismatch { actual, expected })
-        }
+        )
     }
 
     /// The most thorough validation of integrity of both index file and the corresponding pack data file, if provided.
@@ -115,78 +151,98 @@ impl index::File {
     ///
     /// The given `progress` is inevitably consumed if there is an error, which is a tradeoff chosen to easily allow using `?` in the
     /// error case.
-    pub fn verify_integrity<C, P>(
+    pub fn verify_integrity<P, C, F>(
         &self,
-        pack: Option<(
-            &crate::data::File,
-            Mode,
-            index::traverse::Algorithm,
-            impl Fn() -> C + Send + Clone,
-        )>,
-        thread_limit: Option<usize>,
-        progress: Option<P>,
-        should_interrupt: Arc<AtomicBool>,
-    ) -> Result<
-        (git_hash::ObjectId, Option<index::traverse::Outcome>, Option<P>),
-        index::traverse::Error<crate::index::verify::Error>,
-    >
+        pack: Option<PackContext<'_, F>>,
+        mut progress: P,
+        should_interrupt: &AtomicBool,
+    ) -> Result<integrity::Outcome<P>, index::traverse::Error<index::verify::integrity::Error>>
     where
         P: Progress,
         C: crate::cache::DecodeEntry,
+        F: Fn() -> C + Send + Clone,
     {
-        let mut root = progress::DoOrDiscard::from(progress);
+        if let Some(first_invalid) = crate::verify::fan(&self.fan) {
+            return Err(index::traverse::Error::Processor(integrity::Error::Fan {
+                index: first_invalid,
+            }));
+        }
+        if self.num_objects == 0 {
+            return Err(crate::index::traverse::Error::Processor(integrity::Error::Empty));
+        }
+
         match pack {
-            Some((pack, mode, algorithm, make_cache)) => self
+            Some(PackContext {
+                data: pack,
+                options:
+                    integrity::Options {
+                        verify_mode,
+                        traversal,
+                        thread_limit,
+                        make_pack_lookup_cache,
+                    },
+            }) => self
                 .traverse(
                     pack,
-                    root.into_inner(),
+                    progress,
+                    should_interrupt,
                     || {
                         let mut encode_buf = Vec::with_capacity(2048);
                         move |kind, data, index_entry, progress| {
-                            Self::verify_entry(mode, &mut encode_buf, kind, data, index_entry, progress)
+                            Self::verify_entry(verify_mode, &mut encode_buf, kind, data, index_entry, progress)
                         }
                     },
-                    make_cache,
                     index::traverse::Options {
-                        algorithm,
+                        traversal,
                         thread_limit,
                         check: index::traverse::SafetyCheck::All,
-                        should_interrupt,
+                        make_pack_lookup_cache,
                     },
                 )
-                .map(|(id, outcome, root)| (id, Some(outcome), root)),
+                .map(|o| integrity::Outcome {
+                    actual_index_checksum: o.actual_index_checksum,
+                    pack_traverse_statistics: Some(o.statistics),
+                    progress: o.progress,
+                }),
             None => self
-                .verify_checksum(root.add_child("Sha1 of index"), &should_interrupt)
+                .verify_checksum(progress.add_child("Sha1 of index"), should_interrupt)
                 .map_err(Into::into)
-                .map(|id| (id, None, root.into_inner())),
+                .map(|id| integrity::Outcome {
+                    actual_index_checksum: id,
+                    pack_traverse_statistics: None,
+                    progress,
+                }),
         }
     }
 
     #[allow(clippy::too_many_arguments)]
     fn verify_entry<P>(
-        mode: Mode,
+        verify_mode: Mode,
         encode_buf: &mut Vec<u8>,
         object_kind: git_object::Kind,
         buf: &[u8],
         index_entry: &index::Entry,
         progress: &mut P,
-    ) -> Result<(), Error>
+    ) -> Result<(), integrity::Error>
     where
         P: Progress,
     {
-        if let Mode::Sha1Crc32Decode | Mode::Sha1Crc32DecodeEncode = mode {
+        if let Mode::HashCrc32Decode | Mode::HashCrc32DecodeEncode = verify_mode {
             use git_object::Kind::*;
             match object_kind {
                 Tree | Commit | Tag => {
-                    let object =
-                        git_object::ObjectRef::from_bytes(object_kind, buf).map_err(|err| Error::ObjectDecode {
+                    let object = git_object::ObjectRef::from_bytes(object_kind, buf).map_err(|err| {
+                        integrity::Error::ObjectDecode {
                             source: err,
                             kind: object_kind,
                             id: index_entry.oid,
-                        })?;
-                    if let Mode::Sha1Crc32DecodeEncode = mode {
+                        }
+                    })?;
+                    if let Mode::HashCrc32DecodeEncode = verify_mode {
                         encode_buf.clear();
-                        object.write_to(&mut *encode_buf)?;
+                        object
+                            .write_to(&mut *encode_buf)
+                            .expect("writing to a memory buffer never fails");
                         if encode_buf.as_slice() != buf {
                             let mut should_return_error = true;
                             if let git_object::Kind::Tree = object_kind {
@@ -196,7 +252,7 @@ impl index::File {
                                 }
                             }
                             if should_return_error {
-                                return Err(Error::ObjectEncodeMismatch {
+                                return Err(integrity::Error::ObjectEncodeMismatch {
                                     kind: object_kind,
                                     id: index_entry.oid,
                                     expected: buf.into(),

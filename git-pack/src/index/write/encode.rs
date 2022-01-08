@@ -1,4 +1,7 @@
-use std::{cmp::Ordering, collections::VecDeque, io};
+use std::{cmp::Ordering, io};
+
+pub(crate) const LARGE_OFFSET_THRESHOLD: u64 = 0x7fff_ffff;
+pub(crate) const HIGH_BIT: u32 = 0x8000_0000;
 
 use byteorder::{BigEndian, WriteBytesExt};
 use git_features::{
@@ -10,7 +13,7 @@ use crate::index::{util::Count, V2_SIGNATURE};
 
 pub(crate) fn write_to(
     out: impl io::Write,
-    entries_sorted_by_oid: VecDeque<crate::cache::delta::Item<crate::index::write::TreeEntry>>,
+    entries_sorted_by_oid: Vec<crate::cache::delta::Item<crate::index::write::TreeEntry>>,
     pack_hash: &git_hash::ObjectId,
     kind: crate::index::Version,
     mut progress: impl Progress,
@@ -34,40 +37,10 @@ pub(crate) fn write_to(
     out.write_all(V2_SIGNATURE)?;
     out.write_u32::<BigEndian>(kind as u32)?;
 
-    const LARGE_OFFSET_THRESHOLD: u64 = 0x7fff_ffff;
-    const HIGH_BIT: u32 = 0x8000_0000;
-
-    let needs_64bit_offsets =
-        entries_sorted_by_oid.back().expect("at least one pack entry").offset > LARGE_OFFSET_THRESHOLD;
-    let mut fan_out = [0u32; 256];
     progress.init(Some(4), progress::steps());
     let start = std::time::Instant::now();
-    let _info = progress.add_child("generating fan-out table");
-
-    {
-        let mut iter = entries_sorted_by_oid.iter().enumerate();
-        let mut idx_and_entry = iter.next();
-        let mut upper_bound = 0;
-        let entries_len = entries_sorted_by_oid.len() as u32;
-
-        for (offset_be, byte) in fan_out.iter_mut().zip(0u8..=255) {
-            *offset_be = match idx_and_entry.as_ref() {
-                Some((_idx, entry)) => match entry.data.id.as_slice()[0].cmp(&byte) {
-                    Ordering::Less => unreachable!("ids should be ordered, and we make sure to keep ahead with them"),
-                    Ordering::Greater => upper_bound,
-                    Ordering::Equal => {
-                        idx_and_entry = iter.find(|(_, entry)| entry.data.id.as_slice()[0] != byte);
-                        upper_bound = match idx_and_entry.as_ref() {
-                            Some((idx, _)) => *idx as u32,
-                            None => entries_len,
-                        };
-                        upper_bound
-                    }
-                },
-                None => entries_len,
-            };
-        }
-    }
+    let _info = progress.add_child("writing fan-out table");
+    let fan_out = fanout(entries_sorted_by_oid.iter().map(|e| e.data.id.first_byte()));
 
     for value in fan_out {
         out.write_u32::<BigEndian>(value)?;
@@ -90,7 +63,7 @@ pub(crate) fn write_to(
     {
         let mut offsets64 = Vec::<u64>::new();
         for entry in &entries_sorted_by_oid {
-            out.write_u32::<BigEndian>(if needs_64bit_offsets && entry.offset > LARGE_OFFSET_THRESHOLD {
+            out.write_u32::<BigEndian>(if entry.offset > LARGE_OFFSET_THRESHOLD {
                 assert!(
                     offsets64.len() < LARGE_OFFSET_THRESHOLD as usize,
                     "Encoding breakdown - way too many 64bit offsets"
@@ -101,10 +74,8 @@ pub(crate) fn write_to(
                 entry.offset as u32
             })?;
         }
-        if needs_64bit_offsets {
-            for value in offsets64 {
-                out.write_u64::<BigEndian>(value)?;
-            }
+        for value in offsets64 {
+            out.write_u64::<BigEndian>(value)?;
         }
     }
 
@@ -121,7 +92,40 @@ pub(crate) fn write_to(
         start,
         (bytes_written_without_trailer + 20) as usize,
         progress::bytes().expect("unit always set"),
+        progress::MessageLevel::Success,
     );
 
     Ok(index_hash)
+}
+
+pub(crate) fn fanout(iter: impl ExactSizeIterator<Item = u8>) -> [u32; 256] {
+    let mut fan_out = [0u32; 256];
+    let entries_len = iter.len() as u32;
+    let mut iter = iter.enumerate();
+    let mut idx_and_entry = iter.next();
+    let mut upper_bound = 0;
+
+    for (offset_be, byte) in fan_out.iter_mut().zip(0u8..=255) {
+        *offset_be = match idx_and_entry.as_ref() {
+            Some((_idx, first_byte)) => match first_byte.cmp(&byte) {
+                Ordering::Less => unreachable!("ids should be ordered, and we make sure to keep ahead with them"),
+                Ordering::Greater => upper_bound,
+                Ordering::Equal => {
+                    if byte == 255 {
+                        entries_len
+                    } else {
+                        idx_and_entry = iter.find(|(_, first_byte)| *first_byte != byte);
+                        upper_bound = idx_and_entry
+                            .as_ref()
+                            .map(|(idx, _)| *idx as u32)
+                            .unwrap_or(entries_len);
+                        upper_bound
+                    }
+                }
+            },
+            None => entries_len,
+        };
+    }
+
+    fan_out
 }

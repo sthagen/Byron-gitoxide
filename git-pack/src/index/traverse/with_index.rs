@@ -1,18 +1,22 @@
-use std::{
-    collections::VecDeque,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
-};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use git_features::{parallel, progress::Progress};
 
-use super::{Error, SafetyCheck};
+use super::Error;
 use crate::{
-    cache::delta::traverse::Context,
-    index::{self, util::index_entries_sorted_by_offset_ascending},
+    cache::delta::traverse,
+    index::{self, traverse::Outcome, util::index_entries_sorted_by_offset_ascending},
 };
+
+/// Traversal options for [`traverse_with_index()`][index::File::traverse_with_index()]
+#[derive(Default)]
+pub struct Options {
+    /// If `Some`, only use the given amount of threads. Otherwise, the amount of threads to use will be selected based on
+    /// the amount of available logical cores.
+    pub thread_limit: Option<usize>,
+    /// The kinds of safety checks to perform.
+    pub check: crate::index::traverse::SafetyCheck,
+}
 
 /// Traversal with index
 impl index::File {
@@ -22,13 +26,12 @@ impl index::File {
     /// For more details, see the documentation on the [`traverse()`][index::File::traverse()] method.
     pub fn traverse_with_index<P, Processor, E>(
         &self,
-        check: SafetyCheck,
-        thread_limit: Option<usize>,
+        pack: &crate::data::File,
         new_processor: impl Fn() -> Processor + Send + Clone,
         mut progress: P,
-        pack: &crate::data::File,
-        should_interrupt: Arc<AtomicBool>,
-    ) -> Result<(git_hash::ObjectId, index::traverse::Outcome, P), Error<E>>
+        should_interrupt: &AtomicBool,
+        Options { check, thread_limit }: Options,
+    ) -> Result<Outcome<P>, Error<E>>
     where
         P: Progress,
         Processor: FnMut(
@@ -41,17 +44,16 @@ impl index::File {
     {
         let (verify_result, traversal_result) = parallel::join(
             {
-                let pack_progress = progress.add_child("SHA1 of pack");
-                let index_progress = progress.add_child("SHA1 of index");
-                let should_interrupt = Arc::clone(&should_interrupt);
+                let pack_progress = progress.add_child(format!(
+                    "Hash of pack '{}'",
+                    pack.path().file_name().expect("pack has filename").to_string_lossy()
+                ));
+                let index_progress = progress.add_child(format!(
+                    "Hash of index '{}'",
+                    self.path.file_name().expect("index has filename").to_string_lossy()
+                ));
                 move || {
-                    let res = self.possibly_verify(
-                        pack,
-                        check,
-                        pack_progress,
-                        index_progress,
-                        Arc::clone(&should_interrupt),
-                    );
+                    let res = self.possibly_verify(pack, check, pack_progress, index_progress, should_interrupt);
                     if res.is_err() {
                         should_interrupt.store(true, Ordering::SeqCst);
                     }
@@ -62,27 +64,23 @@ impl index::File {
                 let sorted_entries =
                     index_entries_sorted_by_offset_ascending(self, progress.add_child("collecting sorted index"));
                 let tree = crate::cache::delta::Tree::from_offsets_in_pack(
+                    pack.path(),
                     sorted_entries.into_iter().map(Entry::from),
                     |e| e.index_entry.pack_offset,
-                    pack.path(),
-                    progress.add_child("indexing"),
-                    &should_interrupt,
                     |id| self.lookup(id).map(|idx| self.pack_offset_at_index(idx)),
+                    progress.add_child("indexing"),
+                    should_interrupt,
                     self.object_hash,
                 )?;
                 let there_are_enough_objects = || self.num_objects > 10_000;
                 let mut outcome = digest_statistics(tree.traverse(
                     there_are_enough_objects,
                     |slice, out| pack.entry_slice(slice).map(|entry| out.copy_from_slice(entry)),
-                    progress.add_child("Resolving"),
-                    progress.add_child("Decoding"),
-                    thread_limit,
-                    &should_interrupt,
                     pack.pack_end() as u64,
                     new_processor,
                     |data,
                      progress,
-                     Context {
+                     traverse::Context {
                          entry: pack_entry,
                          entry_end,
                          decompressed: bytes,
@@ -120,15 +118,23 @@ impl index::File {
                             res => res,
                         }
                     },
-                    self.object_hash,
+                    crate::cache::delta::traverse::Options {
+                        object_progress: progress.add_child("Resolving"),
+                        size_progress: progress.add_child("Decoding"),
+                        thread_limit,
+                        should_interrupt,
+                        object_hash: self.object_hash,
+                    },
                 )?);
                 outcome.pack_size = pack.data_len() as u64;
                 Ok(outcome)
             },
         );
-        let id = verify_result?;
-        let outcome = traversal_result?;
-        Ok((id, outcome, progress))
+        Ok(Outcome {
+            actual_index_checksum: verify_result?,
+            statistics: traversal_result?,
+            progress,
+        })
     }
 }
 
@@ -154,10 +160,10 @@ impl From<crate::index::Entry> for Entry {
     }
 }
 
-fn digest_statistics(items: VecDeque<crate::cache::delta::Item<Entry>>) -> index::traverse::Outcome {
-    let mut res = index::traverse::Outcome::default();
+fn digest_statistics(traverse::Outcome { roots, children }: traverse::Outcome<Entry>) -> index::traverse::Statistics {
+    let mut res = index::traverse::Statistics::default();
     let average = &mut res.average;
-    for item in &items {
+    for item in roots.iter().chain(children.iter()) {
         res.total_compressed_entries_size += item.data.compressed_size;
         res.total_decompressed_entries_size += item.data.decompressed_size;
         res.total_object_size += item.data.object_size;
@@ -176,10 +182,11 @@ fn digest_statistics(items: VecDeque<crate::cache::delta::Item<Entry>>) -> index
         };
     }
 
-    average.decompressed_size /= items.len() as u64;
-    average.compressed_size /= items.len();
-    average.object_size /= items.len() as u64;
-    average.num_deltas /= items.len() as u32;
+    let num_nodes = roots.len() + children.len();
+    average.decompressed_size /= num_nodes as u64;
+    average.compressed_size /= num_nodes;
+    average.object_size /= num_nodes as u64;
+    average.num_deltas /= num_nodes as u32;
 
     res
 }

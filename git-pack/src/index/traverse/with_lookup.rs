@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use git_features::{
     parallel::{self, in_parallel_if},
@@ -8,28 +8,30 @@ use git_features::{
 use super::{Error, Reducer};
 use crate::{data, index, index::util};
 
-mod options {
-    use std::sync::{atomic::AtomicBool, Arc};
+/// Traversal options for [`traverse()`][crate::index::File::traverse_with_lookup()]
+pub struct Options<F> {
+    /// If `Some`, only use the given amount of threads. Otherwise, the amount of threads to use will be selected based on
+    /// the amount of available logical cores.
+    pub thread_limit: Option<usize>,
+    /// The kinds of safety checks to perform.
+    pub check: crate::index::traverse::SafetyCheck,
+    /// A function to create a pack cache
+    pub make_pack_lookup_cache: F,
+}
 
-    use crate::index::traverse::SafetyCheck;
-
-    /// Traversal options for [`traverse()`][crate::index::File::traverse_with_lookup()]
-    #[derive(Default, Debug, Clone)]
-    pub struct Options {
-        /// If `Some`, only use the given amount of threads. Otherwise, the amount of threads to use will be selected based on
-        /// the amount of available logical cores.
-        pub thread_limit: Option<usize>,
-        /// The kinds of safety checks to perform.
-        pub check: SafetyCheck,
-        /// A flag to indicate whether the algorithm should be interrupted. Will be checked occasionally allow stopping a running
-        /// computation.
-        pub should_interrupt: Arc<AtomicBool>,
+impl Default for Options<fn() -> crate::cache::Never> {
+    fn default() -> Self {
+        Options {
+            check: Default::default(),
+            thread_limit: None,
+            make_pack_lookup_cache: || crate::cache::Never,
+        }
     }
 }
-use std::sync::atomic::Ordering;
 
 use git_features::threading::{lock, Mutable, OwnShared};
-pub use options::Options;
+
+use crate::index::traverse::Outcome;
 
 /// Verify and validate the content of the index file
 impl index::File {
@@ -37,18 +39,18 @@ impl index::File {
     /// waste while decoding objects.
     ///
     /// For more details, see the documentation on the [`traverse()`][index::File::traverse()] method.
-    pub fn traverse_with_lookup<P, C, Processor, E>(
+    pub fn traverse_with_lookup<P, C, Processor, E, F>(
         &self,
         new_processor: impl Fn() -> Processor + Send + Clone,
-        new_cache: impl Fn() -> C + Send + Clone,
-        mut progress: P,
         pack: &crate::data::File,
+        mut progress: P,
+        should_interrupt: &AtomicBool,
         Options {
             thread_limit,
             check,
-            should_interrupt,
-        }: Options,
-    ) -> Result<(git_hash::ObjectId, index::traverse::Outcome, P), Error<E>>
+            make_pack_lookup_cache,
+        }: Options<F>,
+    ) -> Result<Outcome<P>, Error<E>>
     where
         P: Progress,
         C: crate::cache::DecodeEntry,
@@ -59,20 +61,20 @@ impl index::File {
             &index::Entry,
             &mut <<P as Progress>::SubProgress as Progress>::SubProgress,
         ) -> Result<(), E>,
+        F: Fn() -> C + Send + Clone,
     {
         let (verify_result, traversal_result) = parallel::join(
             {
-                let pack_progress = progress.add_child("SHA1 of pack");
-                let index_progress = progress.add_child("SHA1 of index");
-                let should_interrupt = Arc::clone(&should_interrupt);
+                let pack_progress = progress.add_child(format!(
+                    "Hash of pack '{}'",
+                    pack.path().file_name().expect("pack has filename").to_string_lossy()
+                ));
+                let index_progress = progress.add_child(format!(
+                    "Hash of index '{}'",
+                    self.path.file_name().expect("index has filename").to_string_lossy()
+                ));
                 move || {
-                    let res = self.possibly_verify(
-                        pack,
-                        check,
-                        pack_progress,
-                        index_progress,
-                        Arc::clone(&should_interrupt),
-                    );
+                    let res = self.possibly_verify(pack, check, pack_progress, index_progress, should_interrupt);
                     if res.is_err() {
                         should_interrupt.store(true, Ordering::SeqCst);
                     }
@@ -96,7 +98,7 @@ impl index::File {
                     let reduce_progress = reduce_progress.clone();
                     move |index| {
                         (
-                            new_cache(),
+                            make_pack_lookup_cache(),
                             new_processor(),
                             Vec::with_capacity(2048), // decode buffer
                             lock(&reduce_progress).add_child(format!("thread {}", index)), // per thread progress
@@ -120,6 +122,7 @@ impl index::File {
                             ))),
                         );
                         let mut stats = Vec::with_capacity(entries.len());
+                        progress.set(0);
                         for index_entry in entries.iter() {
                             let result = self.decode_and_process_entry(
                                 check,
@@ -142,12 +145,14 @@ impl index::File {
                         }
                         Ok(stats)
                     },
-                    Reducer::from_progress(reduce_progress, pack.data_len(), check, &should_interrupt),
+                    Reducer::from_progress(reduce_progress, pack.data_len(), check, should_interrupt),
                 )
             },
         );
-        let id = verify_result?;
-        let res = traversal_result?;
-        Ok((id, res, progress))
+        Ok(Outcome {
+            actual_index_checksum: verify_result?,
+            statistics: traversal_result?,
+            progress,
+        })
     }
 }

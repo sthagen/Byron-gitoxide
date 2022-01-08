@@ -52,6 +52,7 @@ pub enum Error {
 
 const MIN_FILE_SIZE: usize = HEADER_LEN
     + git_chunk::file::Index::size_for_entries(3 /*OIDF, OIDL, CDAT*/)
+    + FAN_LEN * 4 /* FANOUT TABLE CHUNK OIDF */
     + git_hash::Kind::shortest().len_in_bytes();
 
 impl File {
@@ -92,12 +93,7 @@ impl TryFrom<&Path> for File {
         };
         ofs += 1;
 
-        let object_hash = match data[ofs] {
-            1 => git_hash::Kind::Sha1,
-            x => {
-                return Err(Error::UnsupportedHashVersion(x));
-            }
-        };
+        let object_hash = git_hash::Kind::try_from(data[ofs]).map_err(Error::UnsupportedHashVersion)?;
         ofs += 1;
 
         let chunk_count = data[ofs];

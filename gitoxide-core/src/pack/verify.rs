@@ -1,20 +1,16 @@
-use std::{
-    io,
-    path::Path,
-    str::FromStr,
-    sync::{atomic::AtomicBool, Arc},
-};
+use std::{io, path::Path, str::FromStr, sync::atomic::AtomicBool};
 
 use anyhow::{anyhow, Context as AnyhowContext, Result};
 use bytesize::ByteSize;
+use git_repository as git;
 use git_repository::{
     easy::object,
-    hash::ObjectId,
     odb,
     odb::{pack, pack::index},
-    progress, Progress,
+    Progress,
 };
 pub use index::verify::Mode;
+pub const PROGRESS_RANGE: std::ops::RangeInclusive<u8> = 1..=3;
 
 use crate::OutputFormat;
 
@@ -53,7 +49,7 @@ impl From<Algorithm> for index::traverse::Algorithm {
 }
 
 /// A general purpose context for many operations provided here
-pub struct Context<W1: io::Write, W2: io::Write> {
+pub struct Context<'a, W1: io::Write, W2: io::Write> {
     /// If set, provide statistics to `out` in the given format
     pub output_statistics: Option<OutputFormat>,
     /// A stream to which to output operation results
@@ -66,21 +62,8 @@ pub struct Context<W1: io::Write, W2: io::Write> {
     pub thread_limit: Option<usize>,
     pub mode: index::verify::Mode,
     pub algorithm: Algorithm,
-    pub should_interrupt: Arc<AtomicBool>,
-}
-
-impl Default for Context<Vec<u8>, Vec<u8>> {
-    fn default() -> Self {
-        Context {
-            output_statistics: None,
-            thread_limit: None,
-            mode: index::verify::Mode::Sha1Crc32,
-            algorithm: Algorithm::LessMemory,
-            out: Vec::new(),
-            err: Vec::new(),
-            should_interrupt: Default::default(),
-        }
-    }
+    pub should_interrupt: &'a AtomicBool,
+    pub object_hash: git::hash::Kind,
 }
 
 enum EitherCache<const SIZE: usize> {
@@ -106,7 +89,7 @@ impl<const SIZE: usize> pack::cache::DecodeEntry for EitherCache<SIZE> {
 
 pub fn pack_or_pack_index<W1, W2>(
     path: impl AsRef<Path>,
-    progress: Option<impl Progress>,
+    mut progress: impl Progress,
     Context {
         mut out,
         mut err,
@@ -115,28 +98,33 @@ pub fn pack_or_pack_index<W1, W2>(
         thread_limit,
         algorithm,
         should_interrupt,
-    }: Context<W1, W2>,
-) -> Result<(ObjectId, Option<index::traverse::Outcome>)>
+        object_hash,
+    }: Context<'_, W1, W2>,
+) -> Result<()>
 where
     W1: io::Write,
     W2: io::Write,
 {
     let path = path.as_ref();
-    let ext = path.extension().and_then(|ext| ext.to_str()).ok_or_else(|| {
-        anyhow!(
-            "Cannot determine data type on path without extension '{}', expecting default extensions 'idx' and 'pack'",
-            path.display()
-        )
-    })?;
-    let object_hash = git_repository::hash::Kind::Sha1; // TODO: make it configurable via Context/CLI
+    let ext = path.extension().and_then(|ext| ext.to_str()).unwrap_or("");
+    const CACHE_SIZE: usize = 64;
+    let cache = || -> EitherCache<CACHE_SIZE> {
+        if matches!(algorithm, Algorithm::LessMemory) {
+            if output_statistics.is_some() {
+                // turn off acceleration as we need to see entire chains all the time
+                EitherCache::Left(pack::cache::Never)
+            } else {
+                EitherCache::Right(pack::cache::lru::StaticLinkedList::<CACHE_SIZE>::default())
+            }
+        } else {
+            EitherCache::Left(pack::cache::Never)
+        }
+    };
     let res = match ext {
         "pack" => {
             let pack = odb::pack::data::File::at(path, object_hash).with_context(|| "Could not open pack file")?;
-            pack.verify_checksum(
-                progress::DoOrDiscard::from(progress).add_child("Sha1 of pack"),
-                &should_interrupt,
-            )
-            .map(|id| (id, None))?
+            pack.verify_checksum(progress.add_child("Sha1 of pack"), should_interrupt)
+                .map(|id| (id, None))?
         }
         "idx" => {
             let idx =
@@ -154,28 +142,51 @@ where
                     e
                 })
                 .ok();
-            const CACHE_SIZE: usize = 64;
-            let cache = || -> EitherCache<CACHE_SIZE> {
-                if matches!(algorithm, Algorithm::LessMemory) {
-                    if output_statistics.is_some() {
-                        // turn off acceleration as we need to see entire chains all the time
-                        EitherCache::Left(pack::cache::Never)
-                    } else {
-                        EitherCache::Right(pack::cache::lru::StaticLinkedList::<CACHE_SIZE>::default())
-                    }
-                } else {
-                    EitherCache::Left(pack::cache::Never)
-                }
-            };
 
             idx.verify_integrity(
-                pack.as_ref().map(|p| (p, mode, algorithm.into(), cache)),
-                thread_limit,
+                pack.as_ref().map(|p| git::odb::pack::index::verify::PackContext {
+                    data: p,
+                    options: git::odb::pack::index::verify::integrity::Options {
+                        verify_mode: mode,
+                        traversal: algorithm.into(),
+                        make_pack_lookup_cache: cache,
+                        thread_limit
+                    }
+                }),
                 progress,
                 should_interrupt,
             )
-            .map(|(a, b, _)| (a, b))
+            .map(|o| (o.actual_index_checksum, o.pack_traverse_statistics))
             .with_context(|| "Verification failure")?
+        }
+        "" => {
+            match path.file_name() {
+                Some(file_name) if file_name == "multi-pack-index" => {
+                    let multi_index = git::odb::pack::multi_index::File::at(path)?;
+                    let res = multi_index.verify_integrity(progress, should_interrupt, git::odb::pack::index::verify::integrity::Options{
+                        verify_mode: mode,
+                        traversal: algorithm.into(),
+                        thread_limit,
+                        make_pack_lookup_cache: cache
+                    })?;
+                    match output_statistics {
+                        Some(OutputFormat::Human) => {
+                            for (index_name, stats) in multi_index.index_names().iter().zip(res.pack_traverse_statistics) {
+                                writeln!(out, "{}", index_name.display()).ok();
+                                drop(print_statistics(&mut out, &stats));
+                            }
+                        },
+                        #[cfg(feature = "serde1")]
+                        Some(OutputFormat::Json) => serde_json::to_writer_pretty(out, &multi_index.index_names().iter().zip(res.pack_traverse_statistics).collect::<Vec<_>>())?,
+                        _ => {}
+                    };
+                    return Ok(())
+                },
+                _ => return Err(anyhow!(
+                        "Cannot determine data type on path without extension '{}', expecting default extensions 'idx' and 'pack'",
+                        path.display()
+                    ))
+            }
         }
         ext => return Err(anyhow!("Unknown extension {:?}, expecting 'idx' or 'pack'", ext)),
     };
@@ -188,10 +199,10 @@ where
             _ => {}
         };
     }
-    Ok(res)
+    Ok(())
 }
 
-fn print_statistics(out: &mut impl io::Write, stats: &index::traverse::Outcome) -> io::Result<()> {
+fn print_statistics(out: &mut impl io::Write, stats: &index::traverse::Statistics) -> io::Result<()> {
     writeln!(out, "objects per delta chain length")?;
     let mut chain_length_to_object: Vec<_> = stats.objects_per_chain_length.iter().map(|(a, b)| (*a, *b)).collect();
     chain_length_to_object.sort_by_key(|e| e.0);

@@ -1,5 +1,8 @@
 mod file {
     const SHA1_SIZE: usize = git_hash::Kind::Sha1.len_in_bytes();
+
+    use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+
     use git_object::{self as object};
     use git_odb::pack;
 
@@ -188,6 +191,32 @@ mod file {
         }
     }
 
+    #[test]
+    fn traverse_with_index_and_forward_ref_deltas() {
+        let index = index::File::at(
+            fixture_path("objects/pack-with-forward-delta/pack-0bb5bc1e3d864c617c2539445c832ccdd531cd4e.idx"),
+            Default::default(),
+        )
+        .unwrap();
+        let data = pack::data::File::at(index.path().with_extension("pack"), Default::default()).unwrap();
+        let count = AtomicUsize::new(0);
+        let _it_should_work = index
+            .traverse_with_index(
+                &data,
+                || {
+                    |_, _, _, _| {
+                        count.fetch_add(1, Ordering::SeqCst);
+                        Ok::<_, std::io::Error>(())
+                    }
+                },
+                progress::Discard,
+                &AtomicBool::new(false),
+                index::traverse::with_index::Options::default(),
+            )
+            .unwrap();
+        assert_eq!(count.load(Ordering::SeqCst), 9, "we traverse all objects");
+    }
+
     use common_macros::b_tree_map;
     use git_features::progress;
     use git_pack::{cache, data::decode_entry::Outcome, index};
@@ -200,9 +229,9 @@ mod file {
     ];
 
     static MODES: &[index::verify::Mode] = &[
-        index::verify::Mode::Sha1Crc32,
-        index::verify::Mode::Sha1Crc32Decode,
-        index::verify::Mode::Sha1Crc32DecodeEncode,
+        index::verify::Mode::HashCrc32,
+        index::verify::Mode::HashCrc32Decode,
+        index::verify::Mode::HashCrc32DecodeEncode,
     ];
 
     #[test]
@@ -211,7 +240,7 @@ mod file {
             (
                 INDEX_V2,
                 PACK_FOR_INDEX_V2,
-                index::traverse::Outcome {
+                index::traverse::Statistics {
                     average: Outcome {
                         kind: object::Kind::Tree,
                         num_deltas: 1,
@@ -241,7 +270,7 @@ mod file {
             (
                 INDEX_V1,
                 PACK_FOR_INDEX_V1,
-                index::traverse::Outcome {
+                index::traverse::Statistics {
                     average: Outcome {
                         kind: object::Kind::Tree,
                         num_deltas: 0,
@@ -266,7 +295,7 @@ mod file {
             (
                 SMALL_PACK_INDEX,
                 SMALL_PACK,
-                index::traverse::Outcome {
+                index::traverse::Statistics {
                     average: Outcome {
                         kind: object::Kind::Tree,
                         num_deltas: 0,
@@ -299,12 +328,19 @@ mod file {
                 for mode in MODES {
                     assert_eq!(
                         idx.verify_integrity(
-                            Some((&pack, *mode, *algo, || cache::Never)),
-                            None,
-                            progress::Discard.into(),
-                            Default::default()
+                            Some(git_pack::index::verify::PackContext {
+                                data: &pack,
+                                options: git_pack::index::verify::integrity::Options {
+                                    verify_mode: *mode,
+                                    traversal: *algo,
+                                    make_pack_lookup_cache: || cache::Never,
+                                    thread_limit: None
+                                }
+                            }),
+                            progress::Discard,
+                            &AtomicBool::new(false)
                         )
-                        .map(|(a, b, _)| (a, b))?,
+                        .map(|o| (o.actual_index_checksum, o.pack_traverse_statistics))?,
                         (idx.index_checksum(), Some(stats.to_owned())),
                         "{:?} -> {:?}",
                         algo,
@@ -399,12 +435,11 @@ mod file {
             assert_eq!(idx.num_objects(), *num_objects);
             assert_eq!(
                 idx.verify_integrity(
-                    None::<(_, _, _, fn() -> cache::Never)>,
-                    None,
-                    progress::Discard.into(),
-                    Default::default()
+                    None::<git_pack::index::verify::PackContext<'_, fn() -> cache::Never>>,
+                    progress::Discard,
+                    &AtomicBool::new(false)
                 )
-                .map(|(a, b, _)| (a, b))?,
+                .map(|o| (o.actual_index_checksum, o.pack_traverse_statistics))?,
                 (idx.index_checksum(), None)
             );
             assert_eq!(idx.index_checksum(), hex_to_id(index_checksum));
