@@ -1,6 +1,9 @@
 use std::{convert::Infallible, sync::atomic::AtomicBool};
 
-use git_features::{parallel::reduce::Finalize, progress};
+use git_features::{
+    parallel::{reduce::Finalize, InOrderIter},
+    progress,
+};
 use git_odb::{compound, pack, pack::FindExt};
 use git_pack::data::{
     output,
@@ -291,7 +294,7 @@ fn traversals() -> crate::Result {
                     ..Default::default()
                 },
             );
-            let entries: Vec<_> = output::InOrderIter::from(entries_iter.by_ref())
+            let entries: Vec<_> = InOrderIter::from(entries_iter.by_ref())
                 .collect::<Result<Vec<_>, _>>()?
                 .into_iter()
                 .flatten()

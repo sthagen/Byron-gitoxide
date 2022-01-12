@@ -32,6 +32,7 @@ pub mod cache;
 pub mod data;
 
 mod find_traits;
+
 pub use find_traits::{Find, FindExt};
 
 ///
@@ -41,3 +42,28 @@ pub mod multi_index;
 
 ///
 pub mod verify;
+
+mod mmap {
+    use std::path::Path;
+
+    pub fn read_only(path: &Path) -> std::io::Result<memmap2::Mmap> {
+        let file = std::fs::File::open(path)?;
+        // SAFETY: we have to take the risk of somebody changing the file underneath. Git never writes into the same file.
+        #[allow(unsafe_code)]
+        unsafe {
+            memmap2::Mmap::map(&file)
+        }
+    }
+}
+
+use std::convert::TryInto;
+
+#[inline]
+fn read_u32(b: &[u8]) -> u32 {
+    u32::from_be_bytes(b.try_into().unwrap())
+}
+
+#[inline]
+fn read_u64(b: &[u8]) -> u64 {
+    u64::from_be_bytes(b.try_into().unwrap())
+}

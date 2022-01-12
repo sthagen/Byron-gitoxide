@@ -35,11 +35,14 @@
 #[cfg(feature = "parallel")]
 mod in_parallel;
 #[cfg(feature = "parallel")]
-pub use in_parallel::{in_parallel, join};
+pub use in_parallel::{in_parallel, join, threads};
 
 mod serial;
 #[cfg(not(feature = "parallel"))]
-pub use serial::{in_parallel, join};
+pub use serial::{in_parallel, join, threads};
+
+mod in_order;
+pub use in_order::{InOrderIter, SequenceId};
 
 mod eager_iter;
 pub use eager_iter::{EagerIter, EagerIterIf};
@@ -111,7 +114,7 @@ pub fn optimize_chunk_size_and_thread_limit(
 
 /// Always returns 1, available when the `parallel` feature toggle is unset.
 #[cfg(not(feature = "parallel"))]
-fn num_threads(_thread_limit: Option<usize>) -> usize {
+pub fn num_threads(_thread_limit: Option<usize>) -> usize {
     1
 }
 
@@ -119,7 +122,7 @@ fn num_threads(_thread_limit: Option<usize>) -> usize {
 ///
 /// Only available with the `parallel` feature toggle set.
 #[cfg(feature = "parallel")]
-fn num_threads(thread_limit: Option<usize>) -> usize {
+pub fn num_threads(thread_limit: Option<usize>) -> usize {
     let logical_cores = num_cpus::get();
     thread_limit
         .map(|l| if l == 0 { logical_cores } else { l })

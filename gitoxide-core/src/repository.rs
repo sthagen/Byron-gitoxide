@@ -8,11 +8,11 @@ pub fn init(directory: Option<PathBuf>) -> Result<git_repository::Path> {
 }
 
 pub mod verify {
-    use crate::pack;
-    use crate::OutputFormat;
     use std::{path::PathBuf, sync::atomic::AtomicBool};
 
     use git_repository::Progress;
+
+    use crate::{pack, OutputFormat};
 
     /// A general purpose context for many operations provided here
     pub struct Context {
@@ -41,6 +41,7 @@ pub mod verify {
         }: Context,
     ) -> anyhow::Result<()> {
         let repo = git_repository::open(repo)?;
+        #[cfg_attr(not(feature = "serde1"), allow(unused))]
         let outcome = repo.objects.verify_integrity(
             progress,
             should_interrupt,

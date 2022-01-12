@@ -76,7 +76,6 @@ mod file {
         mod any {
             use std::{fs, io, sync::atomic::AtomicBool};
 
-            use filebuffer::FileBuffer;
             use git_features::progress;
             use git_odb::pack;
             use git_pack::data::{input, EntryRange};
@@ -89,8 +88,10 @@ mod file {
                     for compressed in &[input::EntryDataMode::Crc32, input::EntryDataMode::KeepAndCrc32] {
                         for (index_path, data_path) in V2_PACKS_AND_INDICES {
                             let resolve = {
-                                let buf =
-                                    git_features::threading::OwnShared::new(FileBuffer::open(fixture_path(data_path))?);
+                                let buf = git_features::threading::OwnShared::new({
+                                    let file = std::fs::File::open(fixture_path(data_path))?;
+                                    unsafe { memmap2::Mmap::map(&file)? }
+                                });
                                 move |entry: EntryRange, out: &mut Vec<u8>| {
                                     buf.get(entry.start as usize..entry.end as usize)
                                         .map(|slice| out.copy_from_slice(slice))

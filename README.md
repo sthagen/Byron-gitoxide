@@ -83,9 +83,9 @@ Follow linked crate name for detailed status. Please note that all crates follow
   * [git-repository](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-repository)
   * `gitoxide-core`
 * **very early**    
-* **idea**
   * [git-index](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-index)
-  * git-status
+* **idea**
+  * [git-worktree](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-worktree)
   * [git-tui](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-tui)
   * [git-bundle](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-bundle)
   
@@ -240,14 +240,9 @@ Provide a CLI to for the most basic user journey:
 
 * [ ] `gix tool open-remote` open the URL of the remote, possibly after applying known transformations to go from `ssh` to `https`.
 * [ ] Open up SQL for git using [sqlite virtual tables](https://github.com/rusqlite/rusqlite/blob/master/tests/vtab.rs). Check out gitqlite
-  as well. What would an MVP look like? Maybe even something that could ship with gitoxide.
+  as well. What would an MVP look like? Maybe even something that could ship with gitoxide. See [this go implementation as example](https://github.com/filhodanuvem/gitql).
 * [ ] A truly awesome history rewriter which makes it easy to understand what happened while avoiding all pitfalls. Think BFG, but more awesome, if that's possible.
 * [ ] `git-tui` should learn a lot from [fossil-scm] regarding the presentation of data. Maybe [this](https://github.com/Lutetium-Vanadium/requestty/) can be used for prompts. Probably [magit] has a lot to offer, too.
-* [ ] Can markdown be used as database so issue-trackers along with meta-data could just be markdown files which are mostly human-editable? Could user interfaces
-  be meta-data aware and just hide the meta-data chunks which are now editable in the GUI itself? Doing this would make conflicts easier to resolve than an `sqlite`
-  database.
-    * ~~A git-backend for `sqlite` which should allow embedding sqlite databases into git repositories, which in turn can be used for bug-trackers, wikis or other
-      features, making for a fully distributed github like experience, maybe.~~
 
 ### Ideas for Spin-Offs
 
@@ -259,6 +254,18 @@ Provide a CLI to for the most basic user journey:
 * [ ] A [syncthing] like client/server application. This is to demonstrate how lower-level crates can be combined into custom applications that use
   only part of git's technology to achieve their very own thing. Watch out for big file support, multi-device cross-syncing, the possibility for
   untrusted destinations using full-encryption, case-insensitive and sensitive filesystems, and extended file attributes as well as ignore files.
+* An event-based database that uses commit messages to store deltas, while occasionally aggregating the actual state in a tree. Of course it's distributed by nature, allowing
+  people to work offline.
+    - It's abstracted to completely hide the actual data model behind it, allowing for all kinds of things to be implemented on top.
+    - Commits probably need a nanosecond component for the timestamp, which can be added via custom header field.
+    - having recording all changes allows for perfect merging, both on the client or on the server, while keeping a natural audit log which makes it useful for mission critical
+      databases in business.
+    * **Applications**
+      - Can markdown be used as database so issue-trackers along with meta-data could just be markdown files which are mostly human-editable? Could user interfaces
+        be meta-data aware and just hide the meta-data chunks which are now editable in the GUI itself? Doing this would make conflicts easier to resolve than an `sqlite`
+        database.
+      - A time tracker - simple data, very likely naturally conflict free, and interesting to see it in terms of teams or companies using it with maybe GitHub as Backing for authentication.
+        - How about supporting multiple different trackers, as in different remotes?
 
 [syncthing]: https://github.com/syncthing/syncthing
 [fossil-scm]: https://www.fossil-scm.org

@@ -1,1 +1,121 @@
-#![forbid(unsafe_code, rust_2018_idioms)]
+#![deny(unsafe_code, missing_docs, rust_2018_idioms)]
+#![allow(missing_docs, dead_code)]
+
+use std::{ops::Range, path::PathBuf};
+
+use filetime::FileTime;
+
+pub mod file;
+
+pub(crate) mod extension;
+
+pub mod entry;
+
+mod access {
+    use crate::{Entry, State, Version};
+
+    impl State {
+        pub fn version(&self) -> Version {
+            self.version
+        }
+
+        pub fn entries(&self) -> &[Entry] {
+            &self.entries
+        }
+    }
+}
+
+pub mod decode;
+
+/// All known versions of a git index file.
+#[derive(PartialEq, Eq, Debug, Hash, Ord, PartialOrd, Clone, Copy)]
+#[cfg_attr(feature = "serde1", derive(serde::Serialize, serde::Deserialize))]
+pub enum Version {
+    /// Supports entries and various extensions.
+    V2 = 2,
+    /// Adds support for additional flags for each entry.
+    V3 = 3,
+    /// Supports deltified entry paths.
+    V4 = 4,
+}
+
+/// An entry in the index, identifying a non-tree item on disk.
+pub struct Entry {
+    pub stat: entry::Stat,
+    pub id: git_hash::ObjectId,
+    pub flags: u32,
+    path: Range<usize>,
+}
+
+/// An index file whose state was read from a file on disk.
+pub struct File {
+    pub state: State,
+    pub path: PathBuf,
+    /// The checksum of all bytes prior to the checksum itself.
+    pub checksum: git_hash::ObjectId,
+}
+
+/// An in-memory cache of a fully parsed git index file.
+///
+/// As opposed to a snapshot, it's meant to be altered and eventually be written back to disk or converted into a tree.
+/// We treat index and its state synonymous.
+pub struct State {
+    /// The time at which the state was created, indicating its freshness compared to other files on disk.
+    ///
+    /// Note that on platforms that only have a precisions of a second for this time, we will treat all entries with the
+    /// same timestamp as this as potentially changed, checking more thoroughly if a change actually happened.
+    timestamp: FileTime,
+    version: Version,
+    cache_tree: Option<extension::Tree>,
+    entries: Vec<Entry>,
+    /// A memory area keeping all index paths, in full length, independently of the index version.
+    path_backing: Vec<u8>,
+    /// True if one entry in the index has a special marker mode
+    is_sparse: bool,
+}
+
+pub(crate) mod util {
+    #[inline]
+    pub fn read_u32(data: &[u8]) -> Option<(u32, &[u8])> {
+        split_at_pos(data, 4).map(|(num, data)| (u32::from_be_bytes(num.try_into().unwrap()), data))
+    }
+
+    #[inline]
+    pub fn from_be_u32(b: &[u8]) -> u32 {
+        u32::from_be_bytes(b.try_into().unwrap())
+    }
+
+    #[inline]
+    pub fn split_at_byte_exclusive(data: &[u8], byte: u8) -> Option<(&[u8], &[u8])> {
+        if data.len() < 2 {
+            return None;
+        }
+        data.iter().enumerate().find_map(|(idx, b)| {
+            (*b == byte).then(|| {
+                if idx == 0 {
+                    (&[] as &[u8], &data[1..])
+                } else {
+                    let (a, b) = data.split_at(idx);
+                    (a, &b[1..])
+                }
+            })
+        })
+    }
+
+    #[inline]
+    pub fn split_at_pos(data: &[u8], pos: usize) -> Option<(&[u8], &[u8])> {
+        if data.len() < pos {
+            return None;
+        }
+        data.split_at(pos).into()
+    }
+}
+
+#[test]
+fn size_of_entry() {
+    assert_eq!(std::mem::size_of::<crate::Entry>(), 80);
+
+    // the reason we have our own time is half the size.
+    assert_eq!(std::mem::size_of::<crate::entry::Time>(), 8);
+    assert_eq!(std::mem::size_of::<filetime::FileTime>(), 16);
+}
