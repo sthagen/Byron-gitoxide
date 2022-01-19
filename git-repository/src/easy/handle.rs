@@ -74,8 +74,14 @@ impl easy::Handle {
         self.bufs.borrow_mut().pop().unwrap_or_default()
     }
 
+    /// This method is commonly called from the destructor of objects that previously claimed an entry
+    /// in the free-list with `free_buf()`.
+    /// They are welcome to take out the data themselves, for instance when the object is detached, to avoid
+    /// it to be reclaimed.
     #[inline]
     pub(crate) fn reuse_buffer(&self, data: &mut Vec<u8>) {
-        self.bufs.borrow_mut().push(std::mem::take(data));
+        if data.capacity() > 0 {
+            self.bufs.borrow_mut().push(std::mem::take(data));
+        }
     }
 }

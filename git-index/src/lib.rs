@@ -33,7 +33,7 @@ pub mod decode;
 pub enum Version {
     /// Supports entries and various extensions.
     V2 = 2,
-    /// Adds support for additional flags for each entry.
+    /// Adds support for additional flags for each entry, called extended entries.
     V3 = 3,
     /// Supports deltified entry paths.
     V4 = 4,
@@ -43,7 +43,8 @@ pub enum Version {
 pub struct Entry {
     pub stat: entry::Stat,
     pub id: git_hash::ObjectId,
-    pub flags: u32,
+    pub flags: entry::Flags,
+    pub mode: entry::Mode,
     path: Range<usize>,
 }
 
@@ -66,18 +67,36 @@ pub struct State {
     /// same timestamp as this as potentially changed, checking more thoroughly if a change actually happened.
     timestamp: FileTime,
     version: Version,
-    cache_tree: Option<extension::Tree>,
     entries: Vec<Entry>,
     /// A memory area keeping all index paths, in full length, independently of the index version.
     path_backing: Vec<u8>,
     /// True if one entry in the index has a special marker mode
     is_sparse: bool,
+
+    // Extensions
+    tree: Option<extension::Tree>,
+    link: Option<extension::Link>,
+    resolve_undo: Option<extension::resolve_undo::Paths>,
+    untracked: Option<extension::UntrackedCache>,
+    fs_monitor: Option<extension::FsMonitor>,
 }
 
 pub(crate) mod util {
     #[inline]
+    pub fn var_int(data: &[u8]) -> Option<(u64, &[u8])> {
+        let (num, consumed) = git_features::decode::leb64_from_read(data).ok()?;
+        let data = &data[consumed..];
+        (num, data).into()
+    }
+
+    #[inline]
     pub fn read_u32(data: &[u8]) -> Option<(u32, &[u8])> {
         split_at_pos(data, 4).map(|(num, data)| (u32::from_be_bytes(num.try_into().unwrap()), data))
+    }
+
+    #[inline]
+    pub fn read_u64(data: &[u8]) -> Option<(u64, &[u8])> {
+        split_at_pos(data, 8).map(|(num, data)| (u64::from_be_bytes(num.try_into().unwrap()), data))
     }
 
     #[inline]

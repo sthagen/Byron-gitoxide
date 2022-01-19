@@ -1,6 +1,6 @@
 use filetime::FileTime;
 
-use crate::{extension, Entry, State, Version};
+use crate::{entry, extension, Entry, State, Version};
 
 mod entries;
 pub mod header;
@@ -8,7 +8,7 @@ pub mod header;
 mod error {
     use quick_error::quick_error;
 
-    use crate::decode;
+    use crate::{decode, extension};
 
     quick_error! {
         #[derive(Debug)]
@@ -21,12 +21,18 @@ mod error {
             Entry(index: u32) {
                 display("Could not parse entry at index {}", index)
             }
+            Extension(err: extension::decode::Error) {
+                display("Mandatory extension wasn't implemented or malformed.")
+                source(err)
+                from()
+            }
             UnexpectedTrailerLength { expected: usize, actual: usize } {
                 display("Index trailer should have been {} bytes long, but was {}", expected, actual)
             }
         }
     }
 }
+use crate::util::read_u32;
 pub use error::Error;
 use git_features::parallel::InOrderIter;
 
@@ -69,7 +75,7 @@ impl State {
             Some(offset) if num_threads > 1 => {
                 let extensions_data = &data[offset..];
                 let index_offsets_table = extension::index_entry_offset_table::find(extensions_data, object_hash);
-                let (entries_res, (ext, data)) = git_features::parallel::threads(|scope| {
+                let (entries_res, ext_res) = git_features::parallel::threads(|scope| {
                     let extension_loading =
                         (extensions_data.len() > min_extension_block_in_bytes_for_threading).then({
                             num_threads -= 1;
@@ -102,7 +108,7 @@ impl State {
                                                 is_sparse: chunk_is_sparse,
                                             },
                                             _data,
-                                        ) = entries::load_chunk(
+                                        ) = entries::chunk(
                                             &data[offset.from_beginning_of_file as usize..],
                                             &mut entries,
                                             &mut path_backing,
@@ -152,7 +158,7 @@ impl State {
                             }
                             acc.map(|acc| (acc, &data[data.len() - object_hash.len_in_bytes()..]))
                         }
-                        None => load_entries(
+                        None => entries(
                             post_header_data,
                             path_backing_buffer_size,
                             num_entries,
@@ -166,17 +172,18 @@ impl State {
                     (entries_res, ext_res)
                 })
                 .unwrap(); // this unwrap is for panics - if these happened we are done anyway.
+                let (ext, data) = ext_res?;
                 (entries_res?.0, ext, data)
             }
             None | Some(_) => {
-                let (entries, data) = load_entries(
+                let (entries, data) = entries(
                     post_header_data,
                     path_backing_buffer_size,
                     num_entries,
                     object_hash,
                     version,
                 )?;
-                let (ext, data) = extension::decode::all(data, object_hash);
+                let (ext, data) = extension::decode::all(data, object_hash)?;
                 (entries, ext, data)
             }
         };
@@ -192,18 +199,31 @@ impl State {
         let EntriesOutcome {
             entries,
             path_backing,
-            is_sparse,
+            mut is_sparse,
         } = entries;
-        let extension::decode::Outcome { cache_tree } = ext;
+        let extension::decode::Outcome {
+            tree,
+            link,
+            resolve_undo,
+            untracked,
+            fs_monitor,
+            is_sparse: is_sparse_from_ext, // a marker is needed in case there are no directories
+        } = ext;
+        is_sparse |= is_sparse_from_ext;
 
         Ok((
             State {
                 timestamp,
                 version,
-                cache_tree,
                 entries,
                 path_backing,
                 is_sparse,
+
+                tree,
+                link,
+                resolve_undo,
+                untracked,
+                fs_monitor,
             },
             checksum,
         ))
@@ -216,7 +236,7 @@ struct EntriesOutcome {
     pub is_sparse: bool,
 }
 
-fn load_entries(
+fn entries(
     post_header_data: &[u8],
     path_backing_buffer_size: usize,
     num_entries: u32,
@@ -225,7 +245,7 @@ fn load_entries(
 ) -> Result<(EntriesOutcome, &[u8]), Error> {
     let mut entries = Vec::with_capacity(num_entries as usize);
     let mut path_backing = Vec::with_capacity(path_backing_buffer_size);
-    entries::load_chunk(
+    entries::chunk(
         post_header_data,
         &mut entries,
         &mut path_backing,
@@ -243,4 +263,34 @@ fn load_entries(
             data,
         )
     })
+}
+
+pub(crate) fn stat(data: &[u8]) -> Option<(entry::Stat, &[u8])> {
+    let (ctime_secs, data) = read_u32(data)?;
+    let (ctime_nsecs, data) = read_u32(data)?;
+    let (mtime_secs, data) = read_u32(data)?;
+    let (mtime_nsecs, data) = read_u32(data)?;
+    let (dev, data) = read_u32(data)?;
+    let (ino, data) = read_u32(data)?;
+    let (uid, data) = read_u32(data)?;
+    let (gid, data) = read_u32(data)?;
+    let (size, data) = read_u32(data)?;
+    Some((
+        entry::Stat {
+            mtime: entry::Time {
+                secs: ctime_secs,
+                nsecs: ctime_nsecs,
+            },
+            ctime: entry::Time {
+                secs: mtime_secs,
+                nsecs: mtime_nsecs,
+            },
+            dev,
+            ino,
+            uid,
+            gid,
+            size,
+        },
+        data,
+    ))
 }

@@ -1,13 +1,13 @@
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
-    sync::Mutex,
 };
 
 pub use bstr;
 use bstr::{BStr, ByteSlice};
 use nom::error::VerboseError;
 use once_cell::sync::Lazy;
+use parking_lot::Mutex;
 pub use tempfile;
 
 static SCRIPT_IDENTITY: Lazy<Mutex<BTreeMap<PathBuf, u32>>> = Lazy::new(|| Mutex::new(BTreeMap::new()));
@@ -68,7 +68,7 @@ pub fn scripted_fixture_repo_read_only_with_args(
 
     // keep this lock to assure we don't return unfinished directories for threaded callers
     let args: Vec<String> = args.into_iter().map(Into::into).collect();
-    let mut map = SCRIPT_IDENTITY.lock().unwrap();
+    let mut map = SCRIPT_IDENTITY.lock();
     let script_identity = map
         .entry(args.iter().fold(script_path.clone(), |p, a| p.join(a)))
         .or_insert_with(|| {

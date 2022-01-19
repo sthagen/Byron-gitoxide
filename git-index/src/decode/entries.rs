@@ -3,7 +3,7 @@ use std::ops::Range;
 use crate::{
     decode::{self, header},
     entry,
-    util::{read_u32, split_at_byte_exclusive, split_at_pos},
+    util::{read_u32, split_at_byte_exclusive, split_at_pos, var_int},
     Entry, Version,
 };
 
@@ -40,7 +40,7 @@ pub fn estimate_path_storage_requirements_in_bytes(
 }
 
 /// Note that `data` must point to the beginning of the entries, right past the header.
-pub fn load_chunk<'a>(
+pub fn chunk<'a>(
     mut data: &'a [u8],
     entries: &mut Vec<Entry>,
     path_backing: &mut Vec<u8>,
@@ -64,7 +64,7 @@ pub fn load_chunk<'a>(
         .ok_or(decode::Error::Entry(idx))?;
 
         data = remaining;
-        if entry::mode::is_sparse(entry.stat.mode) {
+        if entry.mode.is_sparse() {
             is_sparse = true;
         }
         // TODO: entries are actually in an intrusive collection, with path as key. Could be set for us. This affects 'ignore_case' which we
@@ -97,26 +97,19 @@ fn load_one<'a>(
     let (size, data) = read_u32(data)?;
     let (hash, data) = split_at_pos(data, hash_len)?;
     let (flags, data) = read_u16(data)?;
-    let flags = flags as u32;
-    let (flags, data) = if flags & entry::flags::EXTENDED == entry::flags::EXTENDED {
+    let flags = entry::at_rest::Flags::from_bits(flags)?;
+    let (flags, data) = if flags.contains(entry::at_rest::Flags::EXTENDED) {
         let (extended_flags, data) = read_u16(data)?;
-        let extended_flags: u32 = (extended_flags as u32) << 16;
-        const ALL_KNOWN_EXTENDED_FLAGS: u32 = entry::flags::INTENT_TO_ADD | entry::flags::SKIP_WORKTREE;
-        assert_eq!(
-            extended_flags & !ALL_KNOWN_EXTENDED_FLAGS,
-            0,
-            "BUG: encountered unknown extended bitflags in {:b}",
-            extended_flags
-        );
-        (flags | extended_flags, data)
+        let extended_flags = entry::at_rest::FlagsExtended::from_bits(extended_flags)?;
+        let extended_flags = extended_flags.to_flags()?;
+        (flags.to_memory() | extended_flags, data)
     } else {
-        (flags, data)
+        (flags.to_memory(), data)
     };
 
     let start = path_backing.len();
     let data = if has_delta_paths {
-        let (strip_len, consumed) = git_features::decode::leb64(data);
-        let data = &data[consumed..];
+        let (strip_len, data) = var_int(data)?;
         if let Some((prev_path, buf)) = prev_path_and_buf {
             let end = prev_path.end.checked_sub(strip_len.try_into().ok()?)?;
             let copy_len = end.checked_sub(prev_path.start)?;
@@ -132,10 +125,10 @@ fn load_one<'a>(
 
         data
     } else {
-        let (path, data) = if (flags & entry::mask::PATH_LEN) == entry::mask::PATH_LEN {
+        let (path, data) = if flags.contains(entry::Flags::PATH_LEN) {
             split_at_byte_exclusive(data, 0)?
         } else {
-            let path_len = (flags & entry::mask::PATH_LEN) as usize;
+            let path_len = (flags.bits() & entry::Flags::PATH_LEN.bits()) as usize;
             split_at_pos(data, path_len)?
         };
 
@@ -157,13 +150,14 @@ fn load_one<'a>(
                 },
                 dev,
                 ino,
-                mode,
                 uid,
                 gid,
                 size,
             },
             id: git_hash::ObjectId::from(hash),
-            flags: flags & !entry::mask::PATH_LEN,
+            flags: flags & !entry::Flags::PATH_LEN,
+            // This forces us to add the bits we need before being able to use them.
+            mode: entry::Mode::from_bits_truncate(mode),
             path: path_range,
         },
         data,

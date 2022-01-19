@@ -2,9 +2,10 @@
 
 use git_odb::FindExt;
 use git_repository as git;
+use git_repository::easy::Reference;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let repo = git_repository::discover(".")?;
+    let repo = git::discover(".")?;
     println!(
         "Repo: {}",
         repo.work_tree.as_deref().unwrap_or(repo.git_dir()).display()
@@ -38,7 +39,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("num blobs_executable: {}", delegate.num_blobs_exec);
     println!("num links: {}", delegate.num_links);
     println!("num submodules: {}", delegate.num_submodules);
-    println!("total size in bytes: {}", delegate.num_bytes);
+    println!("total size in bytes: {}\n", delegate.num_bytes);
+
+    // let num_branches = handle.branches()?;
+    // let num_branches = handle.branches.remote("origin")?;
+    let num_branches = handle.references()?.prefixed("refs/heads/")?.count();
+    let num_remote_branches = handle.references()?.prefixed("refs/remotes/")?.count();
+    let num_tags = handle.references()?.prefixed("refs/tags/")?.count();
+    let broken_refs = handle
+        .references()?
+        .all()?
+        .filter_map(Result::ok)
+        .filter_map(|r: Reference| r.into_fully_peeled_id().err())
+        .count();
+    let inaccessible_refs = handle.references()?.all()?.filter(Result::is_err).count();
+
+    println!("num local branches: {}", num_branches);
+    println!("num remote branches: {}", num_remote_branches);
+    println!("num tags: {}", num_tags);
+    println!("refs with inaccessible objects: {}", broken_refs);
+    println!("inaccessible refs: {}", inaccessible_refs);
 
     Ok(())
 }
