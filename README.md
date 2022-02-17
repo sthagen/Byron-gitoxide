@@ -116,10 +116,10 @@ Our [stability guide] helps to judge how much churn can be expected when dependi
 
 ### Download a Binary Release
 
-```sh
-curl -LSfs https://raw.githubusercontent.com/Byron/gitoxide/main/ci/install.sh | \
-    sh -s -- --git Byron/gitoxide --crate gix-max-termion
-```
+Using `cargo quickinstall`, one is able to fetch [binary releases][releases]. You can install it via `cargo install cargo-quickinstall`, assuming 
+the [rust toolchain][rustup] is present.
+
+Then install gitoxide with `cargo quickinstall gitoxide`.
 
 See the [releases section][releases] for manual installation and various alternative builds that are _slimmer_ or _smaller_, depending
 on your needs, for _Linux_, _MacOS_ and _Windows_.
@@ -128,10 +128,11 @@ on your needs, for _Linux_, _MacOS_ and _Windows_.
 
 ### From Source via Cargo
 
-`cargo` is the Rust package manager which can easily be obtained through [rustup][rustup]. With it, you can build your own binary
+`cargo` is the Rust package manager which can easily be obtained through [rustup]. With it, you can build your own binary
 effortlessly and for your particular CPU for additional performance gains.
 
-The minimum required cargo version is _the latest stable_ release, but may run on older stable releases as well.
+The minimum supported Rust version is [documented in the CI configuration](https://github.com/Byron/gitoxide/blob/main/.github/workflows/msrv.yml#L23),
+the latest stable one will work as well.
 
 ```
 # The default installation, 'max'

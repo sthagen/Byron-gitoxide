@@ -1,6 +1,7 @@
 //!
-use crate::{SignalHandlerMode, NEXT_MAP_INDEX, REGISTER, SIGNAL_HANDLER_MODE};
 use std::sync::atomic::Ordering;
+
+use crate::{SignalHandlerMode, NEXT_MAP_INDEX, REGISTER, SIGNAL_HANDLER_MODE};
 
 /// Remove all tempfiles still registered on our global registry.
 ///
@@ -58,6 +59,7 @@ mod tests {
 
     #[test]
     fn various_termination_signals_remove_tempfiles_unconditionally() -> Result<(), Box<dyn std::error::Error>> {
+        crate::setup(Default::default());
         let dir = tempfile::tempdir()?;
         for sig in signal_hook::consts::TERM_SIGNALS {
             let _tempfile = crate::new(dir.path(), ContainingDirectory::Exists, AutoRemove::Tempfile)?;

@@ -1,13 +1,13 @@
 use std::{
     cell::RefCell,
-    collections::HashSet,
     sync::{atomic::AtomicBool, Arc},
 };
 
 use git_features::{parallel, progress::Progress};
 use git_hash::ObjectId;
+use hash_hasher::{HashBuildHasher, HashedSet};
 
-use crate::{cache, data::output, find};
+use crate::{data::output, find};
 
 pub(in crate::data::output::count::objects_impl) mod reduce;
 mod util;
@@ -65,7 +65,7 @@ where
         iter: objects_ids,
         size: chunk_size,
     };
-    let seen_objs = dashmap::DashSet::<ObjectId, cache::object::State>::default();
+    let seen_objs = dashmap::DashSet::<ObjectId, HashBuildHasher>::default();
     let progress = Arc::new(parking_lot::Mutex::new(progress));
 
     parallel::in_parallel(
@@ -118,7 +118,7 @@ where
     Oid: Into<ObjectId>,
     IterErr: std::error::Error,
 {
-    let seen_objs = RefCell::new(HashSet::<ObjectId, cache::object::State>::default());
+    let seen_objs = RefCell::new(HashedSet::<ObjectId>::default());
 
     let (mut buf1, mut buf2) = (Vec::new(), Vec::new());
     expand::this(

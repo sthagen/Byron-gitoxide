@@ -66,12 +66,11 @@ impl From<ObjectExpansion> for pack::data::output::count::objects::ObjectExpansi
 pub struct Context<W> {
     /// The way input objects should be handled
     pub expansion: ObjectExpansion,
-    /// If set, use `tread_limit` to accelerate the counting phase at the cost of loosing determinism as the order of objects
-    /// during expansion changes with multiple threads unless no expansion is performed. In the latter case, this flag
-    /// has no effect.
-    /// If unset, counting will only use one thread and thus yield the same sequence of objects in any case.
-    /// If the `thread_limit` is 1, the count is always deterministic.
-    pub nondeterministic_count: bool,
+    /// If `Some(threads)`, use this amount of `threads` to accelerate the counting phase at the cost of loosing
+    /// determinism as the order of objects during expansion changes with multiple threads unless no expansion is performed.
+    /// In the latter case, this flag has no effect.
+    /// If `None`, counting will only use one thread and thus yield the same sequence of objects in any case.
+    pub nondeterministic_thread_count: Option<usize>,
     /// If true, delta objects may refer to their base as reference, allowing it not to be included in the created back.
     /// Otherwise these have to be recompressed in order to make the pack self-contained.
     pub thin: bool,
@@ -105,7 +104,7 @@ pub fn create<W>(
     mut progress: impl Progress,
     Context {
         expansion,
-        nondeterministic_count,
+        nondeterministic_thread_count,
         thin,
         thread_limit,
         statistics,
@@ -126,8 +125,6 @@ where
         Box<dyn Iterator<Item = Result<ObjectId, input_iteration::Error>> + Send>,
     ) = match input {
         None => {
-            use git::bstr::ByteSlice;
-            use os_str_bytes::OsStrBytes;
             let mut progress = progress.add_child("traversing");
             progress.init(None, progress::count("commits"));
             let tips = tips
@@ -135,7 +132,7 @@ where
                     let easy = repo.to_easy();
                     move |tip| {
                         ObjectId::from_hex(&Vec::from_os_str_lossy(tip.as_ref())).or_else(|_| {
-                            easy.find_reference(tip.as_ref().to_raw_bytes().as_bstr())
+                            easy.find_reference(tip.as_ref())
                                 .map_err(anyhow::Error::from)
                                 .and_then(|r| r.into_fully_peeled_id().map(|oid| oid.detach()).map_err(Into::into))
                         })
@@ -178,13 +175,14 @@ where
     let counts = {
         let mut progress = progress.add_child("counting");
         progress.init(None, progress::count("objects"));
-        let may_use_multiple_threads = nondeterministic_count || matches!(expansion, ObjectExpansion::None);
+        let may_use_multiple_threads =
+            nondeterministic_thread_count.is_some() || matches!(expansion, ObjectExpansion::None);
         let thread_limit = if may_use_multiple_threads {
-            thread_limit
+            nondeterministic_thread_count.or(thread_limit)
         } else {
             Some(1)
         };
-        if nondeterministic_count && !may_use_multiple_threads {
+        if nondeterministic_thread_count.is_some() && !may_use_multiple_threads {
             progress.fail("Cannot use multi-threaded counting in tree-diff object expansion mode as it may yield way too many objects.");
         }
         let (_, _, thread_count) = git::parallel::optimize_chunk_size_and_thread_limit(50, None, thread_limit, None);
