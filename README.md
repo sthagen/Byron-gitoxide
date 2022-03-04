@@ -44,7 +44,10 @@ Please see _'Development Status'_ for a listing of all crates and their capabili
       * **verify** - validate a whole repository, for now only the object database.
     * **index**
       * [x] **entries** - show detailed entry information for human or machine consumption (via JSON)
+      * [x] **verify** - check the index for consistency
       * [x] **info** - display general information about the index itself, with detailed extension information by default
+         * [x] detailed information about the TREE extension
+         * [ ] …other extensions details aren't implemented yet
     * **remote**
       * [ref-list](https://asciinema.org/a/359320) - list all (or given) references from a remote at the given URL
 
@@ -87,10 +90,10 @@ Follow linked crate name for detailed status. Please note that all crates follow
   * `gitoxide-core`
 * **very early**    
   * [git-index](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-index)
+  * [git-worktree](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-worktree)
   * [git-bitmap](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-bitmap)
 * **idea**
   * [git-revision](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-revision)
-  * [git-worktree](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-worktree)
   * [git-tui](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-tui)
   * [git-bundle](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-bundle)
   

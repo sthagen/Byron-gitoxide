@@ -84,9 +84,10 @@
 * **dynamic store**
     * [x] auto-refresh of on-disk state
     * [x] handles alternates
-    * [ ] multi-pack indices
+    * [x] multi-pack indices
     * [x] perfect scaling with cores
     * [x] support for pack caches, object caches and MRU for best per-thread performance.
+    * [x] prefix/short-id lookup
 * **sink**
     * [x] write objects and obtain id
 * **alternates**
@@ -243,6 +244,7 @@ The git staging area.
     * [x] FSMN file system monitor cache V1 and V2
     * [x] 'link' base indices to take information from, split index
     * [x] 'sdir' sparse directory entries - marker
+  * [x] verification of entries and extensions as well as checksum
 * `stat` update
     * [ ] optional threaded `stat` based on thread_cost (aka preload)
 * [ ] handling of `.gitignore` and system file exclude configuration
@@ -321,9 +323,11 @@ See its [README.md](https://github.com/Byron/gitoxide/blob/main/git-lock/README.
   * [x] initialize
       * [ ] Proper configuration depending on platform (e.g. ignorecase, filemode, …)
   * [ ] All mutations are multi-process safe and this is tested and configurable (i.e. abort or wait if lock is encountered)
+* support for unicode-precomposition of command-line arguments (needs explicit use in parent application)
 * **Easy** (_porcelain_)
-  * **oid**
-    * [ ] short hashes with detection of ambiguity.
+  * **Id**
+    * [x] short hashes with detection of ambiguity.
+       * [ ] solve the [birthday paradox](https://git-scm.com/docs/git-describe#_examples) and make default hex-len depend on the amount of objects.
   * **objects**
     * [x] lookup
     * [x] peel to object kind
@@ -336,6 +340,7 @@ See its [README.md](https://github.com/Byron/gitoxide/blob/main/git-lock/README.
       * [ ] shallow
       * [ ] namespaces support
   * [ ] sparse checkout support
+  * [ ] `git describe` like functionality
   * [ ] execute hooks
   * [ ] .gitignore handling
   * [ ] checkout/stage conversions clean + smudge as in .gitattributes

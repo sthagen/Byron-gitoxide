@@ -1,9 +1,9 @@
-use clap::AppSettings;
 use gitoxide_core as core;
 
 #[derive(Debug, clap::Parser)]
 #[clap(name = "gix-plumbing", about = "The git underworld", version = clap::crate_version!())]
-#[clap(setting = AppSettings::SubcommandRequiredElseHelp)]
+#[clap(subcommand_required = true)]
+#[clap(arg_required_else_help = true)]
 pub struct Args {
     #[clap(long, short = 't')]
     /// The amount of threads to use for some operations.
@@ -206,11 +206,9 @@ pub mod pack {
             sink_compress: bool,
 
             /// The '.pack' or '.idx' file to explode into loose objects
-            #[clap(parse(from_os_str))]
             pack_path: PathBuf,
 
             /// The path into which all objects should be written. Commonly '.git/objects'
-            #[clap(parse(from_os_str))]
             object_path: Option<PathBuf>,
         },
         /// Verify the integrity of a pack, index or multi-index file
@@ -219,7 +217,6 @@ pub mod pack {
             args: VerifyOptions,
 
             /// The '.pack', '.idx' or 'multi-pack-index' file to validate.
-            #[clap(parse(from_os_str))]
             path: PathBuf,
         },
     }
@@ -316,7 +313,6 @@ pub mod pack {
                 /// The folder into which to place the pack and the generated index file
                 ///
                 /// If unset, only informational output will be provided to standard output.
-                #[clap(parse(from_os_str))]
                 directory: Option<PathBuf>,
             },
         }
@@ -371,6 +367,19 @@ pub mod index {
             #[clap(long)]
             no_details: bool,
         },
+        /// Checkout the index into a directory with exclusive write access, similar to what would happen during clone.
+        CheckoutExclusive {
+            /// The path to `.git` repository from which objects can be obtained to write the actual files referenced
+            /// in the index. Use this measure the impact on extracting objects on overall performance.
+            #[clap(long, short = 'r')]
+            repository: Option<PathBuf>,
+            /// Enable to query the object database yet write only empty files. This is useful to measure the overhead of ODB query
+            /// compared to writing the bytes to disk.
+            #[clap(long, short = 'e', requires = "repository")]
+            empty_files: bool,
+            /// The directory into which to write all index entries.
+            directory: PathBuf,
+        },
     }
 }
 
@@ -383,7 +392,6 @@ pub mod commitgraph {
         /// Verify the integrity of a commit graph
         Verify {
             /// The path to '.git/objects/info/', '.git/objects/info/commit-graphs/', or '.git/objects/info/commit-graph' to validate.
-            #[clap(parse(from_os_str))]
             path: PathBuf,
             /// output statistical information about the pack
             #[clap(long, short = 's')]

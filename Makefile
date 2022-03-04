@@ -64,10 +64,11 @@ clippy: ## Run cargo clippy on all crates
 	cargo clippy --all --no-default-features --features small
 	cargo clippy --all --no-default-features --features lean-async --tests
 
-check-msrv: ## Check the minimal support rust version for packages that use it
-	rustc --version
-	cargo check --package git-repository
-	cargo check --package git-repository --no-default-features --features async-network-client
+check-msrv: ## run cargo msrv to validate the current msrv requirements, similar to what CI does
+	cd git-repository && cargo msrv verify
+
+check-win: ## see that windows compiles, provided the x86_64-pc-windows-msvc target and cargo-xwinbuild are present.
+	cargo xwinbuild --target x86_64-pc-windows-msvc  --no-default-features --features small
 
 check: ## Build all code in suitable configurations
 	cargo check --all
@@ -88,6 +89,7 @@ check: ## Build all code in suitable configurations
 	cd git-object && cargo check --all-features \
                   && cargo check --features verbose-object-parsing-errors
 	cd git-index && cargo check --features serde1
+	cd git-worktree && cargo check --features serde1
 	cd git-actor && cargo check --features serde1
 	cd git-pack && cargo check --features serde1 \
 			   && cargo check --features pack-cache-lru-static \
@@ -272,6 +274,11 @@ stress-commitgraph: release-lean $(commit_graphs)
 .PHONY: bench-git-config
 bench-git-config:
 	cd git-config && cargo bench
+
+check-msrv-on-ci: ## Check the minimal support rust version for currently installed Rust version
+	rustc --version
+	cargo check --package git-repository
+	cargo check --package git-repository --no-default-features --features async-network-client
 
 ##@ Maintenance
 

@@ -46,7 +46,7 @@ pub mod async_util {
 }
 
 pub fn main() -> Result<()> {
-    let args: Args = Args::parse();
+    let args: Args = Args::parse_from(git_repository::env::args_os());
     let thread_limit = args.threads;
     let verbose = args.verbose;
     let format = args.format;
@@ -78,6 +78,29 @@ pub fn main() -> Result<()> {
             index_path,
             cmd,
         }) => match cmd {
+            index::Subcommands::CheckoutExclusive {
+                directory,
+                empty_files,
+                repository,
+            } => prepare_and_run(
+                "index-checkout",
+                verbose,
+                progress,
+                progress_keep_open,
+                None,
+                move |progress, _out, _err| {
+                    core::index::checkout_exclusive(
+                        index_path,
+                        directory,
+                        repository,
+                        progress,
+                        core::index::checkout_exclusive::Options {
+                            index: core::index::Options { object_hash, format },
+                            empty_files,
+                        },
+                    )
+                },
+            ),
             index::Subcommands::Info { no_details } => prepare_and_run(
                 "index-entries",
                 verbose,
