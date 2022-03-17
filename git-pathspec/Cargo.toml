@@ -1,9 +1,9 @@
 [package]
-name = "git-ignore"
+name = "git-pathspec"
 version = "0.0.0"
 repository = "https://github.com/Byron/gitoxide"
 license = "MIT/Apache-2.0"
-description = "A WIP crate of the gitoxide project dealing .gitignore files"
+description = "A WIP crate of the gitoxide project dealing magical pathspecs"
 authors = ["Sebastian Thiel <sebastian.thiel@icloud.com>"]
 edition = "2018"
 

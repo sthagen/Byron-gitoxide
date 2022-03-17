@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.0.0 (2022-03-17)
 
-Initial release with no content.
+An empty crate without any content to reserve the name for the gitoxide project.
 
 ### Commit Statistics
 
@@ -24,6 +24,6 @@ Initial release with no content.
 <details><summary>view details</summary>
 
  * **[#301](https://github.com/Byron/gitoxide/issues/301)**
-    - Name-crates for git-ignore and git-attributes handling ([`2e04a49`](https://github.com/Byron/gitoxide/commit/2e04a4934a42cc2bb90334cf75e4af2ab394cffa))
+    - add future crate for good measure ([`625eb1d`](https://github.com/Byron/gitoxide/commit/625eb1d7d266036c1f30caab7bd3897af9fdbef7))
 </details>
 
