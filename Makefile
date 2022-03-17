@@ -67,8 +67,8 @@ clippy: ## Run cargo clippy on all crates
 check-msrv: ## run cargo msrv to validate the current msrv requirements, similar to what CI does
 	cd git-repository && cargo msrv verify
 
-check-win: ## see that windows compiles, provided the x86_64-pc-windows-msvc target and cargo-xwinbuild are present.
-	cargo xwinbuild --target x86_64-pc-windows-msvc  --no-default-features --features small
+check-win: ## see that windows compiles, provided the x86_64-pc-windows-msvc target and cargo-xwin are present.
+	cargo xwin build --target x86_64-pc-windows-msvc  --no-default-features --features small
 
 check: ## Build all code in suitable configurations
 	cargo check --all
@@ -148,6 +148,8 @@ unit-tests: ## run all unit tests
 	cd git-pack && cargo test --features internal-testing-to-avoid-being-run-by-cargo-test-all \
 				&& cargo test --features "internal-testing-git-features-parallel"
 	cd git-index && cargo test --features internal-testing-to-avoid-being-run-by-cargo-test-all \
+				&& cargo test --features "internal-testing-git-features-parallel"
+	cd git-worktree && cargo test --features internal-testing-to-avoid-being-run-by-cargo-test-all \
 				&& cargo test --features "internal-testing-git-features-parallel"
 	cd git-packetline && cargo test \
 					  && cargo test --features blocking-io,maybe-async/is_sync --test blocking-packetline \
@@ -248,7 +250,7 @@ commit_graphs = \
 stress: ## Run various algorithms on big repositories
 	$(MAKE) -j3 $(linux_repo) $(rust_repo) release-lean
 	time ./target/release/gix --verbose pack verify --re-encode $(linux_repo)/objects/pack/*.idx
-	time ./target/release/gix --verbose pack multi-index create $(linux_repo)/objects/pack/*.idx -o $(linux_repo)/objects/pack/multi-pack-index
+	time ./target/release/gix --verbose pack multi-index -i $(linux_repo)/objects/pack/multi-pack-index create $(linux_repo)/objects/pack/*.idx
 	time ./target/release/gix --verbose pack verify $(linux_repo)/objects/pack/multi-pack-index
 	rm -Rf out; mkdir out && time ./target/release/gix --verbose pack index create -p $(linux_repo)/objects/pack/*.pack out/
 	time ./target/release/gix --verbose pack verify out/*.idx

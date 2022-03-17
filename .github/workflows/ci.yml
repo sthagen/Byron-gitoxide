@@ -52,6 +52,8 @@ jobs:
         with:
           command: test
           args: --all
+      - name: "Install prerequisites"
+        run: vcpkg install  zlib:x64-windows-static-md
       - name: "Installation from crates.io"
         uses: actions-rs/cargo@v1
         with:

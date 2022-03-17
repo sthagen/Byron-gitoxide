@@ -1,72 +1,287 @@
+use git_features::parallel::in_parallel;
 use git_features::progress::Progress;
+use git_features::{interrupt, progress};
 use git_hash::oid;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use crate::index::checkout::PathCache;
-use crate::{index, index::checkout::Collision};
 
 pub mod checkout;
 pub(crate) mod entry;
 
-pub fn checkout<Find>(
+/// Note that interruption still produce an `Ok(…)` value, so the caller should look at `should_interrupt` to communicate the outcome.
+pub fn checkout<Find, E>(
     index: &mut git_index::State,
     dir: impl Into<std::path::PathBuf>,
-    mut find: Find,
+    find: Find,
     files: &mut impl Progress,
     bytes: &mut impl Progress,
+    should_interrupt: &AtomicBool,
     options: checkout::Options,
-) -> Result<checkout::Outcome, checkout::Error>
+) -> Result<checkout::Outcome, checkout::Error<E>>
 where
-    Find: for<'a> FnMut(&oid, &'a mut Vec<u8>) -> Option<git_object::BlobRef<'a>>,
+    Find: for<'a> FnMut(&oid, &'a mut Vec<u8>) -> Result<git_object::BlobRef<'a>, E> + Send + Clone,
+    E: std::error::Error + Send + Sync + 'static,
 {
-    if !options.destination_is_initially_empty {
-        todo!("deal with non-clone checkouts")
+    let num_files = AtomicUsize::default();
+    let dir = dir.into();
+
+    let mut ctx = chunk::Context {
+        buf: Vec::new(),
+        path_cache: {
+            let mut cache = PathCache::new(dir.clone());
+            cache.unlink_on_collision = options.overwrite_existing;
+            cache
+        },
+        find: find.clone(),
+        options,
+        num_files: &num_files,
+    };
+    let (chunk_size, thread_limit, num_threads) = git_features::parallel::optimize_chunk_size_and_thread_limit(
+        100,
+        index.entries().len().into(),
+        options.thread_limit,
+        None,
+    );
+
+    let entries_with_paths = interrupt::Iter::new(index.entries_mut_with_paths(), should_interrupt);
+    let chunk::Outcome {
+        mut collisions,
+        mut errors,
+        mut bytes_written,
+        delayed,
+    } = if num_threads == 1 {
+        chunk::process(entries_with_paths, files, bytes, &mut ctx)?
+    } else {
+        in_parallel(
+            git_features::iter::Chunks {
+                inner: entries_with_paths,
+                size: chunk_size,
+            },
+            thread_limit,
+            {
+                let num_files = &num_files;
+                move |_| {
+                    (
+                        progress::Discard,
+                        progress::Discard,
+                        chunk::Context {
+                            find: find.clone(),
+                            path_cache: {
+                                let mut cache = PathCache::new(dir.clone());
+                                cache.unlink_on_collision = options.overwrite_existing;
+                                cache
+                            },
+                            buf: Vec::new(),
+                            options,
+                            num_files,
+                        },
+                    )
+                }
+            },
+            |chunk, (files, bytes, ctx)| chunk::process(chunk.into_iter(), files, bytes, ctx),
+            chunk::Reduce {
+                files,
+                bytes,
+                num_files: &num_files,
+                aggregate: Default::default(),
+                marker: Default::default(),
+            },
+        )?
+    };
+
+    for (entry, entry_path) in delayed {
+        bytes_written += chunk::checkout_entry_handle_result(
+            entry,
+            entry_path,
+            &mut errors,
+            &mut collisions,
+            files,
+            bytes,
+            &mut ctx,
+        )? as u64;
     }
 
-    use std::io::ErrorKind::AlreadyExists;
-    let mut path_cache = PathCache::new(dir.into());
-    path_cache.unlink_on_collision = options.overwrite_existing;
+    Ok(checkout::Outcome {
+        files_updated: ctx.num_files.load(Ordering::Relaxed),
+        collisions,
+        errors,
+        bytes_written,
+    })
+}
 
-    let mut buf = Vec::new();
-    let mut collisions = Vec::new();
+mod chunk {
+    use bstr::BStr;
+    use git_features::progress::Progress;
+    use git_hash::oid;
+    use std::sync::atomic::{AtomicUsize, Ordering};
 
-    for (entry, entry_path) in index.entries_mut_with_paths() {
-        // TODO: write test for that
-        if entry.flags.contains(git_index::entry::Flags::SKIP_WORKTREE) {
-            files.inc();
-            continue;
+    use crate::index::{checkout, checkout::PathCache, entry};
+    use crate::{index, os};
+
+    mod reduce {
+        use crate::index::checkout;
+        use git_features::progress::Progress;
+        use std::marker::PhantomData;
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        pub struct Reduce<'a, 'entry, P1, P2, E> {
+            pub files: &'a mut P1,
+            pub bytes: &'a mut P2,
+            pub num_files: &'a AtomicUsize,
+            pub aggregate: super::Outcome<'entry>,
+            pub marker: PhantomData<E>,
         }
 
-        let res = entry::checkout(entry, entry_path, &mut find, &mut path_cache, options, &mut buf);
-        files.inc();
-        match res {
-            Ok(object_size) => bytes.inc_by(object_size),
-            #[cfg(windows)]
-            Err(index::checkout::Error::Io(err))
-                if err.kind() == AlreadyExists || err.kind() == std::io::ErrorKind::PermissionDenied =>
-            {
-                collisions.push(Collision {
-                    path: entry_path.into(),
-                    error_kind: err.kind(),
-                });
+        impl<'a, 'entry, P1, P2, E> git_features::parallel::Reduce for Reduce<'a, 'entry, P1, P2, E>
+        where
+            P1: Progress,
+            P2: Progress,
+            E: std::error::Error + Send + Sync + 'static,
+        {
+            type Input = Result<super::Outcome<'entry>, checkout::Error<E>>;
+            type FeedProduce = ();
+            type Output = super::Outcome<'entry>;
+            type Error = checkout::Error<E>;
+
+            fn feed(&mut self, item: Self::Input) -> Result<Self::FeedProduce, Self::Error> {
+                let item = item?;
+                let super::Outcome {
+                    bytes_written,
+                    delayed,
+                    errors,
+                    collisions,
+                } = item;
+                self.aggregate.bytes_written += bytes_written;
+                self.aggregate.delayed.extend(delayed);
+                self.aggregate.errors.extend(errors);
+                self.aggregate.collisions.extend(collisions);
+
+                self.bytes.set(self.aggregate.bytes_written as usize);
+                self.files.set(self.num_files.load(Ordering::Relaxed));
+
+                Ok(())
             }
-            // TODO: use ::IsDirectory as well when stabilized instead of raw_os_error()
-            #[cfg(not(windows))]
-            Err(index::checkout::Error::Io(err)) if err.kind() == AlreadyExists || err.raw_os_error() == Some(21) => {
+
+            fn finalize(self) -> Result<Self::Output, Self::Error> {
+                Ok(self.aggregate)
+            }
+        }
+    }
+    pub use reduce::Reduce;
+
+    #[derive(Default)]
+    pub struct Outcome<'a> {
+        pub collisions: Vec<checkout::Collision>,
+        pub errors: Vec<checkout::ErrorRecord>,
+        pub delayed: Vec<(&'a mut git_index::Entry, &'a BStr)>,
+        pub bytes_written: u64,
+    }
+
+    pub struct Context<'a, Find> {
+        pub find: Find,
+        pub path_cache: PathCache,
+        pub buf: Vec<u8>,
+        pub options: checkout::Options,
+        /// We keep these shared so that there is the chance for printing numbers that aren't looking like
+        /// multiple of chunk sizes. Purely cosmetic. Otherwise it's the same as `files`.
+        pub num_files: &'a AtomicUsize,
+    }
+
+    pub fn process<'entry, Find, E>(
+        entries_with_paths: impl Iterator<Item = (&'entry mut git_index::Entry, &'entry BStr)>,
+        files: &mut impl Progress,
+        bytes: &mut impl Progress,
+        ctx: &mut Context<'_, Find>,
+    ) -> Result<Outcome<'entry>, checkout::Error<E>>
+    where
+        Find: for<'a> FnMut(&oid, &'a mut Vec<u8>) -> Result<git_object::BlobRef<'a>, E>,
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        let mut delayed = Vec::new();
+        let mut collisions = Vec::new();
+        let mut errors = Vec::new();
+        let mut bytes_written = 0;
+
+        for (entry, entry_path) in entries_with_paths {
+            // TODO: write test for that
+            if entry.flags.contains(git_index::entry::Flags::SKIP_WORKTREE) {
+                files.inc();
+                continue;
+            }
+
+            // Symlinks always have to be delayed on windows as they have to point to something that exists on creation.
+            // And even if not, there is a distinction between file and directory symlinks, hence we have to check what the target is
+            // before creating it.
+            // And to keep things sane, we just do the same on non-windows as well which is similar to what git does and adds some safety
+            // around writing through symlinks (even though we handle this).
+            // This also means that we prefer content in files over symlinks in case of collisions, which probably is for the better, too.
+            if entry.mode == git_index::entry::Mode::SYMLINK {
+                delayed.push((entry, entry_path));
+                continue;
+            }
+
+            bytes_written +=
+                checkout_entry_handle_result(entry, entry_path, &mut errors, &mut collisions, files, bytes, ctx)?
+                    as u64;
+        }
+
+        Ok(Outcome {
+            bytes_written,
+            errors,
+            collisions,
+            delayed,
+        })
+    }
+
+    pub fn checkout_entry_handle_result<Find, E>(
+        entry: &mut git_index::Entry,
+        entry_path: &BStr,
+        errors: &mut Vec<checkout::ErrorRecord>,
+        collisions: &mut Vec<checkout::Collision>,
+        files: &mut impl Progress,
+        bytes: &mut impl Progress,
+        Context {
+            find,
+            path_cache,
+            buf,
+            options,
+            num_files,
+        }: &mut Context<'_, Find>,
+    ) -> Result<usize, checkout::Error<E>>
+    where
+        Find: for<'a> FnMut(&oid, &'a mut Vec<u8>) -> Result<git_object::BlobRef<'a>, E>,
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        let res = entry::checkout(entry, entry_path, find, path_cache, *options, buf);
+        files.inc();
+        num_files.fetch_add(1, Ordering::SeqCst);
+        match res {
+            Ok(object_size) => {
+                bytes.inc_by(object_size);
+                Ok(object_size)
+            }
+            Err(index::checkout::Error::Io(err)) if os::indicates_collision(&err) => {
                 // We are here because a file existed or was blocked by a directory which shouldn't be possible unless
                 // we are on a file insensitive file system.
-                collisions.push(Collision {
+                files.fail(format!("{}: collided ({:?})", entry_path, err.kind()));
+                collisions.push(checkout::Collision {
                     path: entry_path.into(),
                     error_kind: err.kind(),
                 });
+                Ok(0)
             }
             Err(err) => {
                 if options.keep_going {
-                    todo!("keep going")
+                    errors.push(checkout::ErrorRecord {
+                        path: entry_path.into(),
+                        error: Box::new(err),
+                    });
+                    Ok(0)
                 } else {
-                    return Err(err);
+                    Err(err)
                 }
             }
         }
     }
-    Ok(checkout::Outcome { collisions })
 }

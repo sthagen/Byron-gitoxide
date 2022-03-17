@@ -1,3 +1,5 @@
+use std::convert::{TryFrom, TryInto};
+use std::rc::Rc;
 use std::{
     cell::RefCell,
     ops::Deref,
@@ -221,6 +223,9 @@ impl super::Store {
 
 /// Handle creation
 impl super::Store {
+    /// The amount of times a ref-delta base can be followed when multi-indices are involved.
+    pub const INITIAL_MAX_RECURSION_DEPTH: usize = 32;
+
     /// Create a new cache filled with a handle to this store, if this store is supporting shared ownership.
     ///
     /// Note that the actual type of `OwnShared` depends on the `parallel` feature toggle of the `git-features` crate.
@@ -243,6 +248,7 @@ impl super::Store {
             refresh: RefreshMode::default(),
             token: Some(token),
             snapshot: RefCell::new(self.collect_snapshot()),
+            max_recursion_depth: Self::INITIAL_MAX_RECURSION_DEPTH,
         }
     }
 
@@ -256,6 +262,7 @@ impl super::Store {
             refresh: Default::default(),
             token: Some(token),
             snapshot: RefCell::new(self.collect_snapshot()),
+            max_recursion_depth: Self::INITIAL_MAX_RECURSION_DEPTH,
         }
     }
 
@@ -319,6 +326,39 @@ where
     }
 }
 
+impl TryFrom<&super::Store> for super::Store {
+    type Error = std::io::Error;
+
+    fn try_from(s: &super::Store) -> Result<Self, Self::Error> {
+        super::Store::at_opts(
+            s.path(),
+            crate::store::init::Options {
+                slots: crate::store::init::Slots::Given(s.files.len().try_into().expect("BUG: too many slots")),
+                object_hash: Default::default(),
+                use_multi_pack_index: false,
+            },
+        )
+    }
+}
+
+impl super::Handle<Rc<super::Store>> {
+    /// Convert a ref counted store into one that is ref-counted and thread-safe, by creating a new Store.
+    pub fn into_arc(self) -> std::io::Result<super::Handle<Arc<super::Store>>> {
+        let store = Arc::new(super::Store::try_from(self.store_ref())?);
+        let mut cache = store.to_handle_arc();
+        cache.refresh = self.refresh;
+        cache.max_recursion_depth = self.max_recursion_depth;
+        Ok(cache)
+    }
+}
+
+impl super::Handle<Arc<super::Store>> {
+    /// Convert a ref counted store into one that is ref-counted and thread-safe, by creating a new Store
+    pub fn into_arc(self) -> std::io::Result<super::Handle<Arc<super::Store>>> {
+        Ok(self)
+    }
+}
+
 impl<S> Clone for super::Handle<S>
 where
     S: Deref<Target = super::Store> + Clone,
@@ -336,6 +376,7 @@ where
                 .into()
             },
             snapshot: RefCell::new(self.store.collect_snapshot()),
+            max_recursion_depth: self.max_recursion_depth,
         }
     }
 }

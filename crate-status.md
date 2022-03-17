@@ -206,15 +206,35 @@ Check out the [performance discussion][git-traverse-performance] as well.
     * [ ] general purpose `accept(…)` for servers
 * [x] API documentation
     * [ ] Some examples
+     
+### git-ignore
+
+* [ ] parse git-ignore files
+ 
+### git-attributes
+
+* [ ] parse git-attributes files
+* [ ] create an attributes stack, ideally one that includes 'ignored' status from .gitignore files.
 
 ### git-worktree
 * handle the working tree/checkout
+  - [x] checkout an index of files, executables and symlinks just as fast as git
+     - [x] forbid symlinks in directories
+     - [ ] handle submodules
+     - [ ] handle sparse directories
+     - [ ] handle sparse index
+     - [ ] linear scaling with multi-threading up to IO saturation
 * manage multiple worktrees
 * deal with exclude specifications, like .gitignore and other exclude files.
  
 ### git-revision
 * find specifications for revisions (like `git name-rev`)
 * parse specifications into revisions (like `git rev-parse`)
+ 
+### git-submodule
+
+* CRUD for submodules
+* try to handle with all the nifty interactions and be a little more comfortable than what git offers, lay a foundation for smarter git submodules.
 
 ### git-bitmap
 

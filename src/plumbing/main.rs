@@ -12,6 +12,7 @@ use clap::Parser;
 use gitoxide_core as core;
 use gitoxide_core::pack::verify;
 
+use crate::plumbing::options::pack::multi_index;
 #[cfg(any(feature = "gitoxide-core-async-client", feature = "gitoxide-core-blocking-client"))]
 use crate::plumbing::options::remote;
 use crate::{
@@ -82,21 +83,26 @@ pub fn main() -> Result<()> {
                 directory,
                 empty_files,
                 repository,
+                keep_going,
             } => prepare_and_run(
                 "index-checkout",
                 verbose,
                 progress,
                 progress_keep_open,
                 None,
-                move |progress, _out, _err| {
+                move |progress, _out, err| {
                     core::index::checkout_exclusive(
                         index_path,
                         directory,
                         repository,
+                        err,
                         progress,
+                        &should_interrupt,
                         core::index::checkout_exclusive::Options {
                             index: core::index::Options { object_hash, format },
                             empty_files,
+                            keep_going,
+                            thread_limit,
                         },
                     )
                 },
@@ -140,7 +146,58 @@ pub fn main() -> Result<()> {
                 },
             ),
         },
-        Subcommands::Repository(subcommands) => match subcommands {
+        Subcommands::Repository(repo::Platform { repository, cmd }) => match cmd {
+            repo::Subcommands::Odb { cmd } => match cmd {
+                repo::odb::Subcommands::Entries => prepare_and_run(
+                    "repository-odb-entries",
+                    verbose,
+                    progress,
+                    progress_keep_open,
+                    None,
+                    move |_progress, out, _err| core::repository::odb::entries(repository, format, out),
+                ),
+                repo::odb::Subcommands::Info => prepare_and_run(
+                    "repository-odb-info",
+                    verbose,
+                    progress,
+                    progress_keep_open,
+                    None,
+                    move |_progress, out, err| core::repository::odb::info(repository, format, out, err),
+                ),
+            },
+            repo::Subcommands::Tree { cmd } => match cmd {
+                repo::tree::Subcommands::Entries {
+                    treeish,
+                    recursive,
+                    extended,
+                } => prepare_and_run(
+                    "repository-tree-entries",
+                    verbose,
+                    progress,
+                    progress_keep_open,
+                    None,
+                    move |_progress, out, _err| {
+                        core::repository::tree::entries(
+                            repository,
+                            treeish.as_deref(),
+                            recursive,
+                            extended,
+                            format,
+                            out,
+                        )
+                    },
+                ),
+                repo::tree::Subcommands::Info { treeish, extended } => prepare_and_run(
+                    "repository-tree-info",
+                    verbose,
+                    progress,
+                    progress_keep_open,
+                    None,
+                    move |_progress, out, err| {
+                        core::repository::tree::info(repository, treeish.as_deref(), extended, format, out, err)
+                    },
+                ),
+            },
             repo::Subcommands::Verify {
                 args:
                     pack::VerifyOptions {
@@ -149,7 +206,6 @@ pub fn main() -> Result<()> {
                         decode,
                         re_encode,
                     },
-                repository,
             } => prepare_and_run(
                 "repository-verify",
                 verbose,
@@ -345,8 +401,24 @@ pub fn main() -> Result<()> {
                 },
             )
             .map(|_| ()),
-            pack::Subcommands::MultiIndex(subcommands) => match subcommands {
-                pack::multi_index::Subcommands::Verify { multi_index_path } => prepare_and_run(
+            pack::Subcommands::MultiIndex(multi_index::Platform { multi_index_path, cmd }) => match cmd {
+                pack::multi_index::Subcommands::Entries => prepare_and_run(
+                    "pack-multi-index-entries",
+                    verbose,
+                    progress,
+                    progress_keep_open,
+                    core::pack::multi_index::PROGRESS_RANGE,
+                    move |_progress, out, _err| core::pack::multi_index::entries(multi_index_path, format, out),
+                ),
+                pack::multi_index::Subcommands::Info => prepare_and_run(
+                    "pack-multi-index-info",
+                    verbose,
+                    progress,
+                    progress_keep_open,
+                    core::pack::multi_index::PROGRESS_RANGE,
+                    move |_progress, out, err| core::pack::multi_index::info(multi_index_path, format, out, err),
+                ),
+                pack::multi_index::Subcommands::Verify => prepare_and_run(
                     "pack-multi-index-verify",
                     verbose,
                     progress,
@@ -360,10 +432,7 @@ pub fn main() -> Result<()> {
                         )
                     },
                 ),
-                pack::multi_index::Subcommands::Create {
-                    output_path,
-                    index_paths,
-                } => prepare_and_run(
+                pack::multi_index::Subcommands::Create { index_paths } => prepare_and_run(
                     "pack-multi-index-create",
                     verbose,
                     progress,
@@ -372,7 +441,7 @@ pub fn main() -> Result<()> {
                     move |progress, _out, _err| {
                         core::pack::multi_index::create(
                             index_paths,
-                            output_path,
+                            multi_index_path,
                             progress,
                             &git_repository::interrupt::IS_INTERRUPTED,
                             object_hash,

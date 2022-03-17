@@ -1,5 +1,4 @@
 use bstr::BString;
-use quick_error::quick_error;
 use std::path::PathBuf;
 
 /// A cache for directory creation to reduce the amount of stat calls when creating
@@ -37,6 +36,7 @@ pub struct PathCache {
 
 mod cache {
     use super::PathCache;
+    use crate::os;
     use std::path::{Path, PathBuf};
 
     impl PathCache {
@@ -82,9 +82,9 @@ mod cache {
                 }
             }
 
-            // TODO: handle valid state properly, handle _mode.
             for _ in 0..self.valid_components - matching_components {
                 self.valid.pop();
+                self.valid_relative.pop();
             }
 
             self.valid_components = matching_components;
@@ -94,34 +94,44 @@ mod cache {
                 self.valid.push(comp);
                 self.valid_relative.push(comp);
                 self.valid_components += 1;
-                if components.peek().is_some() || target_is_dir {
-                    #[cfg(debug_assertions)]
-                    {
-                        self.test_mkdir_calls += 1;
-                    }
-                    match std::fs::create_dir(&self.valid) {
-                        Ok(()) => {}
-                        Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => {
-                            let meta = self.valid.symlink_metadata()?;
-                            if !meta.is_dir() {
-                                if self.unlink_on_collision {
-                                    if meta.is_symlink() {
-                                        symlink::remove_symlink_auto(&self.valid)?;
-                                    } else {
-                                        std::fs::remove_file(&self.valid)?;
-                                    }
-                                    #[cfg(debug_assertions)]
-                                    {
-                                        self.test_mkdir_calls += 1;
-                                    }
-                                    std::fs::create_dir(&self.valid)?;
-                                    continue;
-                                }
-                                return Err(err);
-                            }
+                let res = (|| {
+                    if components.peek().is_some() || target_is_dir {
+                        #[cfg(debug_assertions)]
+                        {
+                            self.test_mkdir_calls += 1;
                         }
-                        Err(err) => return Err(err),
+                        match std::fs::create_dir(&self.valid) {
+                            Ok(()) => {}
+                            Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => {
+                                let meta = self.valid.symlink_metadata()?;
+                                if !meta.is_dir() {
+                                    if self.unlink_on_collision {
+                                        if meta.is_symlink() {
+                                            os::remove_symlink(&self.valid)?;
+                                        } else {
+                                            std::fs::remove_file(&self.valid)?;
+                                        }
+                                        #[cfg(debug_assertions)]
+                                        {
+                                            self.test_mkdir_calls += 1;
+                                        }
+                                        std::fs::create_dir(&self.valid)?;
+                                    } else {
+                                        return Err(err);
+                                    }
+                                }
+                            }
+                            Err(err) => return Err(err),
+                        }
                     }
+                    Ok(())
+                })();
+
+                if let Err(err) = res {
+                    self.valid.pop();
+                    self.valid_relative.pop();
+                    self.valid_components -= 1;
+                    return Err(err);
                 }
             }
 
@@ -138,14 +148,30 @@ pub struct Collision {
     pub error_kind: std::io::ErrorKind,
 }
 
+pub struct ErrorRecord {
+    /// the path that encountered the error.
+    pub path: BString,
+    /// The error
+    pub error: Box<dyn std::error::Error + Send + Sync + 'static>,
+}
+
 pub struct Outcome {
+    /// The amount of files updated, or created.
+    pub files_updated: usize,
+    /// The amount of bytes written to disk,
+    pub bytes_written: u64,
     pub collisions: Vec<Collision>,
+    pub errors: Vec<ErrorRecord>,
 }
 
 #[derive(Clone, Copy)]
 pub struct Options {
     /// capabilities of the file system
     pub fs: crate::fs::Capabilities,
+    /// If set, don't use more than this amount of threads.
+    /// Otherwise, usually use as many threads as there are logical cores.
+    /// A value of 0 is interpreted as no-limit
+    pub thread_limit: Option<usize>,
     /// If true, we assume no file to exist in the target directory, and want exclusive access to it.
     /// This should be enabled when cloning to avoid checks for freshness of files. This also enables
     /// detection of collisions based on whether or not exclusive file creation succeeds or fails.
@@ -157,7 +183,7 @@ pub struct Options {
     pub overwrite_existing: bool,
     /// If true, default false, try to checkout as much as possible and don't abort on first error which isn't
     /// due to a conflict.
-    /// The operation will never fail, but count the encountered errors instead along with their paths.
+    /// The checkout operation will never fail, but count the encountered errors instead along with their paths.
     pub keep_going: bool,
     /// If true, a files creation time is taken into consideration when checking if a file changed.
     /// Can be set to false in case other tools alter the creation time in ways that interfere with our operation.
@@ -176,6 +202,7 @@ impl Default for Options {
     fn default() -> Self {
         Options {
             fs: Default::default(),
+            thread_limit: None,
             destination_is_initially_empty: false,
             keep_going: false,
             trust_ctime: true,
@@ -184,25 +211,19 @@ impl Default for Options {
         }
     }
 }
-
-quick_error! {
-    #[derive(Debug)]
-    pub enum Error {
-        IllformedUtf8{ path: BString } {
-            display("Could not convert path to UTF8: {}", path)
-        }
-        Time(err: std::time::SystemTimeError) {
-            from()
-            source(err)
-            display("The clock was off when reading file related metadata after updating a file on disk")
-        }
-        Io(err: std::io::Error) {
-            from()
-            source(err)
-            display("IO error while writing blob or reading file metadata or changing filetype")
-        }
-        ObjectNotFound{ oid: git_hash::ObjectId, path: std::path::PathBuf } {
-            display("object {} for checkout at {} not found in object database", oid.to_hex(), path.display())
-        }
-    }
+#[derive(Debug, thiserror::Error)]
+pub enum Error<E: std::error::Error + Send + Sync + 'static> {
+    #[error("Could not convert path to UTF8: {}", .path)]
+    IllformedUtf8 { path: BString },
+    #[error("The clock was off when reading file related metadata after updating a file on disk")]
+    Time(#[from] std::time::SystemTimeError),
+    #[error("IO error while writing blob or reading file metadata or changing filetype")]
+    Io(#[from] std::io::Error),
+    #[error("object {} for checkout at {} could not be retrieved from object database", .oid.to_hex(), .path.display())]
+    Find {
+        #[source]
+        err: E,
+        oid: git_hash::ObjectId,
+        path: std::path::PathBuf,
+    },
 }

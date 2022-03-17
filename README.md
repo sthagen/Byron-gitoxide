@@ -35,19 +35,31 @@ Please see _'Development Status'_ for a listing of all crates and their capabili
       * [x] **create** - create a pack from given objects or tips of the commit graph.
       * [ ] **send** - create a pack and send it using the pack protocol to stdout, similar to 'git-upload-pack', 
             for consumption by **pack-receive** or _git-receive-pack_
-      * **index**
-      * [x] [create](https://asciinema.org/a/352941) - create an index file by streaming a pack file as done during clone
-          * [x] support for thin packs (as needed for fetch/pull)
+      - **multi-index**
+          * [x] **info** - print information about the file
+          * [x] **create** - create a multi-index from pack indices
+          * [x] **verify** - check the file for consistency
+          * [x] **entries** - list all entries of the file
+      - **index**
+          * [x] [create](https://asciinema.org/a/352941) - create an index file by streaming a pack file as done during clone
+             * [x] support for thin packs (as needed for fetch/pull)
     * **commit-graph**
       * [x] **verify** - assure that a commit-graph is consistent
     * **repository**
       * **verify** - validate a whole repository, for now only the object database.
+      * **tree**
+         * [x] **entries** - list tree entries for a single tree or recursively
+         * [x] **info** - display tree statistics
+      * **odb**
+         * [x] **info** - display odb statistics
+         * [x] **entries** - display all object ids in the object database
     * **index**
       * [x] **entries** - show detailed entry information for human or machine consumption (via JSON)
       * [x] **verify** - check the index for consistency
       * [x] **info** - display general information about the index itself, with detailed extension information by default
          * [x] detailed information about the TREE extension
          * [ ] …other extensions details aren't implemented yet
+      * [x] **checkout-exclusive** - a predecessor of `git worktree`, providing flexible options to evaluate checkout performance from an index and/or an object database.
     * **remote**
       * [ref-list](https://asciinema.org/a/359320) - list all (or given) references from a remote at the given URL
 
@@ -92,8 +104,11 @@ Follow linked crate name for detailed status. Please note that all crates follow
   * [git-index](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-index)
   * [git-worktree](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-worktree)
   * [git-bitmap](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-bitmap)
-* **idea**
   * [git-revision](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-revision)
+  * [git-ignore](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-ignore)
+* **idea**
+  * [git-attributes](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-attributes)
+  * [git-subomdule](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-submodule)
   * [git-tui](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-tui)
   * [git-bundle](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-bundle)
   
@@ -141,12 +156,15 @@ the latest stable one will work as well.
 # The default installation, 'max'
 cargo install gitoxide
 
-# On linux, it's a little faster to compile the termion version, which also results in slightly smaller binaries
-cargo install gitoxide --no-default-features --features max-termion
-
 # For smaller binaries and even faster build times that are traded for a less fancy CLI implementation, use `lean`
 # or `lean-termion` respectively.
 cargo install gitoxide --no-default-features --features lean
+```
+
+The following installs the latest unpublished release directly from git:
+
+```sh
+cargo install --git https://github.com/Byron/gitoxide  gitoxide
 ```
 
 [releases]: https://github.com/Byron/gitoxide/releases 

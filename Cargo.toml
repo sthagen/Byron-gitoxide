@@ -106,7 +106,7 @@ git-actor = { opt-level = 3 }
 git-config = { opt-level = 3 }
 miniz_oxide = { opt-level = 3 }
 sha-1 = { opt-level = 3 }
-sha1 = { opt-level = 3 }
+sha1_smol = { opt-level = 3 }
 
 [profile.release]
 overflow-checks = false
@@ -141,12 +141,15 @@ members = [
     "git-worktree",
     "git-revision",
     "git-packetline",
+    "git-submodule",
     "git-transport",
     "git-protocol",
     "git-pack",
     "git-odb",
     "git-tempfile",
     "git-lock",
+    "git-ignore",
+    "git-attributes",
     "git-repository",
     "gitoxide-core",
     "git-tui",

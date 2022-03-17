@@ -59,8 +59,7 @@ pub enum Subcommands {
     /// Subcommands for interacting with a worktree index, typically at .git/index
     Index(index::Platform),
     /// Subcommands for interacting with entire git repositories
-    #[clap(subcommand)]
-    Repository(repo::Subcommands),
+    Repository(repo::Platform),
 }
 
 ///
@@ -75,8 +74,7 @@ pub mod pack {
         #[clap(subcommand)]
         Index(index::Subcommands),
         /// Subcommands for interacting with multi-pack indices (named "multi-pack-index")
-        #[clap(subcommand)]
-        MultiIndex(multi_index::Subcommands),
+        MultiIndex(multi_index::Platform),
         /// Create a new pack with a set of objects.
         Create {
             #[clap(long, short = 'r')]
@@ -256,22 +254,30 @@ pub mod pack {
     pub mod multi_index {
         use std::path::PathBuf;
 
+        #[derive(Debug, clap::Parser)]
+        pub struct Platform {
+            /// The path to the index file.
+            #[clap(short = 'i', long, default_value = ".git/objects/pack/multi-pack-index")]
+            pub multi_index_path: PathBuf,
+
+            /// Subcommands
+            #[clap(subcommand)]
+            pub cmd: Subcommands,
+        }
+
         #[derive(Debug, clap::Subcommand)]
         pub enum Subcommands {
+            /// Display all entries of a multi-index: <oid> <pack-id> <pack-offset>
+            Entries,
+            /// Print general information about a multi-index file
+            Info,
             /// Verify a multi-index quickly without inspecting objects themselves
-            Verify {
-                /// The path to the multi-pack-index to verify.
-                multi_index_path: PathBuf,
-            },
-            /// Create a multi-pack index from one or more pack index files
+            Verify,
+            /// Create a multi-pack index from one or more pack index files, overwriting possibloy existing files.
             Create {
-                /// The path to which the multi-index file should be written, overwriting any possibly existing file.
+                /// Paths to the pack index files to read (with .idx extension).
                 ///
                 /// Note for the multi-index to be useful, it should be side-by-side with the supplied `.idx` files.
-                #[clap(long, short = 'o')]
-                output_path: PathBuf,
-
-                /// Paths to the pack index files to read (with .idx extension).
                 #[clap(required = true)]
                 index_paths: Vec<PathBuf>,
             },
@@ -323,6 +329,17 @@ pub mod pack {
 pub mod repo {
     use std::path::PathBuf;
 
+    #[derive(Debug, clap::Parser)]
+    pub struct Platform {
+        /// The repository to access.
+        #[clap(short = 'r', long, default_value = ".")]
+        pub repository: PathBuf,
+
+        /// Subcommands
+        #[clap(subcommand)]
+        pub cmd: Subcommands,
+    }
+
     #[derive(Debug, clap::Subcommand)]
     #[clap(alias = "repo")]
     pub enum Subcommands {
@@ -330,9 +347,54 @@ pub mod repo {
         Verify {
             #[clap(flatten)]
             args: super::pack::VerifyOptions,
-            #[clap(short = 'r', long, default_value = ".")]
-            repository: PathBuf,
         },
+        /// Interact with tree objects.
+        Tree {
+            #[clap(subcommand)]
+            cmd: tree::Subcommands,
+        },
+        /// Interact with the object database.
+        Odb {
+            #[clap(subcommand)]
+            cmd: odb::Subcommands,
+        },
+    }
+
+    pub mod odb {
+        #[derive(Debug, clap::Subcommand)]
+        pub enum Subcommands {
+            /// Print all object names.
+            Entries,
+            /// Provide general information about the object database.
+            Info,
+        }
+    }
+
+    pub mod tree {
+        #[derive(Debug, clap::Subcommand)]
+        pub enum Subcommands {
+            /// Print entries in a given tree
+            Entries {
+                /// Traverse the entire tree and its subtrees respectively, not only this tree.
+                #[clap(long, short = 'r')]
+                recursive: bool,
+
+                /// Provide files size as well. This is expensive as the object is decoded entirely.
+                #[clap(long, short = 'e')]
+                extended: bool,
+
+                /// The tree to traverse, or the tree at `HEAD` if unspecified.
+                treeish: Option<String>,
+            },
+            /// Provide information about a tree.
+            Info {
+                /// Provide files size as well. This is expensive as the object is decoded entirely.
+                #[clap(long, short = 'e')]
+                extended: bool,
+                /// The tree to traverse, or the tree at `HEAD` if unspecified.
+                treeish: Option<String>,
+            },
+        }
     }
 }
 
@@ -373,6 +435,9 @@ pub mod index {
             /// in the index. Use this measure the impact on extracting objects on overall performance.
             #[clap(long, short = 'r')]
             repository: Option<PathBuf>,
+            /// Ignore errors and keep checking out as many files as possible, and report all errors at the end of the operation.
+            #[clap(long, short = 'k')]
+            keep_going: bool,
             /// Enable to query the object database yet write only empty files. This is useful to measure the overhead of ODB query
             /// compared to writing the bytes to disk.
             #[clap(long, short = 'e', requires = "repository")]

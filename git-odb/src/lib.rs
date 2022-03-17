@@ -122,13 +122,6 @@ pub struct Store {
     object_hash: git_hash::Kind,
 }
 
-impl Store {
-    /// The root path at which we expect to find all objects and packs.
-    pub fn path(&self) -> &std::path::Path {
-        &self.path
-    }
-}
-
 /// Create a new cached handle to the object store with support for additional options.
 pub fn at_opts(objects_dir: impl Into<PathBuf>, options: store::init::Options) -> std::io::Result<Handle> {
     let handle = OwnShared::new(Store::at_opts(objects_dir, options)?).to_handle();
