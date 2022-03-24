@@ -8,10 +8,9 @@ pub const STANDARD_RANGE: ProgressRange = 2..=2;
 
 /// If verbose is true, the env logger will be forcibly set to 'info' logging level. Otherwise env logging facilities
 /// will just be initialized.
-#[cfg(feature = "env_logger")]
 #[allow(unused)] // Squelch warning because it's used in porcelain as well and we can't know that at compile time
-pub fn init_env_logger(verbose: bool) {
-    if verbose {
+pub fn init_env_logger() {
+    if cfg!(feature = "small") {
         env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
             .format_module_path(false)
             .init();
@@ -21,7 +20,7 @@ pub fn init_env_logger(verbose: bool) {
 }
 
 #[cfg(feature = "prodash-render-line")]
-pub fn progress_tree() -> prodash::Tree {
+pub fn progress_tree() -> std::sync::Arc<prodash::Tree> {
     prodash::TreeOptions {
         message_buffer_capacity: 200,
         ..Default::default()
@@ -59,13 +58,7 @@ pub mod pretty {
         progress: bool,
         #[cfg_attr(not(feature = "prodash-render-tui"), allow(unused_variables))] progress_keep_open: bool,
         #[cfg_attr(not(feature = "prodash-render-line"), allow(unused_variables))] range: impl Into<Option<ProgressRange>>,
-        #[cfg(not(any(feature = "prodash-render-line", feature = "prodash-render-tui")))] run: impl FnOnce(
-            progress::DoOrDiscard<prodash::progress::Log>,
-            &mut dyn std::io::Write,
-            &mut dyn std::io::Write,
-        )
-            -> Result<T>,
-        #[cfg(any(feature = "prodash-render-line", feature = "prodash-render-tui"))] run: impl FnOnce(
+        run: impl FnOnce(
                 progress::DoOrDiscard<prodash::tree::Item>,
                 &mut dyn std::io::Write,
                 &mut dyn std::io::Write,
@@ -74,7 +67,7 @@ pub mod pretty {
             + std::panic::UnwindSafe
             + 'static,
     ) -> Result<T> {
-        crate::shared::init_env_logger(false);
+        crate::shared::init_env_logger();
 
         match (verbose, progress) {
             (false, false) => {
@@ -87,71 +80,15 @@ pub mod pretty {
             (true, false) => {
                 let progress = crate::shared::progress_tree();
                 let sub_progress = progress.add_child(name);
-                #[cfg(not(feature = "prodash-render-line"))]
-                {
-                    let stdout = stdout();
-                    let mut stdout_lock = stdout.lock();
-                    let stderr = stderr();
-                    let mut stderr_lock = stderr.lock();
-                    run(
-                        progress::DoOrDiscard::from(Some(sub_progress)),
-                        &mut stdout_lock,
-                        &mut stderr_lock,
-                    )
-                }
-                #[cfg(feature = "prodash-render-line")]
-                {
-                    enum Event<T> {
-                        UiDone,
-                        ComputationFailed,
-                        ComputationDone(Result<T>, Vec<u8>),
-                    }
-                    use crate::shared::{self, STANDARD_RANGE};
-                    let (tx, rx) = std::sync::mpsc::sync_channel::<Event<T>>(1);
-                    let ui_handle = shared::setup_line_renderer_range(progress, range.into().unwrap_or(STANDARD_RANGE));
-                    std::thread::spawn({
-                        let tx = tx.clone();
-                        move || loop {
-                            std::thread::sleep(std::time::Duration::from_millis(500));
-                            if git_repository::interrupt::is_triggered() {
-                                tx.send(Event::UiDone).ok();
-                                break;
-                            }
-                        }
-                    });
-                    // LIMITATION: This will hang if the thread panics as no message is send and the renderer thread will wait forever.
-                    // `catch_unwind` can't be used as a parking lot mutex is not unwind safe, coming from prodash.
-                    let join_handle = std::thread::spawn(move || {
-                        let mut out = Vec::<u8>::new();
-                        let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                            run(progress::DoOrDiscard::from(Some(sub_progress)), &mut out, &mut stderr())
-                        }));
-                        match res {
-                            Ok(res) => tx.send(Event::ComputationDone(res, out)).ok(),
-                            Err(err) => {
-                                tx.send(Event::ComputationFailed).ok();
-                                std::panic::resume_unwind(err)
-                            }
-                        }
-                    });
-                    match rx.recv()? {
-                        Event::UiDone => {
-                            ui_handle.shutdown_and_wait();
-                            drop(join_handle);
-                            Err(anyhow::anyhow!("Operation cancelled by user"))
-                        }
-                        Event::ComputationDone(res, out) => {
-                            ui_handle.shutdown_and_wait();
-                            join_handle.join().ok();
-                            std::io::Write::write_all(&mut stdout(), &out)?;
-                            res
-                        }
-                        Event::ComputationFailed => match join_handle.join() {
-                            Ok(_) => unreachable!("The thread has panicked and unwrap is expected to show it"),
-                            Err(err) => std::panic::resume_unwind(err),
-                        },
-                    }
-                }
+
+                use crate::shared::{self, STANDARD_RANGE};
+                let handle = shared::setup_line_renderer_range(&progress, range.into().unwrap_or(STANDARD_RANGE));
+
+                let mut out = Vec::<u8>::new();
+                let res = run(progress::DoOrDiscard::from(Some(sub_progress)), &mut out, &mut stderr());
+                handle.shutdown_and_wait();
+                std::io::Write::write_all(&mut stdout(), &out)?;
+                res
             }
             #[cfg(not(feature = "prodash-render-tui"))]
             (true, true) | (false, true) => {
@@ -171,11 +108,11 @@ pub mod pretty {
                 let sub_progress = progress.add_child(name);
                 let render_tui = prodash::render::tui(
                     stdout(),
-                    progress,
+                    std::sync::Arc::downgrade(&progress),
                     prodash::render::tui::Options {
                         title: "gitoxide".into(),
                         frames_per_second: shared::DEFAULT_FRAME_RATE,
-                        stop_if_empty_progress: !progress_keep_open,
+                        stop_if_progress_missing: !progress_keep_open,
                         throughput: true,
                         ..Default::default()
                     },
@@ -219,12 +156,12 @@ pub mod pretty {
 #[allow(unused)]
 #[cfg(feature = "prodash-render-line")]
 pub fn setup_line_renderer_range(
-    progress: prodash::Tree,
+    progress: &std::sync::Arc<prodash::Tree>,
     levels: std::ops::RangeInclusive<prodash::progress::key::Level>,
 ) -> prodash::render::line::JoinHandle {
     prodash::render::line(
         std::io::stderr(),
-        progress,
+        std::sync::Arc::downgrade(progress),
         prodash::render::line::Options {
             level_filter: Some(levels),
             frames_per_second: DEFAULT_FRAME_RATE,
