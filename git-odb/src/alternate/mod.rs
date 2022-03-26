@@ -20,8 +20,6 @@ use std::{fs, io, path::PathBuf};
 
 ///
 pub mod parse;
-#[allow(missing_docs)]
-pub mod unquote;
 
 /// Returned by [`resolve()`]
 #[derive(thiserror::Error, Debug)]

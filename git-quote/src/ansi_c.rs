@@ -1,46 +1,57 @@
-use std::{borrow::Cow, io::Read};
+pub mod undo {
+    use bstr::{BStr, BString};
+    use quick_error::quick_error;
 
-use git_object::bstr::{BStr, BString, ByteSlice};
+    quick_error! {
+        #[derive(Debug)]
+        pub enum Error {
+            InvalidInput { message: String, input: BString } {
+                display("{}: {:?}", message, input)
+            }
+            UnsupportedEscapeByte { byte: u8, input: BString } {
+                display("Invalid escaped value {} in input {:?}", byte, input)
+            }
+        }
+    }
 
-#[derive(thiserror::Error, Debug)]
-pub enum Error {
-    #[error("{message}: {:?}", String::from_utf8_lossy(.input))]
-    InvalidInput { message: String, input: Vec<u8> },
-    #[error("Invalid escaped value {byte} in input {:?}", String::from_utf8_lossy(.input))]
-    UnsupportedEscapeByte { byte: u8, input: Vec<u8> },
-}
-
-impl Error {
-    fn new(message: impl ToString, input: &BStr) -> Error {
-        Error::InvalidInput {
-            message: message.to_string(),
-            input: input.to_vec(),
+    impl Error {
+        pub(crate) fn new(message: impl ToString, input: &BStr) -> Error {
+            Error::InvalidInput {
+                message: message.to_string(),
+                input: input.into(),
+            }
         }
     }
 }
 
-/// Unquote the given ansi-c quoted `input` string.
+use std::{borrow::Cow, io::Read};
+
+use bstr::{BStr, BString, ByteSlice};
+
+/// Unquote the given ansi-c quoted `input` string, returning it and all of the consumed bytes.
 ///
 /// The `input` is returned unaltered if it doesn't start with a `"` character to indicate
-/// quotation, otherwise a new unqoted string will always be allocated.
+/// quotation, otherwise a new unquoted string will always be allocated.
+/// The amount of consumed bytes allow to pass strings that start with a quote, and skip all quoted text for additional processing
 ///
 /// See [the tests][tests] for quotation examples.
 ///
 /// [tests]: https://github.com/Byron/gitoxide/blob/e355b4ad133075152312816816af5ce72cf79cff/git-odb/src/alternate/unquote.rs#L110-L118
-pub fn ansi_c(input: &BStr) -> Result<Cow<'_, BStr>, Error> {
+pub fn undo(input: &BStr) -> Result<(Cow<'_, BStr>, usize), undo::Error> {
     if !input.starts_with(b"\"") {
-        return Ok(input.into());
+        return Ok((input.into(), input.len()));
     }
     if input.len() < 2 {
-        return Err(Error::new("Input must be surrounded by double quotes", input));
+        return Err(undo::Error::new("Input must be surrounded by double quotes", input));
     }
     let original = input.as_bstr();
     let mut input = &input[1..];
+    let mut consumed = 1;
     let mut out = BString::default();
-    fn consume_one_past(input: &mut &BStr, position: usize) -> Result<u8, Error> {
+    fn consume_one_past(input: &mut &BStr, position: usize) -> Result<u8, undo::Error> {
         *input = input
             .get(position + 1..)
-            .ok_or_else(|| Error::new("Unexpected end of input", input))?
+            .ok_or_else(|| undo::Error::new("Unexpected end of input", input))?
             .as_bstr();
         let next = input[0];
         *input = input.get(1..).unwrap_or_default().as_bstr();
@@ -50,10 +61,12 @@ pub fn ansi_c(input: &BStr) -> Result<Cow<'_, BStr>, Error> {
         match input.find_byteset(b"\"\\") {
             Some(position) => {
                 out.extend_from_slice(&input[..position]);
+                consumed += position + 1;
                 match input[position] {
                     b'"' => break,
                     b'\\' => {
                         let next = consume_one_past(&mut input, position)?;
+                        consumed += 1;
                         match next {
                             b'n' => out.push(b'\n'),
                             b'r' => out.push(b'\r'),
@@ -69,18 +82,22 @@ pub fn ansi_c(input: &BStr) -> Result<Cow<'_, BStr>, Error> {
                                 input
                                     .get(..2)
                                     .ok_or_else(|| {
-                                        Error::new("Unexpected end of input when fetching two more octal bytes", input)
+                                        undo::Error::new(
+                                            "Unexpected end of input when fetching two more octal bytes",
+                                            input,
+                                        )
                                     })?
                                     .read_exact(&mut buf[1..])
                                     .expect("impossible to fail as numbers match");
-                                let byte = btoi::btou_radix(&buf, 8).map_err(|e| Error::new(e, original))?;
+                                let byte = btoi::btou_radix(&buf, 8).map_err(|e| undo::Error::new(e, original))?;
                                 out.push(byte);
                                 input = &input[2..];
+                                consumed += 2;
                             }
                             _ => {
-                                return Err(Error::UnsupportedEscapeByte {
+                                return Err(undo::Error::UnsupportedEscapeByte {
                                     byte: next,
-                                    input: original.to_vec(),
+                                    input: original.into(),
                                 })
                             }
                         }
@@ -90,40 +107,10 @@ pub fn ansi_c(input: &BStr) -> Result<Cow<'_, BStr>, Error> {
             }
             None => {
                 out.extend_from_slice(input);
+                consumed += input.len();
                 break;
             }
         }
     }
-    Ok(out.into())
-}
-
-#[cfg(test)]
-mod tests {
-    use git_object::bstr::ByteSlice;
-
-    use super::*;
-
-    macro_rules! test {
-        ($name:ident, $input:literal, $expected:literal) => {
-            #[test]
-            fn $name() {
-                assert_eq!(
-                    ansi_c($input.as_bytes().as_bstr()).expect("valid input"),
-                    std::borrow::Cow::Borrowed($expected.as_bytes().as_bstr())
-                );
-            }
-        };
-    }
-
-    test!(unquoted_remains_unchanged, "hello", "hello");
-    test!(empty_surrounded_by_quotes, "\"\"", "");
-    test!(surrounded_only_by_quotes, "\"hello\"", "hello");
-    test!(typical_escapes, r#""\n\r\t""#, b"\n\r\t");
-    test!(untypical_escapes, r#""\a\b\f\v""#, b"\x07\x08\x0c\x0b");
-    test!(literal_escape_and_double_quote, r#""\"\\""#, br#""\"#);
-    test!(
-        unicode_byte_escapes_by_number,
-        r#""\346\277\261\351\207\216\t\347\264\224""#,
-        "濱野\t純"
-    );
+    Ok((out.into(), consumed))
 }
