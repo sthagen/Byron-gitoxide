@@ -105,6 +105,18 @@ impl FullName {
         }
         self
     }
+
+    /// Strip well-known prefixes from the name and return it.
+    ///
+    /// If there is no such prefix, the original name is returned.
+    pub fn shorten(&self) -> &BStr {
+        self.to_ref().shorten()
+    }
+
+    /// Classify this name, or return `None` if it's unclassified.
+    pub fn category(&self) -> Option<crate::Category> {
+        self.to_ref().category()
+    }
 }
 
 impl<'a> FullNameRef<'a> {

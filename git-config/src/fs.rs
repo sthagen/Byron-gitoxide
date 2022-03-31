@@ -7,7 +7,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::file::{GitConfig, GitConfigError};
+use crate::file::{from_paths, GitConfig, GitConfigError};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum ConfigSource {
@@ -106,7 +106,8 @@ impl ConfigBuilder {
         };
 
         let env_conf = if self.load_env_conf {
-            GitConfig::from_env().ok().flatten()
+            // TODO: when bringing up the system, make sure options can be passed. Have to review this entire module first though.
+            GitConfig::from_env(&from_paths::Options::default()).ok().flatten()
         } else {
             None
         };

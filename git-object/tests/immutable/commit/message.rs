@@ -236,8 +236,8 @@ mod summary {
             name: "name".into(),
             email: "email".into(),
             time: Time {
-                time: 0,
-                offset: 0,
+                seconds_since_unix_epoch: 0,
+                offset_in_seconds: 0,
                 sign: Sign::Plus,
             },
         };
@@ -245,7 +245,7 @@ mod summary {
             CommitRef {
                 tree: "tree".into(),
                 parents: Default::default(),
-                author: actor.clone(),
+                author: actor,
                 committer: actor,
                 encoding: None,
                 message: input.as_bstr(),

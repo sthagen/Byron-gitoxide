@@ -1,12 +1,13 @@
+use std::cmp::Ordering;
+
 use git_repository::prelude::ObjectIdExt;
 use git_testtools::hex_to_id;
-use std::cmp::Ordering;
 
 #[test]
 fn prefix() -> crate::Result {
     let (repo, worktree_dir) = crate::repo_rw("make_repo_with_fork_and_dates.sh")?;
     let id = hex_to_id("288e509293165cb5630d08f4185bdf2445bf6170").attach(&repo);
-    let prefix = id.prefix()?;
+    let prefix = id.shorten()?;
     assert_eq!(prefix.cmp_oid(&id), Ordering::Equal);
     assert_eq!(prefix.hex_len(), 7, "preconfigured via core.abbrev default value");
 
@@ -18,7 +19,7 @@ fn prefix() -> crate::Result {
 
     let repo = git_repository::open(worktree_dir.path()).unwrap();
     let id = id.detach().attach(&repo);
-    let prefix = id.prefix()?;
+    let prefix = id.shorten()?;
     assert_eq!(prefix.cmp_oid(&id), Ordering::Equal);
     assert_eq!(prefix.hex_len(), 5, "preconfigured via core.abbrev in the repo file");
     Ok(())

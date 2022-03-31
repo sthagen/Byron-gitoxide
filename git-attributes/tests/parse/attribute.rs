@@ -1,7 +1,6 @@
 use bstr::{BStr, ByteSlice};
-use git_attributes::ignore::pattern::Mode;
-use git_attributes::{parse, State};
-use git_testtools::fixture_path;
+use git_attributes::{ignore::pattern::Mode, parse, State};
+use git_testtools::fixture_bytes;
 
 #[test]
 fn byte_order_marks_are_no_patterns() {
@@ -14,9 +13,9 @@ fn byte_order_marks_are_no_patterns() {
 
 #[test]
 fn line_numbers_are_counted_correctly() {
-    let ignore = std::fs::read(fixture_path("attributes/various.txt")).unwrap();
+    let input = fixture_bytes("attributes/various.txt");
     assert_eq!(
-        try_lines(&String::from_utf8(ignore).unwrap()).unwrap(),
+        try_lines(&String::from_utf8(input).unwrap()).unwrap(),
         vec![
             (pattern(r"*.[oa]", Mode::NO_SUB_DIR), vec![set("c")], 2),
             (
@@ -44,13 +43,14 @@ fn line_endings_can_be_windows_or_unix() {
 }
 
 #[test]
-fn comment_lines_are_ignored() {
+fn comment_lines_are_ignored_as_well_as_empty_ones() {
     assert!(git_attributes::parse(b"# hello world").next().is_none());
     assert!(git_attributes::parse(b"# \"hello world\"").next().is_none());
     assert!(
         git_attributes::parse(b" \t\r# \"hello world\"").next().is_none(),
         "also behind leading whitespace"
     );
+    assert!(git_attributes::parse(b"\n\r\n\t\t   \n").next().is_none());
 }
 
 #[test]
@@ -266,10 +266,7 @@ fn try_line(input: &str) -> Result<ExpandedAttribute, parse::Error> {
 }
 
 fn line(input: &str) -> ExpandedAttribute {
-    let mut lines = git_attributes::parse(input.as_bytes());
-    let res = expand(lines.next().expect("single line")).unwrap();
-    assert!(lines.next().is_none(), "expected only one line");
-    res
+    try_line(input).unwrap()
 }
 
 fn try_lines(input: &str) -> Result<Vec<ExpandedAttribute>, parse::Error> {

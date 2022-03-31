@@ -17,6 +17,7 @@ pub(crate) enum SignatureKind {
     Committer,
 }
 
+#[derive(Copy, Clone)]
 pub(crate) enum State {
     Tree,
     Parents,
@@ -48,8 +49,19 @@ impl<'a> CommitRefIter<'a> {
     /// Errors are coerced into options, hiding whether there was an error or not. The caller should assume an error if they
     /// call the method as intended. Such a squelched error cannot be recovered unless the objects data is retrieved and parsed again.
     /// `next()`.
-    pub fn tree_id(&mut self) -> Option<ObjectId> {
-        self.next().and_then(Result::ok).and_then(Token::try_into_id)
+    pub fn tree_id(&mut self) -> Result<ObjectId, crate::decode::Error> {
+        let tree_id = self.next().ok_or_else(missing_field)??;
+        Token::try_into_id(tree_id).ok_or_else(missing_field)
+    }
+
+    /// Return all parent_ids as iterator.
+    ///
+    /// Parsing errors are ignored quietly.
+    pub fn parent_ids(self) -> impl Iterator<Item = git_hash::ObjectId> + 'a {
+        self.filter_map(|t| match t {
+            Ok(Token::Parent { id }) => Some(id),
+            _ => None,
+        })
     }
 
     /// Returns all signatures, first the author, then the committer, if there is no decoding error.
@@ -57,23 +69,55 @@ impl<'a> CommitRefIter<'a> {
     /// Errors are coerced into options, hiding whether there was an error or not. The caller knows if there was an error or not
     /// if not exactly two signatures were iterable.
     /// Errors are not the common case - if an error needs to be detectable, use this instance as iterator.
-    pub fn signatures(&'a mut self) -> impl Iterator<Item = git_actor::SignatureRef<'_>> + 'a {
-        self.filter_map(Result::ok)
-            .skip_while(|t| !matches!(t, Token::Author { .. } | Token::Committer { .. }))
-            .filter_map(|t| match t {
-                Token::Author { signature } | Token::Committer { signature } => Some(signature),
-                _ => None,
-            })
+    pub fn signatures(self) -> impl Iterator<Item = git_actor::SignatureRef<'a>> + 'a {
+        self.filter_map(|t| match t {
+            Ok(Token::Author { signature }) | Ok(Token::Committer { signature }) => Some(signature),
+            _ => None,
+        })
     }
 
     /// Returns the committer signature if there is no decoding error.
     /// Errors are coerced into options, hiding whether there was an error or not. The caller knows if there was an error or not.
-    pub fn committer(&mut self) -> Option<git_actor::SignatureRef<'_>> {
+    pub fn committer(mut self) -> Result<git_actor::SignatureRef<'a>, crate::decode::Error> {
         self.find_map(|t| match t {
-            Ok(Token::Committer { signature }) => Some(signature),
+            Ok(Token::Committer { signature }) => Some(Ok(signature)),
+            Err(err) => Some(Err(err)),
             _ => None,
         })
+        .ok_or_else(missing_field)?
     }
+
+    /// Returns the author signature if there is no decoding error.
+    ///
+    /// It may contain white space surrounding it, and is exactly as parsed.
+    /// Errors are coerced into options, hiding whether there was an error or not. The caller knows if there was an error or not.
+    pub fn author(mut self) -> Result<git_actor::SignatureRef<'a>, crate::decode::Error> {
+        self.find_map(|t| match t {
+            Ok(Token::Author { signature }) => Some(Ok(signature)),
+            Err(err) => Some(Err(err)),
+            _ => None,
+        })
+        .ok_or_else(missing_field)?
+    }
+
+    /// Returns the message if there is no decoding error.
+    ///
+    /// It may contain white space surrounding it, and is exactly as
+    //  parsed.
+    /// Errors are coerced into options, hiding whether there was an error or not. The caller knows if there was an error or not.
+    pub fn message(mut self) -> Result<&'a BStr, crate::decode::Error> {
+        self.find_map(|t| match t {
+            Ok(Token::Message(msg)) => Some(Ok(msg)),
+            Err(err) => Some(Err(err)),
+            _ => None,
+        })
+        .transpose()
+        .map(|msg| msg.unwrap_or_default())
+    }
+}
+
+fn missing_field() -> crate::decode::Error {
+    crate::decode::empty_error()
 }
 
 impl<'a> CommitRefIter<'a> {

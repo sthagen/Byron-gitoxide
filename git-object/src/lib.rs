@@ -76,9 +76,13 @@ pub struct CommitRef<'a> {
     pub tree: &'a BStr,
     /// HEX hash of each parent commit. Empty for first commit in repository.
     pub parents: SmallVec<[&'a BStr; 2]>,
-    /// Who wrote this commit.
+    /// Who wrote this commit. Name and email might contain whitespace and are not trimmed to ensure round-tripping.
+    ///
+    /// Use the [`author()`][CommitRef::author()] method to received a trimmed version of it.
     pub author: git_actor::SignatureRef<'a>,
-    /// Who committed this commit.
+    /// Who committed this commit. Name and email might contain whitespace and are not trimmed to ensure round-tripping.
+    ///
+    /// Use the [`committer()`][CommitRef::committer()] method to received a trimmed version of it.
     ///
     /// This may be different from the `author` in case the author couldn't write to the repository themselves and
     /// is commonly encountered with contributed commits.
@@ -93,6 +97,7 @@ pub struct CommitRef<'a> {
 
 /// Like [`CommitRef`][crate::CommitRef], but as `Iterator` to support (up to) entirely allocation free parsing.
 /// It's particularly useful to traverse the commit graph without ever allocating arrays for parents.
+#[derive(Copy, Clone)]
 pub struct CommitRefIter<'a> {
     data: &'a [u8],
     state: commit::ref_iter::State,
@@ -212,10 +217,8 @@ pub struct TreeRef<'a> {
 
 /// A directory snapshot containing files (blobs), directories (trees) and submodules (commits), lazily evaluated.
 #[derive(Default, PartialEq, Eq, Debug, Hash, Ord, PartialOrd, Clone)]
-#[cfg_attr(feature = "serde1", derive(serde::Serialize, serde::Deserialize))]
 pub struct TreeRefIter<'a> {
     /// The directories and files contained in this tree.
-    #[cfg_attr(feature = "serde1", serde(borrow))]
     data: &'a [u8],
 }
 
@@ -253,6 +256,12 @@ pub mod decode {
         pub type ParseError<'a> = nom::error::VerboseError<&'a [u8]>;
         /// The owned type to be used for parse errors.
         pub type ParseErrorOwned = nom::error::VerboseError<BString>;
+
+        pub(crate) fn empty_error() -> Error {
+            Error {
+                inner: nom::error::VerboseError::<BString> { errors: Vec::new() },
+            }
+        }
 
         /// A type to indicate errors during parsing and to abstract away details related to `nom`.
         #[derive(Debug, Clone)]
@@ -293,6 +302,10 @@ pub mod decode {
         /// The owned type to be used for parse errors, discards everything and is zero size
         pub type ParseErrorOwned = ();
 
+        pub(crate) fn empty_error() -> Error {
+            Error { inner: () }
+        }
+
         /// A type to indicate errors during parsing and to abstract away details related to `nom`.
         #[derive(Debug, Clone)]
         pub struct Error {
@@ -317,6 +330,7 @@ pub mod decode {
             }
         }
     }
+    pub(crate) use _decode::empty_error;
     pub use _decode::{Error, ParseError, ParseErrorOwned};
     impl std::error::Error for Error {}
 

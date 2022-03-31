@@ -6,10 +6,22 @@ use std::{
 
 use git_object::bstr::{BStr, BString, ByteSlice, ByteVec};
 
-use crate::{FullNameRef, PartialNameRef};
+use crate::{Category, FullNameRef, PartialNameRef};
 
 /// The error used in the [`PartialNameRef`][super::PartialNameRef]::try_from(…) implementations.
 pub type Error = git_validate::reference::name::Error;
+
+impl Category {
+    /// Return the prefix that would contain all references of our kind.
+    pub fn prefix(&self) -> &BStr {
+        match self {
+            Category::Tag => b"refs/tags/".as_bstr(),
+            Category::LocalBranch => b"refs/heads/".as_bstr(),
+            Category::RemoteBranch => b"refs/remotes/".as_bstr(),
+            Category::Note => b"refs/notes/".as_bstr(),
+        }
+    }
+}
 
 impl<'a> FullNameRef<'a> {
     /// Convert this name into the relative path identifying the reference location.
@@ -20,6 +32,34 @@ impl<'a> FullNameRef<'a> {
     /// Return ourselves as byte string which is a valid refname
     pub fn as_bstr(&self) -> &'a BStr {
         self.0
+    }
+
+    /// Strip well-known prefixes from the name and return it.
+    ///
+    /// If there is no such prefix, the original name is returned.
+    pub fn shorten(&self) -> &'a BStr {
+        let n = self.as_bstr();
+        n.strip_prefix(b"refs/tags/")
+            .or_else(|| n.strip_prefix(b"refs/heads/"))
+            .or_else(|| n.strip_prefix(b"refs/remotes/"))
+            .or_else(|| n.strip_prefix(b"refs/"))
+            .map(|n| n.as_bstr())
+            .unwrap_or(n)
+    }
+
+    /// Classify this name, or return `None` if it's unclassified.
+    pub fn category(&self) -> Option<Category> {
+        for kind in &[
+            Category::Tag,
+            Category::LocalBranch,
+            Category::RemoteBranch,
+            Category::Note,
+        ] {
+            if self.0.starts_with(kind.prefix()) {
+                return (*kind).into();
+            }
+        }
+        None
     }
 }
 

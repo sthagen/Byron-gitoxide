@@ -5,8 +5,18 @@ impl crate::Repository {
     }
 
     /// Return the work tree containing all checked out files, if there is one.
-    pub fn work_tree(&self) -> Option<&std::path::Path> {
+    pub fn work_dir(&self) -> Option<&std::path::Path> {
         self.work_tree.as_deref()
+    }
+
+    // TODO: tests
+    /// The directory of the binary path of the current process.
+    pub fn install_dir(&self) -> std::io::Result<std::path::PathBuf> {
+        std::env::current_exe().and_then(|exe| {
+            exe.parent()
+                .map(ToOwned::to_owned)
+                .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::Other, "no parent for current executable"))
+        })
     }
 
     /// Return the kind of repository, either bare or one with a work tree.
@@ -22,24 +32,5 @@ impl crate::Repository {
     /// Synonymous to [`path()`][crate::Repository::path()].
     pub fn git_dir(&self) -> &std::path::Path {
         self.refs.base()
-    }
-
-    // TODO: tests
-    /// Load the index file of this repository's workspace, if present.
-    ///
-    /// Note that it is loaded into memory each time this method is called, but also is independent of the workspace.
-    #[cfg(feature = "git-index")]
-    pub fn load_index(&self) -> Option<Result<git_index::File, git_index::file::init::Error>> {
-        // TODO: choose better/correct options
-        let opts = git_index::decode::Options {
-            object_hash: self.object_hash,
-            thread_limit: None,
-            min_extension_block_in_bytes_for_threading: 1024 * 256,
-        };
-        match git_index::File::at(self.git_dir().join("index"), opts) {
-            Ok(index) => Some(Ok(index)),
-            Err(git_index::file::init::Error::Io(err)) if err.kind() == std::io::ErrorKind::NotFound => None,
-            Err(err) => Some(Err(err)),
-        }
     }
 }

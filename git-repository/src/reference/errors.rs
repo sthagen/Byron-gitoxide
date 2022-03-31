@@ -29,6 +29,34 @@ pub mod peel {
 }
 
 ///
+pub mod head_id {
+    /// The error returned by [Repository::head_id(…)][crate::Repository::head_id()].
+    #[derive(Debug, thiserror::Error)]
+    #[allow(missing_docs)]
+    pub enum Error {
+        #[error(transparent)]
+        Head(#[from] crate::reference::find::existing::Error),
+        #[error(transparent)]
+        PeelToId(#[from] crate::head::peel::Error),
+        #[error("Branch '{name}' does not have any commits")]
+        Unborn { name: git_ref::FullName },
+    }
+}
+
+///
+pub mod head_commit {
+    /// The error returned by [Repository::head_commit(…)][crate::Repository::head_commit()].
+    #[derive(Debug, thiserror::Error)]
+    #[allow(missing_docs)]
+    pub enum Error {
+        #[error(transparent)]
+        Head(#[from] crate::reference::find::existing::Error),
+        #[error(transparent)]
+        PeelToCommit(#[from] crate::head::peel::to_commit::Error),
+    }
+}
+
+///
 pub mod find {
     ///
     pub mod existing {

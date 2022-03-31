@@ -1128,6 +1128,7 @@ dependencies = [
  "serde_derive",
  "serial_test",
  "tempfile",
+ "unicode-bom",
 ]
 
 [[package]]
@@ -1166,6 +1167,7 @@ dependencies = [
  "flate2",
  "git-hash",
  "jwalk",
+ "libc",
  "num_cpus",
  "parking_lot 0.12.0",
  "prodash",
@@ -1215,6 +1217,21 @@ dependencies = [
  "quick-error",
  "tempfile",
 ]
+
+[[package]]
+name = "git-mailmap"
+version = "0.0.0"
+dependencies = [
+ "bstr",
+ "git-actor",
+ "git-testtools",
+ "quick-error",
+ "serde",
+]
+
+[[package]]
+name = "git-note"
+version = "0.0.0"
 
 [[package]]
 name = "git-object"
@@ -1374,6 +1391,7 @@ dependencies = [
  "git-hash",
  "git-index",
  "git-lock",
+ "git-mailmap",
  "git-object",
  "git-odb",
  "git-pack",
@@ -1396,6 +1414,15 @@ dependencies = [
 [[package]]
 name = "git-revision"
 version = "0.0.0"
+dependencies = [
+ "git-hash",
+ "git-object",
+ "git-repository",
+ "git-testtools",
+ "hash_hasher",
+ "quick-error",
+ "serde",
+]
 
 [[package]]
 name = "git-submodule"
@@ -1501,7 +1528,6 @@ dependencies = [
  "git-odb",
  "git-testtools",
  "io-close",
- "libc",
  "serde",
  "symlink",
  "tempfile",

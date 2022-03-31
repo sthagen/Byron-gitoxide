@@ -9,6 +9,7 @@ use std::{
 };
 
 use anyhow::{anyhow, bail};
+use git_repository as git;
 use git_repository::{actor, bstr::BString, interrupt, objs, prelude::*, progress, refs::file::ReferenceExt, Progress};
 use itertools::Itertools;
 use rayon::prelude::*;
@@ -44,7 +45,7 @@ where
     W: io::Write,
     P: Progress,
 {
-    let repo = git_repository::discover(working_dir)?;
+    let repo = git::discover(working_dir)?;
     let handle = repo.clone().apply_environment();
     let commit_id = repo
         .refs
@@ -65,7 +66,7 @@ where
         let commit_iter = interrupt::Iter::new(
             commit_id.ancestors(|oid, buf| {
                 progress.inc();
-                handle.objects.find(oid, buf).ok().map(|o| {
+                handle.objects.find(oid, buf).map(|o| {
                     commits.push(o.data.to_owned());
                     objs::CommitRefIter::from_bytes(o.data)
                 })
@@ -79,32 +80,26 @@ where
         commits
     };
 
+    let mailmap = repo.load_mailmap();
     let start = Instant::now();
     #[allow(clippy::redundant_closure)]
     let mut all_commits: Vec<actor::Signature> = all_commits
         .into_par_iter()
-        .map(|commit_data: Vec<u8>| {
+        .filter_map(|commit_data: Vec<u8>| {
             objs::CommitRefIter::from_bytes(&commit_data)
-                .signatures()
-                .next()
-                .map(|author| actor::Signature::from(author))
+                .author()
+                .map(|author| mailmap.resolve(author.trim()))
+                .ok()
         })
-        .try_fold(
-            || Vec::new(),
-            |mut out: Vec<_>, item| {
-                out.push(item?);
-                Some(out)
-            },
+        .collect::<Vec<_>>();
+    all_commits.sort_by(|a, b| {
+        a.email.cmp(&b.email).then(
+            a.time
+                .seconds_since_unix_epoch
+                .cmp(&b.time.seconds_since_unix_epoch)
+                .reverse(),
         )
-        .try_reduce(
-            || Vec::new(),
-            |mut out, vec| {
-                out.extend(vec.into_iter());
-                Some(out)
-            },
-        )
-        .ok_or_else(|| anyhow!("An error occurred when decoding commits - one commit could not be parsed"))?;
-    all_commits.sort_by(|a, b| a.email.cmp(&b.email).then(a.time.time.cmp(&b.time.time).reverse()));
+    });
     if all_commits.is_empty() {
         bail!("No commits to process");
     }
@@ -185,7 +180,8 @@ fn estimate_hours(commits: &[actor::Signature]) -> WorkByEmail {
         + commits.iter().rev().tuple_windows().fold(
             0_f32,
             |hours, (cur, next): (&actor::Signature, &actor::Signature)| {
-                let change_in_minutes = (next.time.time - cur.time.time) as f32 / MINUTES_PER_HOUR;
+                let change_in_minutes =
+                    (next.time.seconds_since_unix_epoch - cur.time.seconds_since_unix_epoch) as f32 / MINUTES_PER_HOUR;
                 if change_in_minutes < MAX_COMMIT_DIFFERENCE_IN_MINUTES {
                     hours + change_in_minutes as f32 / MINUTES_PER_HOUR
                 } else {

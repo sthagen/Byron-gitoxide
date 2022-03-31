@@ -1,5 +1,6 @@
 mod _ref {
     use crate::{signature::decode, Signature, SignatureRef};
+    use bstr::ByteSlice;
 
     impl<'a> SignatureRef<'a> {
         /// Deserialize a signature from the given `data`.
@@ -18,30 +19,25 @@ mod _ref {
                 time: self.time,
             }
         }
+
+        /// Trim whitespace surrounding the name and email and return a new signature.
+        pub fn trim(&self) -> SignatureRef<'a> {
+            SignatureRef {
+                name: self.name.trim().as_bstr(),
+                email: self.email.trim().as_bstr(),
+                time: self.time,
+            }
+        }
     }
 }
 
 mod convert {
-    use crate::{Sign, Signature, SignatureRef, Time};
-
-    impl Default for Signature {
-        fn default() -> Self {
-            Signature::empty()
-        }
-    }
+    use crate::{Signature, SignatureRef};
 
     impl Signature {
         /// An empty signature, similar to 'null'.
         pub fn empty() -> Self {
-            Signature {
-                name: Default::default(),
-                email: Default::default(),
-                time: Time {
-                    time: 0,
-                    offset: 0,
-                    sign: Sign::Plus,
-                },
-            }
+            Signature::default()
         }
 
         /// Borrow this instance as immutable
@@ -145,11 +141,11 @@ mod init {
                 name: name.into(),
                 email: email.into(),
                 time: Time {
-                    time: std::time::SystemTime::now()
+                    seconds_since_unix_epoch: std::time::SystemTime::now()
                         .duration_since(std::time::UNIX_EPOCH)
                         .expect("the system time doesn't run backwards that much")
                         .as_secs() as u32,
-                    offset,
+                    offset_in_seconds: offset,
                     sign: offset.into(),
                 },
             })
@@ -164,11 +160,11 @@ mod init {
                 name: name.into(),
                 email: email.into(),
                 time: Time {
-                    time: std::time::SystemTime::now()
+                    seconds_since_unix_epoch: std::time::SystemTime::now()
                         .duration_since(std::time::UNIX_EPOCH)
                         .expect("the system time doesn't run backwards that much")
                         .as_secs() as u32,
-                    offset,
+                    offset_in_seconds: offset,
                     sign: offset.into(),
                 },
             }
@@ -183,15 +179,15 @@ mod init {
                 name: name.into(),
                 email: email.into(),
                 time: Time {
-                    time: seconds_since_epoch(),
-                    offset: utc_offset,
+                    seconds_since_unix_epoch: seconds_since_unix_epoch(),
+                    offset_in_seconds: utc_offset,
                     sign: utc_offset.into(),
                 },
             }
         }
     }
 
-    fn seconds_since_epoch() -> u32 {
+    fn seconds_since_unix_epoch() -> u32 {
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .expect("the system time doesn't run backwards that much")

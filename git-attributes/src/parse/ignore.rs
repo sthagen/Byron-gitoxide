@@ -1,5 +1,6 @@
-use crate::ignore;
 use bstr::{BString, ByteSlice};
+
+use crate::ignore;
 
 pub struct Lines<'a> {
     lines: bstr::Lines<'a>,
@@ -48,6 +49,9 @@ pub(crate) fn parse_line(mut line: &[u8]) -> Option<(BString, ignore::pattern::M
         if second == Some(&b'!') || second == Some(&b'#') {
             line = &line[1..];
         }
+    }
+    if line.iter().all(|b| b.is_ascii_whitespace()) {
+        return None;
     }
     let mut line = truncate_non_escaped_trailing_spaces(line);
     if line.last() == Some(&b'/') {

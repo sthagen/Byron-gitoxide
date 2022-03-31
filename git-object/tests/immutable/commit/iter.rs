@@ -24,9 +24,10 @@ fn newline_right_after_signature_multiline_header() -> crate::Result {
 
 #[test]
 fn signed_with_encoding() -> crate::Result {
+    let input = fixture_bytes("commit", "signed-with-encoding.txt");
+    let iter = CommitRefIter::from_bytes(&input);
     assert_eq!(
-        CommitRefIter::from_bytes(&fixture_bytes("commit", "signed-with-encoding.txt"))
-            .collect::<Result<Vec<_>, _>>()?,
+        iter.collect::<Result<Vec<_>, _>>()?,
         vec![
             Token::Tree {
                 id: hex_to_id("1973afa74d87b2bb73fa884aaaa8752aec43ea88")
@@ -45,6 +46,9 @@ fn signed_with_encoding() -> crate::Result {
             Token::Message(b"encoding & sig".as_bstr()),
         ]
     );
+
+    assert_eq!(iter.author().ok(), Some(signature(1592448995)));
+    assert_eq!(iter.committer().ok(), Some(signature(1592449083)));
     Ok(())
 }
 
@@ -112,6 +116,12 @@ fn signed_singleline() -> crate::Result {
             Token::Message(b"update tasks\n".as_bstr()),
         ]
     );
+    assert_eq!(
+        CommitRefIter::from_bytes(&fixture_bytes("commit", "signed-singleline.txt"))
+            .parent_ids()
+            .collect::<Vec<_>>(),
+        vec![hex_to_id("09d8d3a12e161a7f6afb522dbe8900a9c09bce06")]
+    );
     Ok(())
 }
 
@@ -129,8 +139,10 @@ fn error_handling() -> crate::Result {
 
 #[test]
 fn mergetag() -> crate::Result {
+    let input = fixture_bytes("commit", "mergetag.txt");
+    let iter = CommitRefIter::from_bytes(&input);
     assert_eq!(
-        CommitRefIter::from_bytes(&fixture_bytes("commit", "mergetag.txt")).collect::<Result<Vec<_>, _>>()?,
+        iter.collect::<Result<Vec<_>, _>>()?,
         vec![
             Token::Tree {
                 id: hex_to_id("1c61918031bf2c7fab9e17dde3c52a6a9884fcb5")
@@ -148,9 +160,17 @@ fn mergetag() -> crate::Result {
                 signature: linus_signature(1591996221)
             },
             Token::ExtraHeader((b"mergetag".as_bstr(), MERGE_TAG.as_bytes().as_bstr().into())),
-            Token::Message(LONG_MESSAGE.as_bytes().as_bstr()),
+            Token::Message(LONG_MESSAGE.into()),
         ]
     );
+    assert_eq!(
+        iter.parent_ids().collect::<Vec<_>>(),
+        vec![
+            hex_to_id("44ebe016df3aad96e3be8f95ec52397728dd7701"),
+            hex_to_id("8d485da0ddee79d0e6713405694253d401e41b93")
+        ]
+    );
+    assert_eq!(iter.message().ok(), Some(LONG_MESSAGE.into()));
     Ok(())
 }
 
@@ -164,27 +184,31 @@ mod method {
 
     #[test]
     fn tree_id() -> crate::Result {
+        let input = fixture_bytes("commit", "unsigned.txt");
+        let iter = CommitRefIter::from_bytes(&input);
         assert_eq!(
-            CommitRefIter::from_bytes(&fixture_bytes("commit", "unsigned.txt")).tree_id(),
+            iter.clone().tree_id().ok(),
             Some(hex_to_id("1b2dfb4ac5e42080b682fc676e9738c94ce6d54d"))
         );
         assert_eq!(
-            CommitRefIter::from_bytes(&fixture_bytes("commit", "unsigned.txt"))
-                .signatures()
-                .collect::<Vec<_>>(),
+            iter.signatures().collect::<Vec<_>>(),
             vec![signature(1592437401), signature(1592437401)]
         );
+        assert_eq!(iter.parent_ids().count(), 0);
         Ok(())
     }
 
     #[test]
     fn signatures() -> crate::Result {
+        let input = fixture_bytes("commit", "unsigned.txt");
+        let iter = CommitRefIter::from_bytes(&input);
         assert_eq!(
-            CommitRefIter::from_bytes(&fixture_bytes("commit", "unsigned.txt"))
-                .signatures()
-                .collect::<Vec<_>>(),
+            iter.signatures().collect::<Vec<_>>(),
             vec![signature(1592437401), signature(1592437401)]
         );
+        assert_eq!(iter.author().ok(), Some(signature(1592437401)));
+        assert_eq!(iter.committer().ok(), Some(signature(1592437401)));
+        assert_eq!(iter.author().ok(), Some(signature(1592437401)), "it's not consuming");
         Ok(())
     }
 }

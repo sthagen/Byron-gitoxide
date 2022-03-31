@@ -60,6 +60,8 @@ pub enum Subcommands {
     Index(index::Platform),
     /// Subcommands for interacting with entire git repositories
     Repository(repo::Platform),
+    /// Subcommands for interacting with mailmaps
+    Mailmap(mailmap::Platform),
 }
 
 ///
@@ -358,6 +360,19 @@ pub mod repo {
             #[clap(subcommand)]
             cmd: odb::Subcommands,
         },
+        /// Interact with the mailmap.
+        Mailmap {
+            #[clap(subcommand)]
+            cmd: mailmap::Subcommands,
+        },
+    }
+
+    pub mod mailmap {
+        #[derive(Debug, clap::Subcommand)]
+        pub enum Subcommands {
+            /// Print all entries in configured mailmaps, inform about errors as well.
+            Entries,
+        }
     }
 
     pub mod odb {
@@ -445,6 +460,28 @@ pub mod index {
             /// The directory into which to write all index entries.
             directory: PathBuf,
         },
+    }
+}
+
+///
+pub mod mailmap {
+    use std::path::PathBuf;
+
+    #[derive(Debug, clap::Parser)]
+    pub struct Platform {
+        /// The path to the mailmap file.
+        #[clap(short = 'p', long, default_value = ".mailmap")]
+        pub path: PathBuf,
+
+        /// Subcommands
+        #[clap(subcommand)]
+        pub cmd: Subcommands,
+    }
+
+    #[derive(Debug, clap::Subcommand)]
+    pub enum Subcommands {
+        /// Parse all entries in the mailmap and report malformed lines or collisions.
+        Verify,
     }
 }
 

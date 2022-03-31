@@ -8,12 +8,13 @@ use crate::{Id, Reference};
 pub mod iter;
 
 mod errors;
-
-pub use errors::{edit, find, peel};
+pub use errors::{edit, find, head_commit, head_id, peel};
 
 use crate::ext::ObjectIdExt;
 
 pub mod log;
+
+pub use git_ref::{Category, Kind};
 
 /// Access
 impl<'repo> Reference<'repo> {

@@ -11,13 +11,14 @@ use bstr::{BStr, BString};
 
 ///
 pub mod signature;
+mod time;
 
 const SPACE: &[u8; 1] = b" ";
 
 /// A mutable signature is created by an actor at a certain time.
 ///
 /// Note that this is not a cryptographical signature.
-#[derive(PartialEq, Eq, Debug, Hash, Ord, PartialOrd, Clone)]
+#[derive(Default, PartialEq, Eq, Debug, Hash, Ord, PartialOrd, Clone)]
 #[cfg_attr(feature = "serde1", derive(serde::Serialize, serde::Deserialize))]
 pub struct Signature {
     /// The actors name.
@@ -31,7 +32,7 @@ pub struct Signature {
 /// A immutable signature is created by an actor at a certain time.
 ///
 /// Note that this is not a cryptographical signature.
-#[derive(PartialEq, Eq, Debug, Hash, Ord, PartialOrd, Clone)]
+#[derive(PartialEq, Eq, Debug, Hash, Ord, PartialOrd, Clone, Copy, Default)]
 #[cfg_attr(feature = "serde1", derive(serde::Serialize, serde::Deserialize))]
 pub struct SignatureRef<'a> {
     /// The actor's name.
@@ -56,12 +57,10 @@ pub enum Sign {
 #[derive(PartialEq, Eq, Debug, Hash, Ord, PartialOrd, Clone, Copy)]
 #[cfg_attr(feature = "serde1", derive(serde::Serialize, serde::Deserialize))]
 pub struct Time {
-    /// time in seconds from epoch.
-    pub time: u32,
+    /// time in seconds since epoch.
+    pub seconds_since_unix_epoch: u32,
     /// time offset in seconds, may be negative to match the `sign` field.
-    pub offset: i32,
+    pub offset_in_seconds: i32,
     /// the sign of `offset`, used to encode `-0000` which would otherwise loose sign information.
     pub sign: Sign,
 }
-
-mod time;

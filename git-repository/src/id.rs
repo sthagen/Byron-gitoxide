@@ -1,11 +1,9 @@
 //!
-use std::convert::TryInto;
-use std::ops::Deref;
+use std::{convert::TryInto, ops::Deref};
 
 use git_hash::{oid, ObjectId};
 
-use crate::object::find;
-use crate::{Id, Object};
+use crate::{object::find, Id, Object};
 
 /// An [object id][ObjectId] infused with `Easy`.
 impl<'repo> Id<'repo> {
@@ -28,15 +26,15 @@ impl<'repo> Id<'repo> {
     }
 
     /// Turn this object id into a shortened id with a length in hex as configured by `core.abbrev`.
-    pub fn prefix(&self) -> Result<git_hash::Prefix, prefix::Error> {
+    pub fn shorten(&self) -> Result<git_hash::Prefix, shorten::Error> {
         let hex_len = self.repo.config_int("core.abbrev", 7);
-        let hex_len = hex_len.try_into().map_err(|_| prefix::Error::ConfigValue {
+        let hex_len = hex_len.try_into().map_err(|_| shorten::Error::ConfigValue {
             actual: hex_len,
             max_range: self.inner.kind().len_in_hex(),
             err: None,
         })?;
         let prefix =
-            git_odb::find::PotentialPrefix::new(self.inner, hex_len).map_err(|err| prefix::Error::ConfigValue {
+            git_odb::find::PotentialPrefix::new(self.inner, hex_len).map_err(|err| shorten::Error::ConfigValue {
                 actual: hex_len as i64,
                 max_range: self.inner.kind().len_in_hex(),
                 err: Some(err),
@@ -51,8 +49,8 @@ impl<'repo> Id<'repo> {
 }
 
 ///
-pub mod prefix {
-    /// Returned by [`Id::prefix()`][super::Id::prefix()].
+pub mod shorten {
+    /// Returned by [`Id::prefix()`][super::Id::shorten()].
     #[derive(thiserror::Error, Debug)]
     #[allow(missing_docs)]
     pub enum Error {
@@ -97,10 +95,9 @@ pub struct Ancestors<'repo> {
 
 ///
 pub mod ancestors {
-    use git_odb::Find;
+    use git_odb::FindExt;
 
-    use crate::id::Ancestors;
-    use crate::{ext::ObjectIdExt, Id};
+    use crate::{ext::ObjectIdExt, id::Ancestors, Id};
 
     impl<'repo> Id<'repo> {
         /// Obtain a platform for traversing ancestors of this commit.
@@ -128,24 +125,18 @@ pub mod ancestors {
         }
 
         /// Return an iterator to traverse all commits in the history of the commit the parent [Id] is pointing to.
-        pub fn all(&mut self) -> Iter<'_, 'repo> {
+        pub fn all(&mut self) -> Iter<'repo> {
             let tips = std::mem::replace(&mut self.tips, Box::new(None.into_iter()));
             let parents = self.parents;
             let sorting = self.sorting;
+            let repo = self.repo;
             Iter {
-                repo: self.repo,
+                repo,
                 inner: Box::new(
                     git_traverse::commit::Ancestors::new(
                         tips,
                         git_traverse::commit::ancestors::State::default(),
-                        move |oid, buf| {
-                            self.repo
-                                .objects
-                                .try_find(oid, buf)
-                                .ok()
-                                .flatten()
-                                .and_then(|obj| obj.try_into_commit_iter())
-                        },
+                        move |oid, buf| repo.objects.find_commit_iter(oid, buf),
                     )
                     .sorting(sorting)
                     .parents(parents),
@@ -155,12 +146,12 @@ pub mod ancestors {
     }
 
     /// The iterator returned by [`Ancestors::all()`].
-    pub struct Iter<'a, 'repo> {
+    pub struct Iter<'repo> {
         repo: &'repo crate::Repository,
-        inner: Box<dyn Iterator<Item = Result<git_hash::ObjectId, git_traverse::commit::ancestors::Error>> + 'a>,
+        inner: Box<dyn Iterator<Item = Result<git_hash::ObjectId, git_traverse::commit::ancestors::Error>> + 'repo>,
     }
 
-    impl<'a, 'repo> Iterator for Iter<'a, 'repo> {
+    impl<'repo> Iterator for Iter<'repo> {
         type Item = Result<Id<'repo>, git_traverse::commit::ancestors::Error>;
 
         fn next(&mut self) -> Option<Self::Item> {
@@ -175,6 +166,7 @@ mod impls {
     use git_hash::{oid, ObjectId};
 
     use crate::{DetachedObject, Id, Object};
+
     // Eq, Hash, Ord, PartialOrd,
 
     impl<'a> std::hash::Hash for Id<'a> {

@@ -52,7 +52,7 @@ pub fn is_pre_release_version(semver: &Version) -> bool {
 
 pub fn is_top_level_package(manifest_path: &Utf8Path, repo: &git::Repository) -> bool {
     manifest_path
-        .strip_prefix(repo.work_tree().as_ref().expect("repo with working tree"))
+        .strip_prefix(repo.work_dir().as_ref().expect("repo with working tree"))
         .map_or(false, |p| p.components().count() == 1)
 }
 
@@ -300,7 +300,7 @@ mod tests {
 }
 
 pub fn time_to_offset_date_time(time: git::actor::Time) -> OffsetDateTime {
-    time::OffsetDateTime::from_unix_timestamp(time.time as i64)
+    time::OffsetDateTime::from_unix_timestamp(time.seconds_since_unix_epoch as i64)
         .expect("always valid unix time")
-        .replace_offset(time::UtcOffset::from_whole_seconds(time.offset).expect("valid offset"))
+        .replace_offset(time::UtcOffset::from_whole_seconds(time.offset_in_seconds).expect("valid offset"))
 }

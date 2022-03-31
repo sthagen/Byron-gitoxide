@@ -85,8 +85,9 @@ mod contains {
 }
 
 mod lookup_prefix {
-    use crate::store::loose::ldb;
     use git_testtools::{fixture_path, hex_to_id};
+
+    use crate::store::loose::ldb;
 
     #[test]
     fn returns_none_for_prefixes_without_any_match() {
@@ -288,8 +289,8 @@ fn signature(time: u32) -> git_actor::SignatureRef<'static> {
         name: b"Sebastian Thiel".as_bstr(),
         email: b"byronimo@gmail.com".as_bstr(),
         time: Time {
-            time,
-            offset: 7200,
+            seconds_since_unix_epoch: time,
+            offset_in_seconds: 7200,
             sign: Sign::Plus,
         },
     }
