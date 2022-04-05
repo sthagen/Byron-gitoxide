@@ -56,7 +56,7 @@ mod ancestor {
                 move |oid, buf| store.find_commit_iter(oid, buf).map(|t| t.0),
                 predicate,
             )
-            .sorting(self.sorting)
+            .sorting(self.sorting)?
             .parents(self.mode)
             .collect();
 
@@ -70,7 +70,7 @@ mod ancestor {
                 commit::Ancestors::new(tips, commit::ancestors::State::default(), move |oid, buf| {
                     store.find_commit_iter(oid, buf).map(|t| t.0)
                 })
-                .sorting(self.sorting)
+                .sorting(self.sorting)?
                 .parents(self.mode)
                 .collect();
             assert_eq!(oids?, expected);
@@ -218,7 +218,7 @@ mod ancestor {
                 "134385f6d781b7e97062102c6a483440bfda2a03",
             ],
         )
-        .with_sorting(commit::Sorting::ByCommitterDate)
+        .with_sorting(commit::Sorting::ByCommitTimeNewestFirst)
         .check()
     }
 
@@ -232,7 +232,7 @@ mod ancestor {
                 "134385f6d781b7e97062102c6a483440bfda2a03",
             ],
         )
-        .with_sorting(commit::Sorting::ByCommitterDate)
+        .with_sorting(commit::Sorting::ByCommitTimeNewestFirst)
         .with_parents(commit::Parents::First)
         .check()
     }

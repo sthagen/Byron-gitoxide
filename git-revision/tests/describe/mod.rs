@@ -10,62 +10,132 @@ mod format;
 #[test]
 fn option_none_if_no_tag_found() {
     let repo = repo();
-    let commit = repo.head().unwrap().peel_to_commit_in_place().unwrap();
+    let commit = repo.head_commit().unwrap();
     let res = git_revision::describe(
         &commit.id,
         |id, buf| repo.objects.find_commit_iter(id, buf),
-        &Default::default(),
+        Default::default(),
     )
     .unwrap();
-    assert_eq!(res, None, "cannot find anything if there's no candidate");
+    assert!(res.is_none(), "cannot find anything if there's no candidate");
 }
+
 #[test]
-fn typical_usecases() {
+fn fallback_if_configured_in_options_but_no_candidate() {
     let repo = repo();
-    let commit = repo.head().unwrap().peel_to_commit_in_place().unwrap();
-    let name = Cow::Borrowed(b"main".as_bstr());
+    let commit = repo.head_commit().unwrap();
     let res = git_revision::describe(
         &commit.id,
-        |_, _| Err(std::io::Error::new(std::io::ErrorKind::Other, "shouldn't be called")),
-        &vec![(commit.id, name.clone())].into_iter().collect(),
+        |id, buf| repo.objects.find_commit_iter(id, buf),
+        describe::Options {
+            fallback_to_oid: true,
+            ..Default::default()
+        },
     )
-    .unwrap();
+    .unwrap()
+    .expect("fallback activated");
+    assert!(res.name.is_none(), "no name can be found");
+    assert_eq!(res.depth, 0, "just a default, not relevant as there is no name");
+    assert_eq!(res.into_format(7).to_string(), "01ec18a");
+}
 
-    assert_eq!(
-        res,
-        Some(describe::Outcome {
-            name,
-            id: commit.id,
-            depth: 0,
-        }),
-        "this is an exact match"
-    );
+#[test]
+fn not_enough_candidates() {
+    let repo = repo();
+    let commit = repo.head_commit().unwrap();
 
     let name = Cow::Borrowed(b"at-c5".as_bstr());
     let res = git_revision::describe(
         &commit.id,
         |id, buf| repo.objects.find_commit_iter(id, buf),
-        &vec![
-            (hex_to_id("efd9a841189668f1bab5b8ebade9cd0a1b139a37"), name.clone()),
-            (
-                hex_to_id("9152eeee2328073cf23dcf8e90c949170b711659"),
-                b"at-b1c1".as_bstr().into(),
-            ),
-        ]
-        .into_iter()
-        .collect(),
+        describe::Options {
+            name_by_oid: vec![
+                (hex_to_id("efd9a841189668f1bab5b8ebade9cd0a1b139a37"), name.clone()),
+                (
+                    hex_to_id("9152eeee2328073cf23dcf8e90c949170b711659"),
+                    b"at-b1c1".as_bstr().into(),
+                ),
+            ]
+            .into_iter()
+            .collect(),
+            max_candidates: 1,
+            ..Default::default()
+        },
     )
-    .unwrap();
+    .unwrap()
+    .expect("candidate found");
+
+    assert_eq!(res.name, Some(name), "it finds the youngest/most-recent name");
+    assert_eq!(res.id, commit.id);
+    assert_eq!(
+        res.depth, 3,
+        "it calculates the final number of commits even though it aborted early"
+    );
+}
+
+#[test]
+fn typical_usecases() {
+    let repo = repo();
+    let commit = repo.head_commit().unwrap();
+    let name = Cow::Borrowed(b"main".as_bstr());
+    let res = git_revision::describe(
+        &commit.id,
+        |_, _| Err(std::io::Error::new(std::io::ErrorKind::Other, "shouldn't be called")),
+        describe::Options {
+            name_by_oid: vec![(commit.id, name.clone())].into_iter().collect(),
+            ..Default::default()
+        },
+    )
+    .unwrap()
+    .expect("found a candidate");
+
+    assert_eq!(res.name, Some(name), "this is an exact match");
+    assert_eq!(res.id, commit.id);
+    assert_eq!(res.depth, 0);
+
+    let name = Cow::Borrowed(b"at-c5".as_bstr());
+    let res = git_revision::describe(
+        &commit.id,
+        |id, buf| repo.objects.find_commit_iter(id, buf),
+        describe::Options {
+            name_by_oid: vec![
+                (hex_to_id("efd9a841189668f1bab5b8ebade9cd0a1b139a37"), name.clone()),
+                (
+                    hex_to_id("9152eeee2328073cf23dcf8e90c949170b711659"),
+                    b"at-b1c1".as_bstr().into(),
+                ),
+            ]
+            .into_iter()
+            .collect(),
+            ..Default::default()
+        },
+    )
+    .unwrap()
+    .expect("found a candidate");
 
     assert_eq!(
-        res,
-        Some(describe::Outcome {
-            name,
-            id: commit.id,
-            depth: 3,
-        }),
+        res.name,
+        Some(name.clone()),
         "a match to a tag 1 commit away with 2 commits on the other side of the merge/head"
     );
+    assert_eq!(res.id, commit.id);
+    assert_eq!(res.depth, 3);
+
+    let res = git_revision::describe(
+        &commit.id,
+        |id, buf| repo.objects.find_commit_iter(id, buf),
+        describe::Options {
+            name_by_oid: res.name_by_oid,
+            first_parent: true,
+            ..Default::default()
+        },
+    )
+    .unwrap()
+    .expect("found a candidate");
+
+    assert_eq!(res.name, Some(name),);
+    assert_eq!(res.id, commit.id);
+    assert_eq!(res.depth, 1);
 }
 
 fn repo() -> Repository {

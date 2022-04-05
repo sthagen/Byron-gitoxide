@@ -9,6 +9,7 @@ use std::{
 
 use anyhow::Result;
 use clap::Parser;
+
 use gitoxide_core as core;
 use gitoxide_core::pack::verify;
 
@@ -156,6 +157,41 @@ pub fn main() -> Result<()> {
             ),
         },
         Subcommands::Repository(repo::Platform { repository, cmd }) => match cmd {
+            repo::Subcommands::Commit { cmd } => match cmd {
+                repo::commit::Subcommands::Describe {
+                    annotated_tags,
+                    all_refs,
+                    first_parent,
+                    always,
+                    long,
+                    statistics,
+                    max_candidates,
+                    rev_spec,
+                } => prepare_and_run(
+                    "repository-commit-describe",
+                    verbose,
+                    progress,
+                    progress_keep_open,
+                    None,
+                    move |_progress, out, err| {
+                        core::repository::commit::describe(
+                            repository,
+                            rev_spec.as_deref(),
+                            out,
+                            err,
+                            core::repository::commit::describe::Options {
+                                all_tags: !annotated_tags,
+                                all_refs,
+                                long_format: long,
+                                first_parent,
+                                statistics,
+                                max_candidates,
+                                always,
+                            },
+                        )
+                    },
+                ),
+            },
             repo::Subcommands::Mailmap { cmd } => match cmd {
                 repo::mailmap::Subcommands::Entries => prepare_and_run(
                     "repository-mailmap-entries",

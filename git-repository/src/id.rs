@@ -1,5 +1,5 @@
 //!
-use std::{convert::TryInto, ops::Deref};
+use std::ops::Deref;
 
 use git_hash::{oid, ObjectId};
 
@@ -27,43 +27,36 @@ impl<'repo> Id<'repo> {
 
     /// Turn this object id into a shortened id with a length in hex as configured by `core.abbrev`.
     pub fn shorten(&self) -> Result<git_hash::Prefix, shorten::Error> {
-        let hex_len = self.repo.config_int("core.abbrev", 7);
-        let hex_len = hex_len.try_into().map_err(|_| shorten::Error::ConfigValue {
-            actual: hex_len,
-            max_range: self.inner.kind().len_in_hex(),
-            err: None,
-        })?;
-        let prefix =
-            git_odb::find::PotentialPrefix::new(self.inner, hex_len).map_err(|err| shorten::Error::ConfigValue {
-                actual: hex_len as i64,
-                max_range: self.inner.kind().len_in_hex(),
-                err: Some(err),
-            })?;
-        Ok(self
+        let hex_len = self
             .repo
+            .config
+            .hex_len
+            .map_or_else(
+                || self.repo.objects.packed_object_count().map(calculate_auto_hex_len),
+                Ok,
+            )
+            .map_err(shorten::Error::Find)?;
+
+        let prefix = git_odb::find::PotentialPrefix::new(self.inner, hex_len)
+            .expect("BUG: internal hex-len must always be valid");
+        self.repo
             .objects
             .disambiguate_prefix(prefix)
             .map_err(crate::object::find::existing::OdbError::Find)?
-            .ok_or(crate::object::find::existing::OdbError::NotFound { oid: self.inner })?)
+            .ok_or(crate::object::find::existing::OdbError::NotFound { oid: self.inner })
     }
+}
+
+fn calculate_auto_hex_len(num_packed_objects: u64) -> usize {
+    let mut len = 64 - num_packed_objects.leading_zeros();
+    len = (len + 1) / 2;
+    len.max(7) as usize
 }
 
 ///
 pub mod shorten {
     /// Returned by [`Id::prefix()`][super::Id::shorten()].
-    #[derive(thiserror::Error, Debug)]
-    #[allow(missing_docs)]
-    pub enum Error {
-        #[error(transparent)]
-        FindExisting(#[from] crate::object::find::existing::OdbError),
-        #[error("core.abbrev length was {}, but needs to be between 4 and {}", .actual, .max_range)]
-        ConfigValue {
-            #[source]
-            err: Option<git_hash::prefix::Error>,
-            actual: i64,
-            max_range: usize,
-        },
-    }
+    pub type Error = crate::object::find::existing::OdbError;
 }
 
 impl<'repo> Deref for Id<'repo> {
@@ -125,12 +118,12 @@ pub mod ancestors {
         }
 
         /// Return an iterator to traverse all commits in the history of the commit the parent [Id] is pointing to.
-        pub fn all(&mut self) -> Iter<'repo> {
+        pub fn all(&mut self) -> Result<Iter<'repo>, git_traverse::commit::ancestors::Error> {
             let tips = std::mem::replace(&mut self.tips, Box::new(None.into_iter()));
             let parents = self.parents;
             let sorting = self.sorting;
             let repo = self.repo;
-            Iter {
+            Ok(Iter {
                 repo,
                 inner: Box::new(
                     git_traverse::commit::Ancestors::new(
@@ -138,12 +131,12 @@ pub mod ancestors {
                         git_traverse::commit::ancestors::State::default(),
                         move |oid, buf| repo.objects.find_commit_iter(oid, buf),
                     )
-                    .sorting(sorting)
+                    .sorting(sorting)?
                     .parents(parents),
                 ),
                 is_shallow: None,
                 error_on_missing_commit: false,
-            }
+            })
         }
     }
 

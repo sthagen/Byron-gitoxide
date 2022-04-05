@@ -27,10 +27,10 @@ impl Default for Parents {
 pub enum Sorting {
     /// Commits are sorted as they are mentioned in the commit graph.
     Topological,
-    /// Order commit looking up the commit date of the most recent parents.
+    /// Commits are sorted by their commit time in decending order, that is newest first.
     ///
-    /// Note that since only parents are looked up this ordering is partial.
-    ByCommitterDate,
+    /// The sorting applies to all currently queued commit ids and thus is full.
+    ByCommitTimeNewestFirst,
 }
 
 impl Default for Sorting {
@@ -41,10 +41,7 @@ impl Default for Sorting {
 
 ///
 pub mod ancestors {
-    use std::{
-        borrow::BorrowMut,
-        collections::{BTreeSet, VecDeque},
-    };
+    use std::{borrow::BorrowMut, collections::VecDeque};
 
     use git_hash::{oid, ObjectId};
     use git_object::CommitRefIter;
@@ -69,13 +66,14 @@ pub mod ancestors {
         }
     }
 
+    type TimeInSeconds = u32;
+
     /// The state used and potentially shared by multiple graph traversals.
     #[derive(Default, Clone)]
     pub struct State {
-        next: VecDeque<ObjectId>,
+        next: VecDeque<(ObjectId, TimeInSeconds)>,
         buf: Vec<u8>,
-        seen: BTreeSet<ObjectId>,
-        parents_with_date: Vec<(ObjectId, u32)>,
+        seen: hash_hasher::HashedSet<ObjectId>,
         parents_buf: Vec<u8>,
     }
 
@@ -93,11 +91,28 @@ pub mod ancestors {
             self.parents = mode;
             self
         }
+    }
 
+    impl<Find, Predicate, StateMut, E> Ancestors<Find, Predicate, StateMut>
+    where
+        Find: for<'a> FnMut(&oid, &'a mut Vec<u8>) -> Result<CommitRefIter<'a>, E>,
+        StateMut: BorrowMut<State>,
+        E: std::error::Error + Send + Sync + 'static,
+    {
         /// Set the sorting method, either topological or by author date
-        pub fn sorting(mut self, sorting: Sorting) -> Self {
+        pub fn sorting(mut self, sorting: Sorting) -> Result<Self, Error> {
             self.sorting = sorting;
-            self
+            if !matches!(self.sorting, Sorting::Topological) {
+                let state = self.state.borrow_mut();
+                for (commit_id, commit_time) in state.next.iter_mut() {
+                    let commit_iter = (self.find)(commit_id, &mut state.buf).map_err(|err| Error::FindExisting {
+                        oid: *commit_id,
+                        err: err.into(),
+                    })?;
+                    *commit_time = commit_iter.committer()?.time.seconds_since_unix_epoch;
+                }
+            }
+            Ok(self)
         }
     }
 
@@ -155,7 +170,7 @@ pub mod ancestors {
                 for tip in tips.map(Into::into) {
                     let was_inserted = state.seen.insert(tip);
                     if was_inserted && predicate(&tip) {
-                        state.next.push_back(tip);
+                        state.next.push_back((tip, 0));
                     }
                 }
             }
@@ -184,7 +199,7 @@ pub mod ancestors {
             } else {
                 match self.sorting {
                     Sorting::Topological => self.next_by_topology(),
-                    Sorting::ByCommitterDate => self.next_by_commit_date(),
+                    Sorting::ByCommitTimeNewestFirst => self.next_by_commit_date(),
                 }
             }
         }
@@ -199,56 +214,53 @@ pub mod ancestors {
     {
         fn next_by_commit_date(&mut self) -> Option<Result<ObjectId, Error>> {
             let state = self.state.borrow_mut();
-            state.parents_with_date.clear();
-            let res = state.next.pop_front();
 
-            if let Some(oid) = res {
-                match (self.find)(&oid, &mut state.buf) {
-                    Ok(mut commit_iter) => {
-                        if let Some(Err(decode_tree_err)) = commit_iter.next() {
-                            return Some(Err(decode_tree_err.into()));
-                        }
-
-                        for token in commit_iter {
-                            match token {
-                                Ok(git_object::commit::ref_iter::Token::Parent { id }) => {
-                                    let parent = (self.find)(id.as_ref(), &mut state.parents_buf).ok();
-
-                                    let parent_committer_date = parent
-                                        .and_then(|parent| parent.committer().ok().map(|committer| committer.time));
-
-                                    if let Some(parent_committer_date) = parent_committer_date {
-                                        state
-                                            .parents_with_date
-                                            .push((id, parent_committer_date.seconds_since_unix_epoch));
-                                    }
-
-                                    if matches!(self.parents, Parents::First) {
+            let (oid, _commit_time) = state.next.pop_front()?;
+            match (self.find)(&oid, &mut state.buf) {
+                Ok(commit_iter) => {
+                    let mut count = 0;
+                    for token in commit_iter {
+                        count += 1;
+                        let is_first = count == 1;
+                        match token {
+                            Ok(git_object::commit::ref_iter::Token::Tree { .. }) => continue,
+                            Ok(git_object::commit::ref_iter::Token::Parent { id }) => {
+                                let was_inserted = state.seen.insert(id);
+                                if !(was_inserted && (self.predicate)(&id)) {
+                                    if is_first && matches!(self.parents, Parents::First) {
                                         break;
+                                    } else {
+                                        continue;
                                     }
                                 }
-                                Ok(_unused_token) => break,
-                                Err(err) => return Some(Err(err.into())),
+
+                                let parent = (self.find)(id.as_ref(), &mut state.parents_buf).ok();
+                                let parent_commit_time = parent
+                                    .and_then(|parent| {
+                                        parent
+                                            .committer()
+                                            .ok()
+                                            .map(|committer| committer.time.seconds_since_unix_epoch)
+                                    })
+                                    .unwrap_or_default();
+
+                                match state.next.binary_search_by(|c| c.1.cmp(&parent_commit_time).reverse()) {
+                                    Ok(_) => state.next.push_back((id, parent_commit_time)), // collision => topo-sort
+                                    Err(pos) => state.next.insert(pos, (id, parent_commit_time)), // otherwise insert by commit-time
+                                }
+
+                                if is_first && matches!(self.parents, Parents::First) {
+                                    break;
+                                }
                             }
+                            Ok(_unused_token) => break,
+                            Err(err) => return Some(Err(err.into())),
                         }
                     }
-                    Err(err) => return Some(Err(Error::FindExisting { oid, err: err.into() })),
                 }
+                Err(err) => return Some(Err(Error::FindExisting { oid, err: err.into() })),
             }
-
-            state
-                .parents_with_date
-                .sort_by(|(_, time), (_, other_time)| time.cmp(other_time).reverse());
-            for parent in &state.parents_with_date {
-                let id = parent.0;
-                let was_inserted = state.seen.insert(id);
-
-                if was_inserted && (self.predicate)(&id) {
-                    state.next.push_back(id);
-                }
-            }
-
-            res.map(Ok)
+            Some(Ok(oid))
         }
     }
 
@@ -261,33 +273,29 @@ pub mod ancestors {
     {
         fn next_by_topology(&mut self) -> Option<Result<ObjectId, Error>> {
             let state = self.state.borrow_mut();
-            let res = state.next.pop_front();
-            if let Some(oid) = res {
-                match (self.find)(&oid, &mut state.buf) {
-                    Ok(mut commit_iter) => {
-                        if let Some(Err(decode_tree_err)) = commit_iter.next() {
-                            return Some(Err(decode_tree_err.into()));
-                        }
-                        for token in commit_iter {
-                            match token {
-                                Ok(git_object::commit::ref_iter::Token::Parent { id }) => {
-                                    let was_inserted = state.seen.insert(id);
-                                    if was_inserted && (self.predicate)(&id) {
-                                        state.next.push_back(id);
-                                    }
-                                    if matches!(self.parents, Parents::First) {
-                                        break;
-                                    }
+            let (oid, _commit_time) = state.next.pop_front()?;
+            match (self.find)(&oid, &mut state.buf) {
+                Ok(commit_iter) => {
+                    for token in commit_iter {
+                        match token {
+                            Ok(git_object::commit::ref_iter::Token::Tree { .. }) => continue,
+                            Ok(git_object::commit::ref_iter::Token::Parent { id }) => {
+                                let was_inserted = state.seen.insert(id);
+                                if was_inserted && (self.predicate)(&id) {
+                                    state.next.push_back((id, 0));
                                 }
-                                Ok(_a_token_past_the_parents) => break,
-                                Err(err) => return Some(Err(err.into())),
+                                if matches!(self.parents, Parents::First) {
+                                    break;
+                                }
                             }
+                            Ok(_a_token_past_the_parents) => break,
+                            Err(err) => return Some(Err(err.into())),
                         }
                     }
-                    Err(err) => return Some(Err(Error::FindExisting { oid, err: err.into() })),
                 }
+                Err(err) => return Some(Err(Error::FindExisting { oid, err: err.into() })),
             }
-            res.map(Ok)
+            Some(Ok(oid))
         }
     }
 }
