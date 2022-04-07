@@ -111,7 +111,7 @@ impl file::Store {
         packed: Option<&packed::Buffer>,
         transform: Transform,
     ) -> Result<Option<Reference>, Error> {
-        let (base, is_definitely_absolute) = match transform {
+        let (base, is_definitely_full_path) = match transform {
             Transform::EnforceRefsPrefix => (
                 if relative_path.starts_with("refs") {
                     PathBuf::new()
@@ -124,9 +124,15 @@ impl file::Store {
         };
         let relative_path = base.join(inbetween).join(relative_path);
 
-        let contents = match self.ref_contents(&relative_path)? {
+        let path_to_open = git_features::path::convert::to_windows_separators_on_windows_or_panic(&relative_path);
+        let contents = match self
+            .ref_contents(&path_to_open)
+            .map_err(|err| Error::ReadFileContents {
+                err,
+                path: path_to_open.into_owned(),
+            })? {
             None => {
-                if is_definitely_absolute {
+                if is_definitely_full_path {
                     if let Some(packed) = packed {
                         let full_name = path_to_name(match &self.namespace {
                             None => relative_path,
@@ -302,9 +308,8 @@ mod error {
                 from()
                 source(err)
             }
-            ReadFileContents(err: io::Error) {
-                display("The ref file could not be read in full")
-                from()
+            ReadFileContents{err: io::Error, path: PathBuf} {
+                display("The ref file '{}' could not be read in full", path.display())
                 source(err)
             }
             ReferenceCreation{ err: file::loose::reference::decode::Error, relative_path: PathBuf } {

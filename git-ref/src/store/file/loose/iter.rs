@@ -71,9 +71,6 @@ impl Iterator for SortedLoosePaths {
                     };
 
                     if git_validate::reference::name_partial(full_name.as_bstr()).is_ok() {
-                        #[cfg(not(windows))]
-                        let name = FullName(full_name.into());
-                        #[cfg(windows)]
                         let name = FullName(full_name.into());
                         return Some(Ok((full_path, name)));
                     } else {
@@ -128,7 +125,10 @@ impl Iterator for Loose {
                         self.buf.clear();
                         f.read_to_end(&mut self.buf)
                     })
-                    .map_err(loose::Error::ReadFileContents)
+                    .map_err(|err| loose::Error::ReadFileContents {
+                        err,
+                        path: validated_path.to_owned(),
+                    })
                     .and_then(|_| {
                         let relative_path = validated_path
                             .strip_prefix(&self.ref_paths.base)
@@ -234,8 +234,8 @@ pub mod loose {
                     display("The file system could not be traversed")
                     source(err)
                 }
-                ReadFileContents(err: io::Error) {
-                    display("The ref file could not be read in full")
+                ReadFileContents{err: io::Error, path: PathBuf} {
+                    display("The ref file '{}' could not be read in full", path.display())
                     source(err)
                 }
                 ReferenceCreation{ err: file::loose::reference::decode::Error, relative_path: PathBuf } {
