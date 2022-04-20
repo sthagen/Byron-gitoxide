@@ -1121,6 +1121,7 @@ dependencies = [
  "criterion",
  "dirs",
  "git-features",
+ "git-sec",
  "memchr",
  "nom",
  "pwd",
@@ -1142,6 +1143,20 @@ dependencies = [
  "nom",
  "unicase",
 ]
+
+[[package]]
+name = "git-credentials"
+version = "0.1.0"
+dependencies = [
+ "bstr",
+ "git-sec",
+ "quick-error",
+ "serde",
+]
+
+[[package]]
+name = "git-date"
+version = "0.0.0"
 
 [[package]]
 name = "git-diff"
@@ -1178,6 +1193,10 @@ dependencies = [
  "time",
  "walkdir",
 ]
+
+[[package]]
+name = "git-filter"
+version = "0.0.0"
 
 [[package]]
 name = "git-glob"
@@ -1218,6 +1237,10 @@ dependencies = [
  "serde",
  "smallvec",
 ]
+
+[[package]]
+name = "git-lfs"
+version = "0.0.0"
 
 [[package]]
 name = "git-lock"
@@ -1347,6 +1370,7 @@ dependencies = [
  "document-features",
  "futures-io",
  "futures-lite",
+ "git-credentials",
  "git-features",
  "git-hash",
  "git-packetline",
@@ -1366,6 +1390,10 @@ dependencies = [
  "btoi",
  "quick-error",
 ]
+
+[[package]]
+name = "git-rebase"
+version = "0.0.0"
 
 [[package]]
 name = "git-ref"
@@ -1397,6 +1425,7 @@ dependencies = [
  "document-features",
  "git-actor",
  "git-config",
+ "git-credentials",
  "git-diff",
  "git-features",
  "git-glob",
@@ -1410,6 +1439,7 @@ dependencies = [
  "git-protocol",
  "git-ref",
  "git-revision",
+ "git-sec",
  "git-tempfile",
  "git-testtools",
  "git-transport",
@@ -1439,6 +1469,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "git-sec"
+version = "0.1.0"
+dependencies = [
+ "bitflags",
+ "libc",
+ "serde",
+ "tempfile",
+ "windows",
+]
+
+[[package]]
 name = "git-submodule"
 version = "0.0.0"
 
@@ -1462,11 +1503,20 @@ dependencies = [
  "crc",
  "fs_extra",
  "git-hash",
+ "git-lock",
+ "io-close",
+ "is_ci",
  "nom",
  "once_cell",
  "parking_lot 0.12.0",
+ "tar",
  "tempfile",
+ "xz2",
 ]
+
+[[package]]
+name = "git-tix"
+version = "0.0.0"
 
 [[package]]
 name = "git-transport"
@@ -1485,6 +1535,7 @@ dependencies = [
  "git-hash",
  "git-pack",
  "git-packetline",
+ "git-sec",
  "git-url",
  "maybe-async",
  "pin-project-lite",
@@ -1745,6 +1796,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "is_ci"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "616cde7c720bb2bb5824a224687d8f77bfd38922027f01d825cd7453be5099fb"
+
+[[package]]
 name = "itertools"
 version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1810,9 +1867,9 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
-version = "0.2.122"
+version = "0.2.123"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec647867e2bf0772e28c8bcde4f0d19a9216916e890543b5a03ed8ef27b8f259"
+checksum = "cb691a747a7ab48abc15c5b42066eaafde10dc427e3b6ee2a1cf43db04c763bd"
 
 [[package]]
 name = "libgit2-sys"
@@ -1888,6 +1945,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ea2d928b485416e8908cff2d97d621db22b27f7b3b6729e438bcf42c671ba91"
 dependencies = [
  "hashbrown",
+]
+
+[[package]]
+name = "lzma-sys"
+version = "0.1.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bdb4b7c3eddad11d3af9e86c487607d2d2442d185d848575365c4856ba96d619"
+dependencies = [
+ "cc",
+ "libc",
+ "pkg-config",
 ]
 
 [[package]]
@@ -2682,6 +2750,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "tar"
+version = "0.4.38"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4b55807c0344e1e6c04d7c965f5289c39a8d94ae23ed5c0b57aabac549f871c6"
+dependencies = [
+ "filetime",
+ "libc",
+]
+
+[[package]]
 name = "tempfile"
 version = "3.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3084,16 +3162,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 
 [[package]]
+name = "windows"
+version = "0.35.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "08746b4b7ac95f708b3cccceb97b7f9a21a8916dd47fc99b0e6aaf7208f26fd7"
+dependencies = [
+ "windows_aarch64_msvc 0.35.0",
+ "windows_i686_gnu 0.35.0",
+ "windows_i686_msvc 0.35.0",
+ "windows_x86_64_gnu 0.35.0",
+ "windows_x86_64_msvc 0.35.0",
+]
+
+[[package]]
 name = "windows-sys"
 version = "0.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5acdd78cb4ba54c0045ac14f62d8f94a03d10047904ae2a40afa1e99d8f70825"
 dependencies = [
- "windows_aarch64_msvc",
- "windows_i686_gnu",
- "windows_i686_msvc",
- "windows_x86_64_gnu",
- "windows_x86_64_msvc",
+ "windows_aarch64_msvc 0.34.0",
+ "windows_i686_gnu 0.34.0",
+ "windows_i686_msvc 0.34.0",
+ "windows_x86_64_gnu 0.34.0",
+ "windows_x86_64_msvc 0.34.0",
 ]
 
 [[package]]
@@ -3103,10 +3194,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "17cffbe740121affb56fad0fc0e421804adf0ae00891205213b5cecd30db881d"
 
 [[package]]
+name = "windows_aarch64_msvc"
+version = "0.35.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "db3bc5134e8ce0da5d64dcec3529793f1d33aee5a51fc2b4662e0f881dd463e6"
+
+[[package]]
 name = "windows_i686_gnu"
 version = "0.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2564fde759adb79129d9b4f54be42b32c89970c18ebf93124ca8870a498688ed"
+
+[[package]]
+name = "windows_i686_gnu"
+version = "0.35.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0343a6f35bf43a07b009b8591b78b10ea03de86b06f48e28c96206cd0f453b50"
 
 [[package]]
 name = "windows_i686_msvc"
@@ -3115,16 +3218,43 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9cd9d32ba70453522332c14d38814bceeb747d80b3958676007acadd7e166956"
 
 [[package]]
+name = "windows_i686_msvc"
+version = "0.35.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1acdcbf4ca63d8e7a501be86fee744347186275ec2754d129ddeab7a1e3a02e4"
+
+[[package]]
 name = "windows_x86_64_gnu"
 version = "0.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cfce6deae227ee8d356d19effc141a509cc503dfd1f850622ec4b0f84428e1f4"
 
 [[package]]
+name = "windows_x86_64_gnu"
+version = "0.35.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "893c0924c5a990ec73cd2264d1c0cba1773a929e1a3f5dbccffd769f8c4edebb"
+
+[[package]]
 name = "windows_x86_64_msvc"
 version = "0.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d19538ccc21819d01deaf88d6a17eae6596a12e9aafdbb97916fb49896d89de9"
+
+[[package]]
+name = "windows_x86_64_msvc"
+version = "0.35.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a29bd61f32889c822c99a8fdf2e93378bd2fae4d7efd2693fab09fcaaf7eff4b"
+
+[[package]]
+name = "xz2"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c179869f34fc7c01830d3ce7ea2086bc3a07e0d35289b667d0a8bf910258926c"
+dependencies = [
+ "lzma-sys",
+]
 
 [[package]]
 name = "yaml-rust"

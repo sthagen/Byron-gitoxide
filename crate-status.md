@@ -8,8 +8,8 @@
     * [ ] Some examples
 
 ### git-chunk
-* [ ] decode the chunk file table of contents and provide convenient API
-* [ ] write the table of contents
+* [x] decode the chunk file table of contents and provide convenient API
+* [x] write the table of contents
 
 ### git-object
 * *decode (zero-copy)* borrowed objects
@@ -231,9 +231,36 @@ A mechanism to associate metadata with any object, and keep revisions of it usin
 
 * [ ] CRUD for git notes
 
+### git-date
+* [ ] parse git dates
+ 
+### git-credentials
+* [x] launch git credentials helpers with a given action
+
+### git-filter
+
+Provide base-implementations for dealing with smudge and clean filters as well as filter processes, facilitating their development.
+
+* [ ] clean filter base
+* [ ] smudge filter base
+* [ ] filter process base
+ 
+### git-sec
+
+Provides a trust model to share across gitoxide crates. It helps configuring how to interact with external processes, among other things.
+
+### git-rebase
+* [ ] obtain rebase status
+* [ ] drive a rebase operation
+
+### git-lfs
+
+Implement git large file support using the process protocol and make it flexible enough to handle a variety of cases.
+Make it the best-performing implementation and the most convenient one.
+
 ### git-glob
-* [ ] parse pattern
-* [ ] a type for pattern matching
+* [x] parse pattern
+* [x] a type for pattern matching of paths and non-paths, optionally case-insensitively.
 
 ### git-worktree
 * handle the working tree/checkout
@@ -484,6 +511,10 @@ See its [README.md](https://github.com/Byron/gitoxide/blob/main/git-lock/README.
 ### git-tui
 * _a terminal user interface seeking to replace and improve on `tig`_
 * Can display complex history in novel ways to make them graspable. Maybe [this post] can be an inspiration.
+ 
+### git-tix
+
+A re-implementation of a minimal `tig` like UI that aims to be fast and to the point.
 
 [tagname-validation]: https://github.com/git/git/blob/master/Documentation/technical/protocol-common.txt#L23:L23
 [this post]: http://blog.danieljanus.pl/2021/07/01/commit-groups/

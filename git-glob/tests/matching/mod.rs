@@ -46,7 +46,11 @@ fn compare_baseline_with_ours() {
     let dir = git_testtools::scripted_fixture_repo_read_only("make_baseline.sh").unwrap();
     let (mut total_matches, mut total_correct, mut panics) = (0, 0, 0);
     let mut mismatches = Vec::new();
-    for (input_file, expected_matches) in &[("git-baseline.match", true), ("git-baseline.nmatch", false)] {
+    for (input_file, expected_matches, case) in &[
+        ("git-baseline.match", true, pattern::Case::Sensitive),
+        ("git-baseline.nmatch", false, pattern::Case::Sensitive),
+        ("git-baseline.match-icase", true, pattern::Case::Fold),
+    ] {
         let input = std::fs::read(dir.join(*input_file)).unwrap();
         let mut seen = BTreeSet::default();
 
@@ -60,7 +64,7 @@ fn compare_baseline_with_ours() {
             assert!(seen.insert(m), "duplicate match entry: {:?}", m);
             assert_eq!(
                 is_match, *expected_matches,
-                "baseline for matches must indeed be {} - check baseline and git version: {:?}",
+                "baseline for matches must be {} - check baseline and git version: {:?}",
                 expected_matches, m
             );
             match std::panic::catch_unwind(|| {
@@ -69,14 +73,14 @@ fn compare_baseline_with_ours() {
                     value,
                     basename_start_pos(value),
                     false, // TODO: does it make sense to pretend it is a dir and see what happens?
-                    pattern::Case::Sensitive,
+                    *case,
                 )
             }) {
                 Ok(actual_match) => {
                     if actual_match == is_match {
                         total_correct += 1;
                     } else {
-                        mismatches.push((pattern.to_owned(), value.to_owned(), is_match));
+                        mismatches.push((pattern.to_owned(), value.to_owned(), is_match, expected_matches));
                     }
                 }
                 Err(_) => {
@@ -87,6 +91,7 @@ fn compare_baseline_with_ours() {
         }
     }
 
+    dbg!(mismatches);
     assert_eq!(
         total_correct,
         total_matches - panics,
