@@ -224,6 +224,8 @@ Check out the [performance discussion][git-traverse-performance] as well.
 ### git-path
 * [x] transformations to and from bytes
 * [x] conversions between different platforms
+* [x] virtual canonicalization for more concise paths via `absolutize()`
+* [ ] more flexible canonicalization with symlink resolution for paths which are partially virtual via `realpath()`
 * **spec**
     * [ ] parse
     * [ ] check for match
@@ -242,6 +244,7 @@ A mechanism to associate metadata with any object, and keep revisions of it usin
 
 * [x] check if a git directory is a git repository
 * [x] find a git repository by searching upward
+   * [x] define ceilings that should not be surpassed
 * [x] handle linked worktrees
 * [ ] a way to handle `safe.directory`
      - note that it's less critical to support it as `gitoxide` allows access but prevents untrusted configuration to become effective.
@@ -407,6 +410,7 @@ See its [README.md](https://github.com/Byron/gitoxide/blob/main/git-lock/README.
 * **plumbing**
   * **Repository**  (_plumbing_)
     * [x] discovery
+       * [ ] support for `GIT_CEILING_DIRECTORIES`
     * [ ] handle other non-discovery modes and provide control over environment variable usage required in applications
     * [x] instantiation
     * [ ] a way to handle `.git` files with `gitdir: <path>` in it
@@ -449,9 +453,11 @@ See its [README.md](https://github.com/Byron/gitoxide/blob/main/git-lock/README.
     * [ ] run transaction hooks and handle special repository states like quarantine
     * [ ] support for different backends like `files` and `reftable`
   * **worktrees**
-    * [x] open a repository with worktrees and interact with them
+    * [x] open a repository with worktrees
+       * [ ] read locked state
+       * [ ] obtain 'prunable' information
     * [ ] proper handling of worktree related refs
-    * [ ] create, move and remove
+    * [ ] create, move, remove, and repair
     * [ ] read per-worktree config if `extensions.worktreeConfig` is enabled.
   * [ ] remotes with push and pull
   * [x] mailmap   
@@ -489,10 +495,10 @@ See its [README.md](https://github.com/Byron/gitoxide/blob/main/git-lock/README.
     * [x] find single ref by name
     * [ ] special handling of `FETCH_HEAD` and `MERGE_HEAD`
     * [x] iterate refs with optional prefix
-    * [ ] [worktree support]
-        * [ ] support multiple bases and classify refs to know which one to use
-        * [ ] special support for ref iteration to not accidentally (see iterator setup)
-        * [ ] potentially special support for iteration to support listing worktree refs for bisect/rewritten,… from the main worktree
+    * **worktree support**
+        * [x] support multiple bases and classify refs
+        * [x] support for ref iteration merging common and private refs seamlessly.
+        * [x] avoid packing refs which are worktree private
     * ~~symbolic ref support, using symbolic links~~
         * This is a legacy feature which is not in use anymore.
     * **transactions** 
@@ -523,7 +529,6 @@ See its [README.md](https://github.com/Byron/gitoxide/blob/main/git-lock/README.
 [reftable-impl]: https://github.com/google/reftable
 [reftable-v2]: https://github.com/google/reftable/blob/master/reftable-v2-proposal.md
 [quarantine]: https://github.com/git/git/blob/master/Documentation/git-receive-pack.txt#L223:L223
-[worktree support]: https://github.com/git/git/blob/master/refs/files-backend.c#L163:L182
 
 
 ### git-features

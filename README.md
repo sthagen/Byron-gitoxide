@@ -116,6 +116,8 @@ Crates that seem feature complete and need to see some more use before they can 
   * [git-sec](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-sec)
   * [git-quote](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-quote)
   * [git-ref](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-ref)
+  * [git-discover](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-discover)
+  * [git-path](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-path)
   * [git-repository](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-repository)
   * `gitoxide-core`
 * **very early**    
@@ -124,8 +126,6 @@ Crates that seem feature complete and need to see some more use before they can 
   * [git-bitmap](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-bitmap)
   * [git-revision](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-revision)
   * [git-attributes](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-attributes)
-  * [git-path](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-path)
-  * [git-discover](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-discover)
 * **idea**
   * [git-note](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-note)
   * [git-filter](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-filter)
@@ -276,7 +276,9 @@ For additional details, also take a look at the [collaboration guide].
    - In 17 episodes you can learn all you need to meaningfully contirbute to `gitoxide`.
 - [Getting into Gitoxide](https://youtube.com/playlist?list=PLMHbQxe1e9MkEmuj9csczEK1O06l0Npy5)
    - Get an introduction to `gitoxide` itself which should be a good foundation for any contribution, but isn't a requirement for contributions either.
-
+- [Gifting Gitoxide](https://www.youtube.com/playlist?list=PLMHbQxe1e9MlhyyZQXPi_dc-bKudE-WUw)
+   - See how PRs are reviewed along with a lot of inner monologue.
+ 
 #### Other Media
 
 - [Rustacean Station Podcast](https://rustacean-station.org/episode/055-sebastian-thiel/)

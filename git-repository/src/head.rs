@@ -1,7 +1,8 @@
 //!
+use std::convert::TryInto;
+
 use git_hash::ObjectId;
 use git_ref::FullNameRef;
-use std::convert::TryInto;
 
 use crate::{
     ext::{ObjectIdExt, ReferenceExt},
@@ -46,8 +47,8 @@ impl<'repo> Head<'repo> {
     /// Returns the full reference name of this head if it is not detached, or `None` otherwise.
     pub fn referent_name(&self) -> Option<&FullNameRef> {
         Some(match &self.kind {
-            Kind::Symbolic(r) => r.name.to_ref(),
-            Kind::Unborn(name) => name.to_ref(),
+            Kind::Symbolic(r) => r.name.as_ref(),
+            Kind::Unborn(name) => name.as_ref(),
             Kind::Detached { .. } => return None,
         })
     }
