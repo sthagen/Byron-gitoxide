@@ -827,6 +827,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "defer"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "647605a6345d5e89c3950a36a638c56478af9b414c55c6f2477c73b115f9acde"
+
+[[package]]
 name = "diff"
 version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1136,7 +1142,7 @@ dependencies = [
 
 [[package]]
 name = "git-config"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "bstr",
  "criterion",
@@ -1197,15 +1203,17 @@ dependencies = [
 
 [[package]]
 name = "git-discover"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "bstr",
+ "defer",
  "git-hash",
  "git-path",
  "git-ref",
  "git-sec",
  "git-testtools",
  "is_ci",
+ "tempfile",
  "thiserror",
 ]
 
@@ -1350,7 +1358,7 @@ dependencies = [
 
 [[package]]
 name = "git-pack"
-version = "0.19.0"
+version = "0.19.1"
 dependencies = [
  "bstr",
  "bytesize",
@@ -1398,7 +1406,7 @@ dependencies = [
 
 [[package]]
 name = "git-path"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "bstr",
  "tempfile",
@@ -1469,7 +1477,7 @@ dependencies = [
 
 [[package]]
 name = "git-repository"
-version = "0.17.0"
+version = "0.18.0"
 dependencies = [
  "anyhow",
  "byte-unit",
@@ -1525,7 +1533,7 @@ dependencies = [
 
 [[package]]
 name = "git-sec"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "bitflags",
  "libc",
