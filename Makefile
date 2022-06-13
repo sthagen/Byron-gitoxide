@@ -65,7 +65,7 @@ clippy: ## Run cargo clippy on all crates
 	cargo clippy --all --no-default-features --features lean-async --tests
 
 check-msrv: ## run cargo msrv to validate the current msrv requirements, similar to what CI does
-	cd git-repository && cargo +1.54.0 check --package git-repository --no-default-features --features async-network-client,unstable,local-time-support,max-performance
+	cd git-repository && cargo check --package git-repository --no-default-features --features async-network-client,unstable,local-time-support,max-performance
 
 check-win: ## see that windows compiles, provided the x86_64-pc-windows-msvc target and cargo-xwin are present.
 	cargo xwin build --target x86_64-pc-windows-msvc  --no-default-features --features small
@@ -189,8 +189,8 @@ journey-tests-async: always ## run journey tests (lean-async)
 	./tests/journey.sh target/debug/ein target/debug/gix $(jtt) async
 
 journey-tests-smart-release:
-	cd cargo-smart-release && cargo build
-	cd cargo-smart-release && ./tests/journey.sh target/debug/cargo-smart-release
+	cargo build --bin cargo-smart-release --package cargo-smart-release
+	cd cargo-smart-release && ./tests/journey.sh ../target/debug/cargo-smart-release
 
 continuous-journey-tests: ## run stateless journey tests whenever something changes
 	watchexec $(MAKE) journey-tests
