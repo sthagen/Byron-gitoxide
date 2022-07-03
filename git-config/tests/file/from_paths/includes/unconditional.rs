@@ -1,10 +1,9 @@
 use std::fs;
 
-use crate::git_config::cow_str;
-use crate::git_config::from_paths::escape_backslashes;
-use git_config::file::from_paths;
-use git_config::File;
+use git_config::{file::from_paths, File};
 use tempfile::tempdir;
+
+use crate::file::{cow_str, from_paths::escape_backslashes};
 
 #[test]
 fn multiple() -> crate::Result {

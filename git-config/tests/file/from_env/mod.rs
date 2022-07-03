@@ -1,22 +1,24 @@
 use std::{borrow::Cow, env, fs};
 
-use git_config::file::{from_env, from_paths, from_paths::Options};
-use git_config::File;
+use git_config::{
+    file::{from_env, from_paths, from_paths::Options},
+    File,
+};
 use serial_test::serial;
 use tempfile::tempdir;
 
-struct Env<'a> {
+pub struct Env<'a> {
     altered_vars: Vec<&'a str>,
 }
 
 impl<'a> Env<'a> {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Env {
             altered_vars: Vec::new(),
         }
     }
 
-    fn set(mut self, var: &'a str, value: &'a str) -> Self {
+    pub(crate) fn set(mut self, var: &'a str, value: &'a str) -> Self {
         env::set_var(var, value);
         self.altered_vars.push(var);
         self
@@ -108,10 +110,9 @@ fn error_on_relative_paths_in_include_paths() {
         .set("GIT_CONFIG_KEY_0", "include.path")
         .set("GIT_CONFIG_VALUE_0", "some_git_config");
 
-    let config = File::from_env(Options::default());
-
+    let res = File::from_env(Options::default());
     assert!(matches!(
-        config,
+        res,
         Err(from_env::Error::FromPathsError(from_paths::Error::MissingConfigPath))
     ));
 }

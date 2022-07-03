@@ -1,5 +1,6 @@
-use bstr::{BStr, ByteSlice};
 use std::borrow::Cow;
+
+use bstr::{BStr, ByteSlice};
 
 pub fn cow_str(s: &str) -> Cow<'_, BStr> {
     Cow::Borrowed(s.as_bytes().as_bstr())
@@ -11,15 +12,11 @@ mod open {
 
     #[test]
     fn parse_config_with_windows_line_endings_successfully() {
-        File::open(fixture_path("repo-config.crlf")).unwrap();
+        File::at(fixture_path("repo-config.crlf")).unwrap();
     }
 }
 
-mod display;
+mod access;
 mod from_env;
 mod from_paths;
-mod mutable_multi_value;
-mod mutable_value;
-mod raw_multi_value;
-mod raw_value;
-mod value;
+mod impls;

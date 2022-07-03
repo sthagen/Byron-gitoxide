@@ -1,6 +1,8 @@
-use std::{borrow::Cow, convert::TryFrom, path::PathBuf};
-
-use git_config::{values::*, File};
+use git_config::{
+    values::{Boolean, Bytes, TrueVariant, *},
+    File,
+};
+use std::{borrow::Cow, convert::TryFrom, error::Error};
 
 /// Asserts we can cast into all variants of our type
 #[test]
@@ -95,12 +97,11 @@ fn get_value_for_all_provided_values() -> crate::Result {
     );
 
     let actual = file.value::<git_config::values::Path>("core", None, "location")?;
-    assert_eq!(
-        &*actual, "~/tmp",
-        "no interpolation occurs when querying a path due to lack of context"
-    );
-    let expected = PathBuf::from(format!("{}/tmp", dirs::home_dir().expect("empty home dir").display()));
-    assert_eq!(actual.interpolate(None).unwrap(), expected);
+    assert_eq!(&*actual, "~/tmp", "no interpolation occurs when querying a path");
+
+    let home = std::env::current_dir()?;
+    let expected = home.join("tmp");
+    assert_eq!(actual.interpolate(None, home.as_path().into()).unwrap(), expected);
 
     let actual = file.path("core", None, "location").expect("present");
     assert_eq!(&*actual, "~/tmp",);
@@ -161,4 +162,44 @@ fn value_names_are_case_insensitive() -> crate::Result {
     );
 
     Ok(())
+}
+
+#[test]
+fn single_section() -> Result<(), Box<dyn Error>> {
+    let config = File::try_from("[core]\na=b\nc").unwrap();
+    let first_value: Bytes = config.value("core", None, "a")?;
+    let second_value: Boolean = config.value("core", None, "c")?;
+
+    assert_eq!(
+        first_value,
+        Bytes {
+            value: Cow::Borrowed(b"b")
+        }
+    );
+    assert_eq!(second_value, Boolean::True(TrueVariant::Implicit));
+
+    Ok(())
+}
+
+#[test]
+fn sections_by_name() {
+    let config = r#"
+    [core]
+        repositoryformatversion = 0
+        filemode = true
+        bare = false
+        logallrefupdates = true
+    [remote "origin"]
+        url = git@github.com:Byron/gitoxide.git
+        fetch = +refs/heads/*:refs/remotes/origin/*
+    "#;
+
+    let config = File::try_from(config).unwrap();
+    let value = config.value::<Bytes>("remote", Some("origin"), "url").unwrap();
+    assert_eq!(
+        value,
+        Bytes {
+            value: Cow::Borrowed(b"git@github.com:Byron/gitoxide.git")
+        }
+    );
 }
