@@ -1,6 +1,8 @@
+#![cfg_attr(windows, allow(dead_code))]
+
 use crate::file::cow_str;
 use crate::file::from_paths::escape_backslashes;
-use crate::file::from_paths::includes::conditional::{create_symlink, options_with_git_dir};
+use crate::file::from_paths::includes::conditional::options_with_git_dir;
 use bstr::{BString, ByteSlice};
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -58,11 +60,10 @@ impl Condition {
 impl GitEnv {
     pub fn repo_name(repo_name: impl AsRef<Path>) -> crate::Result<Self> {
         let tempdir = tempfile::tempdir()?;
-        let cwd = std::env::current_dir()?;
-        let root_dir = git_path::realpath(tempdir.path(), &cwd)?;
+        let root_dir = git_path::realpath(tempdir.path())?;
         let worktree_dir = root_dir.join(repo_name);
         std::fs::create_dir_all(&worktree_dir)?;
-        let home_dir = git_path::realpath(tempdir.path(), cwd)?;
+        let home_dir = git_path::realpath(tempdir.path())?;
         Ok(Self {
             tempdir,
             root_dir,
@@ -77,7 +78,7 @@ impl GitEnv {
 }
 
 impl GitEnv {
-    fn include_options(&self) -> git_config::file::from_paths::Options {
+    pub fn include_options(&self) -> git_config::file::from_paths::Options {
         let mut opts = options_with_git_dir(self.git_dir());
         opts.home_dir = Some(self.home_dir());
         opts
@@ -135,7 +136,7 @@ pub fn assert_section_value(
 pub fn git_env_with_symlinked_repo() -> crate::Result<GitEnv> {
     let mut env = GitEnv::repo_name("worktree")?;
     let link_destination = env.root_dir().join("symlink-worktree");
-    create_symlink(&link_destination, env.worktree_dir());
+    crate::file::from_paths::includes::conditional::create_symlink(&link_destination, env.worktree_dir());
 
     let git_dir_through_symlink = link_destination.join(".git");
     env.set_git_dir(git_dir_through_symlink);
@@ -147,6 +148,8 @@ fn assure_git_agrees(expected: Option<Value>, env: GitEnv) -> crate::Result {
         .args(["config", "--get", "section.value"])
         .env("HOME", env.home_dir())
         .env("GIT_DIR", env.git_dir())
+        .env_remove("GIT_CONFIG_COUNT")
+        .env_remove("XDG_CONFIG_HOME")
         .current_dir(env.worktree_dir())
         .output()?;
 
@@ -213,6 +216,16 @@ fn write_main_config(
     };
 
     let condition = condition.as_ref();
+    let condition = {
+        let c = condition
+            .replace("$gitdir", &env.git_dir().to_string_lossy())
+            .replace("$worktree", &env.worktree_dir().to_string_lossy());
+        if c == condition {
+            condition.to_owned()
+        } else {
+            escape_backslashes(c)
+        }
+    };
     let include_file_path = escape_backslashes(include_file_path);
     let mut file = std::fs::OpenOptions::new()
         .append(true)

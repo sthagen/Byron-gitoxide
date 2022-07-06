@@ -1,6 +1,8 @@
 mod util;
 
-use util::{assert_section_value, git_env_with_symlinked_repo, Condition, GitEnv};
+use crate::file::from_paths::escape_backslashes;
+use serial_test::serial;
+use util::{assert_section_value, Condition, GitEnv};
 
 #[test]
 fn relative_path_with_trailing_slash_matches_like_star_star() -> crate::Result {
@@ -22,7 +24,7 @@ fn relative_path_without_trailing_slash_and_dot_git_suffix_matches() -> crate::R
 
 #[test]
 fn tilde_slash_expands_the_current_user_home() -> crate::Result {
-    let env = GitEnv::repo_name("subdir/worktree")?;
+    let env = GitEnv::repo_name(format!("subdir{}worktree", std::path::MAIN_SEPARATOR))?;
     assert_section_value(Condition::new("gitdir:~/subdir/worktree/"), env)
 }
 
@@ -38,32 +40,113 @@ fn explicit_star_star_prefix_and_suffix_match_zero_or_more_path_components() -> 
 }
 
 #[test]
-fn dot_slash_path_is_replaced_with_directory_containing_the_including_config_file() -> crate::Result {
-    // TODO: understand this
+fn double_slash_does_not_match() -> crate::Result {
     assert_section_value(
-        Condition::new("gitdir:./").set_user_config_instead_of_repo_config(),
+        Condition::new("gitdir://worktree").expect_original_value(),
         GitEnv::repo_name("worktree")?,
     )
 }
 
 #[test]
-#[serial_test::serial]
-#[ignore]
-fn dot_slash_from_environment_causes_error() {
-    use git_config::file::from_paths;
-    // TODO: figure out how to do this, how do we parse sub-keys? Can git do that even? YES, git can actually!
-    let _env = crate::file::from_env::Env::new()
-        .set("GIT_CONFIG_COUNT", "1")
-        .set("GIT_CONFIG_KEY_0", "includeIf.path")
-        .set("GIT_CONFIG_VALUE_0", "some_git_config");
+fn absolute_git_dir_with_os_separators_match() -> crate::Result {
+    assert_section_value(
+        original_value_on_windows(Condition::new("gitdir:$gitdir")),
+        GitEnv::repo_name("worktree")?,
+    )
+}
 
-    let res = git_config::File::from_env(from_paths::Options::default());
-    assert!(matches!(
-        res,
-        Err(git_config::file::from_env::Error::FromPathsError(
-            from_paths::Error::MissingConfigPath
-        ))
-    ));
+#[test]
+fn absolute_worktree_dir_with_os_separators_does_not_match_if_trailing_slash_is_missing() -> crate::Result {
+    assert_section_value(
+        Condition::new("gitdir:$worktree").expect_original_value(),
+        GitEnv::repo_name("worktree")?,
+    )
+}
+
+#[test]
+fn absolute_worktree_dir_with_os_separators_matches_with_trailing_glob() -> crate::Result {
+    assert_section_value(
+        original_value_on_windows(Condition::new(format!(
+            "gitdir:$worktree{}**",
+            std::path::MAIN_SEPARATOR
+        ))),
+        GitEnv::repo_name("worktree")?,
+    )
+}
+
+#[test]
+fn dot_slash_path_is_replaced_with_directory_containing_the_including_config_file() -> crate::Result {
+    assert_section_value(
+        Condition::new("gitdir:./").set_user_config_instead_of_repo_config(),
+        GitEnv::repo_name("worktree")?,
+        // the user configuration is in $HOME, which is parent to $HOME/worktree, and the pattern path ends up being $HOME/**, including worktree/.git
+    )
+}
+
+#[test]
+#[serial]
+fn dot_slash_from_environment_causes_error() -> crate::Result {
+    use git_config::file::from_paths;
+    let env = GitEnv::repo_name("worktree")?;
+
+    {
+        let _environment = crate::file::from_env::Env::new()
+            .set("GIT_CONFIG_COUNT", "1")
+            .set(
+                "GIT_CONFIG_KEY_0",
+                format!("includeIf.gitdir:{}.path", escape_backslashes(env.git_dir())),
+            )
+            .set("GIT_CONFIG_VALUE_0", "./include.path");
+
+        let res = git_config::File::from_env(env.include_options());
+        assert!(
+            matches!(
+                res,
+                Err(git_config::file::from_env::Error::FromPathsError(
+                    from_paths::Error::MissingConfigPath
+                ))
+            ),
+            "this is a failure of resolving the include path, after trying to include it"
+        );
+    }
+
+    let absolute_path = format!(
+        "{}{}include.config",
+        env.home_dir().display(),
+        std::path::MAIN_SEPARATOR
+    );
+    {
+        let _environment = crate::file::from_env::Env::new()
+            .set("GIT_CONFIG_COUNT", "1")
+            .set("GIT_CONFIG_KEY_0", "includeIf.gitdir:./worktree/.path")
+            .set("GIT_CONFIG_VALUE_0", &absolute_path);
+
+        let res = git_config::File::from_env(env.include_options());
+        assert!(
+            matches!(
+                res,
+                Err(git_config::file::from_env::Error::FromPathsError(
+                    from_paths::Error::MissingConfigPath
+                ))
+            ),
+            "here the pattern path tries to be resolved and fails as target config isn't set"
+        );
+    }
+
+    {
+        let _environment = crate::file::from_env::Env::new()
+            .set("GIT_CONFIG_COUNT", "1")
+            .set(
+                "GIT_CONFIG_KEY_0",
+                format!("includeIf.gitdir:{}.path", escape_backslashes(env.git_dir())),
+            )
+            .set("GIT_CONFIG_VALUE_0", absolute_path);
+
+        let res = git_config::File::from_env(env.include_options());
+        assert!(res.is_ok(), "missing paths are ignored as before");
+    }
+
+    Ok(())
 }
 
 #[test]
@@ -77,13 +160,8 @@ fn dot_dot_slash_prefixes_are_not_special_and_are_not_what_you_want() -> crate::
 }
 
 #[test]
-#[ignore]
 fn leading_dots_are_not_special() -> crate::Result {
-    // TODO: write this test so that it could fail - right now it's naturally correct
-    assert_section_value(
-        Condition::new("gitdir:.hidden/").expect_original_value(),
-        GitEnv::repo_name(".hidden")?,
-    )
+    assert_section_value(Condition::new("gitdir:.hidden/"), GitEnv::repo_name(".hidden")?)
 }
 
 #[test]
@@ -91,6 +169,14 @@ fn dot_slash_path_with_dot_git_suffix_matches() -> crate::Result {
     assert_section_value(
         Condition::new("gitdir:./worktree/.git").set_user_config_instead_of_repo_config(),
         GitEnv::repo_name("worktree")?,
+    )
+}
+
+#[test]
+fn globbing_and_wildcards() -> crate::Result {
+    assert_section_value(
+        Condition::new("gitdir:stan?ard/glo*ng/[xwz]ildcards/.git").set_user_config_instead_of_repo_config(),
+        GitEnv::repo_name("standard/globbing/wildcards")?,
     )
 }
 
@@ -104,16 +190,14 @@ fn case_insensitive_matches_any_case() -> crate::Result {
 }
 
 #[test]
-#[ignore]
 fn pattern_with_escaped_backslash() -> crate::Result {
     assert_section_value(
-        Condition::new(r#"gitdir:\\work\\tree\\/"#),
+        original_value_on_windows(Condition::new(r#"gitdir:\\work\\tree\\/"#)),
         GitEnv::repo_name("worktree")?,
     )
 }
 
 #[test]
-#[ignore]
 fn pattern_with_backslash() -> crate::Result {
     assert_section_value(Condition::new(r#"gitdir:work\tree/"#), GitEnv::repo_name("worktree")?)
 }
@@ -129,14 +213,14 @@ fn star_star_in_the_middle() -> crate::Result {
 #[test]
 #[cfg(not(windows))]
 fn tilde_expansion_with_symlink() -> crate::Result {
-    let env = git_env_with_symlinked_repo()?;
-    assert_section_value(Condition::new("gitdir:~/symlink-worktree/"), env)
+    let env = util::git_env_with_symlinked_repo()?;
+    assert_section_value(Condition::new("gitdir:~/worktree/"), env)
 }
 
 #[test]
 #[cfg(not(windows))]
 fn dot_path_with_symlink() -> crate::Result {
-    let env = git_env_with_symlinked_repo()?;
+    let env = util::git_env_with_symlinked_repo()?;
     assert_section_value(
         Condition::new("gitdir:./symlink-worktree/.git").set_user_config_instead_of_repo_config(),
         env,
@@ -146,7 +230,7 @@ fn dot_path_with_symlink() -> crate::Result {
 #[test]
 #[cfg(not(windows))]
 fn relative_path_matching_symlink() -> crate::Result {
-    let env = git_env_with_symlinked_repo()?;
+    let env = util::git_env_with_symlinked_repo()?;
     assert_section_value(
         Condition::new("gitdir:symlink-worktree/").set_user_config_instead_of_repo_config(),
         env,
@@ -156,9 +240,17 @@ fn relative_path_matching_symlink() -> crate::Result {
 #[test]
 #[cfg(not(windows))]
 fn dot_path_matching_symlink_with_icase() -> crate::Result {
-    let env = git_env_with_symlinked_repo()?;
+    let env = util::git_env_with_symlinked_repo()?;
     assert_section_value(
         Condition::new("gitdir/i:SYMLINK-WORKTREE/").set_user_config_instead_of_repo_config(),
         env,
     )
+}
+
+fn original_value_on_windows(c: Condition) -> Condition {
+    if cfg!(windows) {
+        c.expect_original_value()
+    } else {
+        c
+    }
 }
