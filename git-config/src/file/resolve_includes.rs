@@ -6,25 +6,26 @@ use std::{
 use bstr::{BStr, BString, ByteSlice, ByteVec};
 use git_ref::Category;
 
-use crate::file::from_paths::Options;
 use crate::{
-    file::{from_paths, SectionId},
-    parser::Key,
-    values, File,
+    file::{from_paths, from_paths::Options, SectionBodyId},
+    parse::section,
+    File,
 };
 
 pub(crate) fn resolve_includes(
-    conf: &mut File<'_>,
+    conf: &mut File<'static>,
     config_path: Option<&std::path::Path>,
+    buf: &mut Vec<u8>,
     options: from_paths::Options<'_>,
 ) -> Result<(), from_paths::Error> {
-    resolve_includes_recursive(conf, config_path, 0, options)
+    resolve_includes_recursive(conf, config_path, 0, buf, options)
 }
 
 fn resolve_includes_recursive(
-    target_config: &mut File<'_>,
+    target_config: &mut File<'static>,
     target_config_path: Option<&Path>,
     depth: u8,
+    buf: &mut Vec<u8>,
     options: from_paths::Options<'_>,
 ) -> Result<(), from_paths::Error> {
     if depth == options.max_depth {
@@ -41,15 +42,17 @@ fn resolve_includes_recursive(
 
     let mut incl_section_ids = Vec::new();
     for name in ["include", "includeIf"] {
-        for id in target_config.section_ids_by_name(name).unwrap_or_default() {
-            incl_section_ids.push((
-                id,
-                target_config
-                    .section_order
-                    .iter()
-                    .position(|&e| e == id)
-                    .expect("section id is from config"),
-            ));
+        if let Ok(ids) = target_config.section_ids_by_name(name) {
+            for id in ids {
+                incl_section_ids.push((
+                    id,
+                    target_config
+                        .section_order
+                        .iter()
+                        .position(|&e| e == id)
+                        .expect("section id is from config"),
+                ));
+            }
         }
     }
     incl_section_ids.sort_by(|a, b| a.1.cmp(&b.1));
@@ -78,17 +81,23 @@ fn resolve_includes_recursive(
     }
 
     for config_path in paths_to_include {
-        let mut include_config = File::at(&config_path)?;
-        resolve_includes_recursive(&mut include_config, Some(&config_path), depth + 1, options)?;
+        let mut include_config = File::from_path_with_buf(&config_path, buf)?;
+        resolve_includes_recursive(&mut include_config, Some(&config_path), depth + 1, buf, options)?;
         target_config.append(include_config);
     }
     Ok(())
 }
 
-fn extract_include_path<'a>(target_config: &mut File<'a>, include_paths: &mut Vec<values::Path<'a>>, id: SectionId) {
+fn extract_include_path(
+    target_config: &mut File<'_>,
+    include_paths: &mut Vec<crate::Path<'static>>,
+    id: SectionBodyId,
+) {
     if let Some(body) = target_config.sections.get(&id) {
-        let paths = body.values(&Key::from("path"));
-        let paths = paths.iter().map(|path| values::Path::from(path.clone()));
+        let paths = body.values(&section::Key::from("path"));
+        let paths = paths
+            .iter()
+            .map(|path| crate::Path::from(Cow::Owned(path.as_ref().to_owned())));
         include_paths.extend(paths);
     }
 }
@@ -148,9 +157,8 @@ fn gitdir_matches(
     condition_path: &BStr,
     target_config_path: Option<&Path>,
     from_paths::Options {
-        git_install_dir,
         git_dir,
-        home_dir,
+        interpolate: interpolate_options,
         ..
     }: from_paths::Options<'_>,
     wildmatch_mode: git_glob::wildmatch::Mode,
@@ -159,7 +167,7 @@ fn gitdir_matches(
         git_path::to_unix_separators_on_windows(git_path::into_bstr(git_dir.ok_or(from_paths::Error::MissingGitDir)?));
 
     let mut pattern_path: Cow<'_, _> = {
-        let path = values::Path::from(Cow::Borrowed(condition_path)).interpolate(git_install_dir, home_dir)?;
+        let path = crate::Path::from(Cow::Borrowed(condition_path)).interpolate(interpolate_options)?;
         git_path::into_bstr(path).into_owned().into()
     };
     // NOTE: yes, only if we do path interpolation will the slashes be forced to unix separators on windows
@@ -207,15 +215,14 @@ fn gitdir_matches(
 }
 
 fn resolve(
-    path: values::Path<'_>,
+    path: crate::Path<'_>,
     target_config_path: Option<&Path>,
     from_paths::Options {
-        git_install_dir,
-        home_dir,
+        interpolate: interpolate_options,
         ..
     }: from_paths::Options<'_>,
 ) -> Result<PathBuf, from_paths::Error> {
-    let path = path.interpolate(git_install_dir, home_dir)?;
+    let path = path.interpolate(interpolate_options)?;
     let path: PathBuf = if path.is_relative() {
         target_config_path
             .ok_or(from_paths::Error::MissingConfigPath)?

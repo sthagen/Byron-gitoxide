@@ -3,9 +3,9 @@ use crate::{bstr::BString, permission};
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("Could not open repository conifguration file")]
-    Open(#[from] git_config::parser::ParserOrIoError<'static>),
+    Open(#[from] git_config::file::from_paths::Error),
     #[error("Cannot handle objects formatted as {:?}", .name)]
-    UnsupportedObjectFormat { name: crate::bstr::BString },
+    UnsupportedObjectFormat { name: BString },
     #[error("The value for '{}' cannot be empty", .key)]
     EmptyValue { key: &'static str },
     #[error("Invalid value for 'core.abbrev' = '{}'. It must be between 4 and {}", .value, .max)]
@@ -13,7 +13,7 @@ pub enum Error {
     #[error("Value '{}' at key '{}' could not be decoded as boolean", .value, .key)]
     DecodeBoolean { key: String, value: BString },
     #[error(transparent)]
-    PathInterpolation(#[from] git_config::values::path::interpolate::Error),
+    PathInterpolation(#[from] git_config::path::interpolate::Error),
 }
 
 /// Utility type to keep pre-obtained configuration values.
@@ -46,10 +46,7 @@ pub(crate) struct Cache {
 mod cache {
     use std::{convert::TryFrom, path::PathBuf};
 
-    use git_config::{
-        values::{Boolean, Integer},
-        File,
-    };
+    use git_config::{path, Boolean, File, Integer};
 
     use super::{Cache, Error};
     use crate::{bstr::ByteSlice, permission};
@@ -66,14 +63,24 @@ mod cache {
                 .and_then(|home| home_env.check(home).ok().flatten());
             // TODO: don't forget to use the canonicalized home for initializing the stacked config.
             //       like git here: https://github.com/git/git/blob/master/config.c#L208:L208
-            let config = File::at(git_dir.join("config"))?;
+            let config = {
+                let mut buf = Vec::with_capacity(512);
+                File::from_path_with_buf(&git_dir.join("config"), &mut buf)?
+            };
 
             let is_bare = config_bool(&config, "core.bare", false)?;
             let use_multi_pack_index = config_bool(&config, "core.multiPackIndex", true)?;
             let ignore_case = config_bool(&config, "core.ignorecase", false)?;
             let excludes_file = config
                 .path("core", None, "excludesFile")
-                .map(|p| p.interpolate(git_install_dir, home.as_deref()).map(|p| p.into_owned()))
+                .map(|p| {
+                    p.interpolate(path::interpolate::Options {
+                        git_install_dir,
+                        home_dir: home.as_deref(),
+                        home_for_user: Some(git_config::path::interpolate::home_for_user),
+                    })
+                    .map(|p| p.into_owned())
+                })
                 .transpose()?;
             let repo_format_version = config
                 .value::<Integer>("core", None, "repositoryFormatVersion")
@@ -101,7 +108,7 @@ mod cache {
                 }
                 if hex_len_str.as_ref() != "auto" {
                     let value_bytes = hex_len_str.as_ref();
-                    if let Ok(Boolean::False(_)) = Boolean::try_from(value_bytes) {
+                    if let Ok(false) = Boolean::try_from(value_bytes).map(Into::into) {
                         hex_len = object_hash.len_in_hex().into();
                     } else {
                         let value = Integer::try_from(value_bytes)

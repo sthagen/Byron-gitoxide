@@ -1,12 +1,12 @@
 use std::{borrow::Cow, fs, io};
 
-use git_config::{file::from_paths::Error, parser::ParserOrIoError, File};
+use git_config::File;
 use tempfile::tempdir;
 
 use crate::file::cow_str;
 
 /// Escapes backslash when writing a path as string so that it is a valid windows path
-fn escape_backslashes(path: impl AsRef<std::path::Path>) -> String {
+pub(crate) fn escape_backslashes(path: impl AsRef<std::path::Path>) -> String {
     path.as_ref().to_str().unwrap().replace('\\', "\\\\")
 }
 
@@ -16,9 +16,9 @@ fn file_not_found() {
     let config_path = dir.path().join("config");
 
     let paths = vec![config_path];
-    let error = File::from_paths(paths, Default::default()).unwrap_err();
+    let err = File::from_paths(paths, Default::default()).unwrap_err();
     assert!(
-        matches!(error,  Error::ParserOrIoError(ParserOrIoError::Io(io_error)) if io_error.kind() == io::ErrorKind::NotFound)
+        matches!(err,  git_config::file::from_paths::Error::Io(io_error) if io_error.kind() == io::ErrorKind::NotFound)
     );
 }
 

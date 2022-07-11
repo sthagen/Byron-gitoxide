@@ -1,18 +1,21 @@
+#![allow(missing_docs)]
 #![allow(unused)]
 #![allow(clippy::result_unit_err)]
 
-use bstr::BStr;
 use std::{
     borrow::Cow,
     convert::TryFrom,
     path::{Path, PathBuf},
 };
 
+use bstr::BStr;
+
 use crate::{
     file::{from_env, from_paths},
     lookup, File,
 };
 
+// TODO: how does this relate to `File::from_env_paths()`?
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum ConfigSource {
     /// System-wide configuration path. This is defined as
@@ -96,7 +99,7 @@ impl ConfigBuilder {
 
     /// Builds a config, ignoring any failed configuration files.
     #[must_use]
-    pub fn build(&self) -> Config<'_> {
+    pub fn build(&self) -> Config<'static> {
         let system_conf = if self.no_system { None } else { todo!() };
 
         let global_conf = {
@@ -105,7 +108,7 @@ impl ConfigBuilder {
                 .as_ref()
                 .map_or_else(|| Path::new(".git/config"), PathBuf::as_path);
 
-            File::at(path).ok()
+            File::from_paths(Some(path), Default::default()).ok()
         };
 
         let env_conf = if self.load_env_conf {
@@ -179,11 +182,11 @@ impl<'a> Config<'a> {
         None
     }
 
-    pub fn try_value<'lookup, T: TryFrom<Cow<'a, BStr>>>(
+    pub fn try_value<T: TryFrom<Cow<'a, BStr>>>(
         &'a self,
-        section_name: &'lookup str,
-        subsection_name: Option<&'lookup str>,
-        key: &'lookup str,
+        section_name: &str,
+        subsection_name: Option<&str>,
+        key: &str,
     ) -> Result<Option<T>, lookup::Error<T::Error>> {
         self.try_value_with_source(section_name, subsection_name, key)
             .map(|res| res.map(|(value, _)| value))
@@ -193,11 +196,11 @@ impl<'a> Config<'a> {
     /// if the key was not found. On a successful parse, the value will be
     /// returned as well as the source location. This respects the priority of
     /// the various configuration files.
-    pub fn try_value_with_source<'lookup, T: TryFrom<Cow<'a, BStr>>>(
+    pub fn try_value_with_source<T: TryFrom<Cow<'a, BStr>>>(
         &'a self,
-        section_name: &'lookup str,
-        subsection_name: Option<&'lookup str>,
-        key: &'lookup str,
+        section_name: &str,
+        subsection_name: Option<&str>,
+        key: &str,
     ) -> Result<Option<(T, ConfigSource)>, lookup::Error<T::Error>> {
         let mapping = self.mapping();
 
@@ -211,7 +214,7 @@ impl<'a> Config<'a> {
     }
 
     /// Returns a mapping from [`File`] to [`ConfigSource`]
-    const fn mapping(&self) -> [(&Option<File<'_>>, ConfigSource); 6] {
+    const fn mapping(&self) -> [(&Option<File<'a>>, ConfigSource); 6] {
         [
             (&self.cli_conf, ConfigSource::Cli),
             (&self.env_conf, ConfigSource::Env),

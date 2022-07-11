@@ -1,12 +1,17 @@
 #![cfg_attr(windows, allow(dead_code))]
 
-use crate::file::cow_str;
-use crate::file::from_paths::escape_backslashes;
-use crate::file::from_paths::includes::conditional::options_with_git_dir;
+use std::{
+    io::Write,
+    path::{Path, PathBuf},
+    process::Command,
+};
+
 use bstr::{BString, ByteSlice};
-use std::io::Write;
-use std::path::{Path, PathBuf};
-use std::process::Command;
+
+use crate::file::{
+    cow_str,
+    from_paths::{escape_backslashes, includes::conditional::options_with_git_dir},
+};
 
 #[derive(Debug)]
 pub struct GitEnv {
@@ -80,7 +85,7 @@ impl GitEnv {
 impl GitEnv {
     pub fn include_options(&self) -> git_config::file::from_paths::Options {
         let mut opts = options_with_git_dir(self.git_dir());
-        opts.home_dir = Some(self.home_dir());
+        opts.interpolate.home_dir = Some(self.home_dir());
         opts
     }
 

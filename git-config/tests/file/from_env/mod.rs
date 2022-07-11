@@ -7,6 +7,8 @@ use git_config::{
 use serial_test::serial;
 use tempfile::tempdir;
 
+use crate::file::from_paths::escape_backslashes;
+
 pub struct Env<'a> {
     altered_vars: Vec<&'a str>,
 }
@@ -53,7 +55,7 @@ fn empty_with_zero_count() {
 fn parse_error_with_invalid_count() {
     let _env = Env::new().set("GIT_CONFIG_COUNT", "invalid");
     let err = File::from_env(Options::default()).unwrap_err();
-    assert!(matches!(err, from_env::Error::ParseError { .. }));
+    assert!(matches!(err, from_env::Error::InvalidConfigCount { .. }));
 }
 
 #[test]
@@ -131,11 +133,11 @@ fn follow_include_paths() {
         .set("GIT_CONFIG_KEY_0", "core.key")
         .set("GIT_CONFIG_VALUE_0", "value")
         .set("GIT_CONFIG_KEY_1", "include.path")
-        .set("GIT_CONFIG_VALUE_1", a_path.to_str().unwrap())
+        .set("GIT_CONFIG_VALUE_1", escape_backslashes(a_path))
         .set("GIT_CONFIG_KEY_2", "other.path")
-        .set("GIT_CONFIG_VALUE_2", b_path.to_str().unwrap())
+        .set("GIT_CONFIG_VALUE_2", escape_backslashes(&b_path))
         .set("GIT_CONFIG_KEY_3", "include.origin.path")
-        .set("GIT_CONFIG_VALUE_3", b_path.to_str().unwrap());
+        .set("GIT_CONFIG_VALUE_3", escape_backslashes(b_path));
 
     let config = File::from_env(Options::default()).unwrap().unwrap();
 
