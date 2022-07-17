@@ -3,7 +3,7 @@ use crate::{bstr::BString, permission};
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("Could not open repository conifguration file")]
-    Open(#[from] git_config::file::from_paths::Error),
+    Open(#[from] git_config::file::init::from_paths::Error),
     #[error("Cannot handle objects formatted as {:?}", .name)]
     UnsupportedObjectFormat { name: BString },
     #[error("The value for '{}' cannot be empty", .key)]
@@ -67,7 +67,25 @@ mod cache {
             //       like git here: https://github.com/git/git/blob/master/config.c#L208:L208
             let config = {
                 let mut buf = Vec::with_capacity(512);
-                File::from_path_with_buf(&git_dir.join("config"), &mut buf)?
+                File::from_path_with_buf(
+                    &git_dir.join("config"),
+                    &mut buf,
+                    git_config::file::Metadata::from(git_config::Source::Local),
+                    git_config::file::init::Options {
+                        lossy: true,
+                        includes: git_config::file::init::includes::Options::follow(
+                            git_config::path::interpolate::Context {
+                                git_install_dir,
+                                home_dir: None,
+                                home_for_user: None, // TODO: figure out how to configure this
+                            },
+                            git_config::file::init::includes::conditional::Context {
+                                git_dir: git_dir.into(),
+                                branch_name: None,
+                            },
+                        ),
+                    },
+                )?
             };
 
             let is_bare = config_bool(&config, "core.bare", false)?;
@@ -76,7 +94,7 @@ mod cache {
             let excludes_file = config
                 .path("core", None, "excludesFile")
                 .map(|p| {
-                    p.interpolate(path::interpolate::Options {
+                    p.interpolate(path::interpolate::Context {
                         git_install_dir,
                         home_dir: home.as_deref(),
                         home_for_user: Some(git_config::path::interpolate::home_for_user),
