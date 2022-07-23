@@ -7,8 +7,11 @@ use bstr::{BStr, BString, ByteSlice, ByteVec};
 use git_features::threading::OwnShared;
 use git_ref::Category;
 
-use crate::file::{includes, init, Metadata, SectionId};
-use crate::{file, path, File};
+use crate::{
+    file,
+    file::{includes, init, Metadata, SectionId},
+    path, File,
+};
 
 impl File<'static> {
     /// Traverse all `include` and `includeIf` directives found in this instance and follow them, loading the
@@ -24,7 +27,7 @@ impl File<'static> {
     ///   a deviation from how git does it, as it technically adds new value right after the include path itself,
     ///   technically 'splitting' the section. This can only make a difference if the `include` section also has values
     ///   which later overwrite portions of the included file, which seems unusual as these would be related to `includes`.
-    ///   We can fix this by 'splitting' the inlcude section if needed so the included sections are put into the right place.
+    ///   We can fix this by 'splitting' the include section if needed so the included sections are put into the right place.
     pub fn resolve_includes(&mut self, options: init::Options<'_>) -> Result<(), Error> {
         if options.includes.max_depth == 0 {
             return Ok(());

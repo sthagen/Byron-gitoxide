@@ -1,5 +1,6 @@
-use gitoxide_core as core;
 use std::path::PathBuf;
+
+use gitoxide_core as core;
 
 #[derive(Debug, clap::Parser)]
 #[clap(name = "gix-plumbing", about = "The git underworld", version = clap::crate_version!())]
@@ -484,7 +485,7 @@ pub mod free {
             /// This flag is primarily to test the implementation of encoding, and requires to decode the object first.
             /// Encoding an object after decoding it should yield exactly the same bytes.
             /// This will reduce overall performance even more, as re-encoding requires to transform zero-copy objects into
-            /// owned objects, causing plenty of allocation to occour.
+            /// owned objects, causing plenty of allocation to occur.
             pub re_encode: bool,
         }
 

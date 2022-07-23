@@ -1,9 +1,9 @@
 //! A high level wrapper around a single or multiple `git-config` file, for reading and mutation.
-use std::path::PathBuf;
 use std::{
     borrow::Cow,
     collections::HashMap,
     ops::{Add, AddAssign},
+    path::PathBuf,
 };
 
 use bstr::BStr;
@@ -61,7 +61,7 @@ pub struct Section<'a> {
     meta: OwnShared<Metadata>,
 }
 
-/// A function to filter metadata, returning `true` if the corresponding but ommitted value can be used.
+/// A function to filter metadata, returning `true` if the corresponding but omitted value can be used.
 pub type MetadataFilter = dyn FnMut(&'_ Metadata) -> bool;
 
 /// A strongly typed index into some range.
@@ -76,7 +76,7 @@ impl Add<Size> for Index {
     }
 }
 
-/// A stronlgy typed a size.
+/// A strongly typed a size.
 #[derive(PartialEq, Eq, Hash, PartialOrd, Ord, Debug, Clone, Copy)]
 pub(crate) struct Size(pub(crate) usize);
 

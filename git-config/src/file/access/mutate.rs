@@ -1,13 +1,11 @@
-use git_features::threading::OwnShared;
 use std::borrow::Cow;
 
-use crate::file::write::ends_with_newline;
-use crate::file::{MetadataFilter, SectionId};
-use crate::parse::{Event, FrontMatterEvents};
+use git_features::threading::OwnShared;
+
 use crate::{
-    file::{self, rename_section, SectionMut},
+    file::{self, rename_section, write::ends_with_newline, MetadataFilter, SectionId, SectionMut},
     lookup,
-    parse::section,
+    parse::{section, Event, FrontMatterEvents},
     File,
 };
 
@@ -234,12 +232,12 @@ impl<'event> File<'event> {
         Ok(())
     }
 
-    /// Append another File to the end of ourselves, without loosing any information.
+    /// Append another File to the end of ourselves, without losing any information.
     pub fn append(&mut self, other: Self) -> &mut Self {
         self.append_or_insert(other, None)
     }
 
-    /// Append another File to the end of ourselves, without loosing any information.
+    /// Append another File to the end of ourselves, without losing any information.
     pub(crate) fn append_or_insert(&mut self, mut other: Self, mut insert_after: Option<SectionId>) -> &mut Self {
         let nl = self.detect_newline_style_smallvec();
         fn extend_and_assure_newline<'a>(

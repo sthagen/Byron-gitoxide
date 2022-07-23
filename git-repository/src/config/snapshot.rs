@@ -1,8 +1,12 @@
-use crate::bstr::BStr;
-use crate::config::cache::interpolate_context;
-use crate::config::Snapshot;
-use std::borrow::Cow;
-use std::fmt::{Debug, Formatter};
+use std::{
+    borrow::Cow,
+    fmt::{Debug, Formatter},
+};
+
+use crate::{
+    bstr::BStr,
+    config::{cache::interpolate_context, Snapshot},
+};
 
 /// Access configuration values, frozen in time, using a `key` which is a `.` separated string of up to
 /// three tokens, namely `section_name.[subsection_name.]value_name`, like `core.bare` or `remote.origin.url`.
@@ -61,7 +65,7 @@ impl<'repo> Snapshot<'repo> {
 
     /// Return the trusted and fully interpolated path at `key`, or `None` if there is no such value
     /// or if no value was found in a trusted file.
-    /// An error occours if the path could not be interpolated to its final value.
+    /// An error occurs if the path could not be interpolated to its final value.
     pub fn trusted_path(
         &self,
         key: &str,
