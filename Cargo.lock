@@ -1094,8 +1094,8 @@ dependencies = [
  "git-path",
  "git-quote",
  "git-testtools",
- "quick-error",
  "serde",
+ "thiserror",
  "unicode-bom",
 ]
 
@@ -1420,6 +1420,15 @@ dependencies = [
 [[package]]
 name = "git-pathspec"
 version = "0.0.0"
+dependencies = [
+ "bitflags",
+ "bstr",
+ "git-attributes",
+ "git-glob",
+ "git-testtools",
+ "once_cell",
+ "thiserror",
+]
 
 [[package]]
 name = "git-protocol"
@@ -1578,7 +1587,7 @@ dependencies = [
 
 [[package]]
 name = "git-testtools"
-version = "0.7.0"
+version = "0.7.1"
 dependencies = [
  "bstr",
  "crc",
