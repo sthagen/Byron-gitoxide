@@ -180,10 +180,29 @@ pub mod commit {
 
 pub mod revision {
     #[derive(Debug, clap::Subcommand)]
-    #[clap(visible_alias = "rev")]
+    #[clap(visible_alias = "rev", visible_alias = "r")]
     pub enum Subcommands {
         /// Provide the revision specification like `@~1` to explain.
+        #[clap(visible_alias = "e")]
         Explain { spec: std::ffi::OsString },
+        /// Try to resolve the given revspec and print the object names.
+        #[clap(visible_alias = "query", visible_alias = "parse", visible_alias = "p")]
+        Resolve {
+            /// Instead of resolving a rev-spec, explain what would be done for the first spec.
+            ///
+            /// Equivalent to the `explain` subcommand.
+            #[clap(short = 'e', long)]
+            explain: bool,
+            /// Show the first resulting object similar to how `git cat-file` would, but don't show the resolved spec.
+            #[clap(short = 'c', long, conflicts_with = "explain")]
+            cat_file: bool,
+            /// rev-specs like `@`, `@~1` or `HEAD^2`.
+            #[clap(required = true)]
+            specs: Vec<std::ffi::OsString>,
+        },
+        /// Return the names and hashes of all previously checked-out branches.
+        #[clap(visible_alias = "prev")]
+        PreviousBranches,
     }
 }
 
