@@ -232,7 +232,11 @@ Check out the [performance discussion][git-traverse-performance] as well.
 
 ### git-pathspec
 * [x] parse
-* [ ] check for match
+* [ ] matching of paths
+
+### git-refspec
+* [x] parse
+* [ ] matching of references and object names
 
 ### git-note
 
@@ -313,9 +317,9 @@ Make it the best-performing implementation and the most convenient one.
 ### git-revision
 * [x] `describe()` (similar to `git name-rev`)
 * parse specifications 
-    * [ ] parsing and navigation
+    * [x] parsing and navigation
+    * [x] revision ranges
     * [ ] full date parsing support (depends on `git-date`)
-    * [ ] revision ranges
  
 ### git-submodule
 * CRUD for submodules
