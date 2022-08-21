@@ -85,6 +85,8 @@ Please see _'Development Status'_ for a listing of all crates and their capabili
 
 Follow linked crate name for detailed status. Please note that all crates follow [semver] as well as the [stability guide].
 
+[semver]: https://semver.org
+
 ### Production Grade
 
 * **Stability Tier 1**
@@ -349,7 +351,7 @@ Provide a CLI to for the most basic user journey:
 
 ## Shortcomings & Limitations
 
-Please take a look at the [`SHORTCOMINGS.md` file](https://github.com/Byron/gitoxide/blob/main/git-lock/SHORTCOMINGS.md) for details.
+Please take a look at the [`SHORTCOMINGS.md` file](https://github.com/Byron/gitoxide/blob/main/SHORTCOMINGS.md) for details.
   
 ## Credits
 

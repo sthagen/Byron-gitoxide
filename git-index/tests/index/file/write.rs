@@ -104,7 +104,7 @@ fn state_comparisons_with_various_extension_configurations() {
 
 #[test]
 fn extended_flags_automatically_upgrade_the_version_to_avoid_data_loss() -> crate::Result {
-    let mut expected = git_index::File::at(fixture_index_path("V2"), Default::default())?;
+    let mut expected = git_index::File::at(fixture_index_path("v2"), Default::default())?;
     assert_eq!(expected.version(), Version::V2);
     expected.entries_mut()[0].flags.insert(entry::Flags::EXTENDED);
 
