@@ -16,7 +16,7 @@ doctest = false
 serde1 = [ "serde", "git-hash/serde1", "git-object/serde1" ]
 
 [dependencies]
-git-hash = { version = "^0.9.8", path = "../git-hash" }
+git-hash = { version = "^0.9.9", path = "../git-hash" }
 git-object = { version = "^0.20.2", path = "../git-object" }
 git-date = { version = "^0.1.0", path = "../git-date" }
 
@@ -28,7 +28,7 @@ document-features = { version = "0.2.1", optional = true }
 
 [dev-dependencies]
 git-testtools = { path = "../tests/tools" }
-git-repository = { path = "../git-repository", default-features = false, features = ["unstable"] }
+git-repository = { path = "../git-repository", default-features = false }
 
 [package.metadata.docs.rs]
 all-features = true

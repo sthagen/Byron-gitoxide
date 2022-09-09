@@ -6,7 +6,8 @@ use git_ref::file::ReferenceExt;
 use crate::{Id, Reference};
 
 pub mod iter;
-mod remote;
+///
+pub mod remote;
 
 mod errors;
 pub use errors::{edit, find, head_commit, head_id, peel};
@@ -81,3 +82,6 @@ impl<'repo> Reference<'repo> {
         self.peel_to_id_in_place()
     }
 }
+
+mod edits;
+pub use edits::{delete, set_target_id};

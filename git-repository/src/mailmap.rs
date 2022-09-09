@@ -1,4 +1,3 @@
-#[cfg(feature = "git-mailmap")]
 pub use git_mailmap::*;
 
 ///
@@ -14,6 +13,6 @@ pub mod load {
         #[error(transparent)]
         PathInterpolate(#[from] git_config::path::interpolate::Error),
         #[error("Could not find object configured in `mailmap.blob`")]
-        FindExisting(#[from] crate::object::find::existing::OdbError),
+        FindExisting(#[from] crate::object::find::existing::Error),
     }
 }

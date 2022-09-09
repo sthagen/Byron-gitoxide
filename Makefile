@@ -54,7 +54,7 @@ clippy: ## Run cargo clippy on all crates
 	cargo clippy --all --no-default-features --features lean-async --tests
 
 check-msrv: ## run cargo msrv to validate the current msrv requirements, similar to what CI does
-	cd git-repository && cargo check --package git-repository --no-default-features --features async-network-client,unstable,max-performance
+	cd git-repository && cargo check --package git-repository --no-default-features --features async-network-client,max-performance
 
 check: ## Build all code in suitable configurations
 	cargo check --all
@@ -107,6 +107,8 @@ check: ## Build all code in suitable configurations
 			   && cargo check --features cache-efficiency-debug
 	cd git-commitgraph && cargo check --all-features \
 			   && cargo check
+	cd git-config-value && cargo check --all-features \
+				 && cargo check
 	cd git-config && cargo check --all-features \
 				 && cargo check
 	cd git-transport && cargo check \
@@ -119,12 +121,10 @@ check: ## Build all code in suitable configurations
 					&& cargo check --features blocking-client \
 					&& cargo check --features async-client
 	cd git-protocol && if cargo check --all-features 2>/dev/null; then false; else true; fi
-	cd git-repository && cargo check --no-default-features --features local \
-					  && cargo check --no-default-features --features async-network-client \
+	cd git-repository && cargo check --no-default-features --features async-network-client \
 					  && cargo check --no-default-features --features async-network-client-async-std \
 					  && cargo check --no-default-features --features blocking-network-client \
 					  && cargo check --no-default-features --features blocking-network-client,blocking-http-transport \
-					  && cargo check --no-default-features --features one-stop-shop \
 					  && cargo check --no-default-features --features max-performance \
 					  && cargo check --no-default-features --features max-performance-safe \
 					  && cargo check --no-default-features
@@ -282,7 +282,7 @@ bench-git-config:
 check-msrv-on-ci: ## Check the minimal support rust version for currently installed Rust version
 	rustc --version
 	cargo check --package git-repository
-	cargo check --package git-repository --no-default-features --features async-network-client,unstable,max-performance
+	cargo check --package git-repository --no-default-features --features async-network-client,max-performance
 
 ##@ Maintenance
 

@@ -1,13 +1,13 @@
 //! Utilities for testing `gitoxide` crates, many of which might be useful for testing programs that use `git` in general.
 #![deny(missing_docs)]
 
-use std::str::FromStr;
 use std::{
     collections::BTreeMap,
     convert::Infallible,
     ffi::OsString,
     io::Read,
     path::{Path, PathBuf},
+    str::FromStr,
     time::Duration,
 };
 
@@ -66,7 +66,7 @@ static EXCLUDE_LUT: Lazy<Mutex<Option<git_worktree::fs::Cache<'static>>>> = Lazy
     Mutex::new(cache)
 });
 /// The major, minor and patch level of the git version on the system.
-pub static GIT_VERSION: Lazy<(u8, u8, u8)> = Lazy::new(|| parse_git_version().unwrap());
+pub static GIT_VERSION: Lazy<(u8, u8, u8)> = Lazy::new(|| parse_git_version().expect("git version to be parsable"));
 
 /// Define how [scripted_fixture_repo_writable_with_args()] uses produces the writable copy.
 pub enum Creation {
@@ -95,9 +95,12 @@ fn parse_git_version() -> Result<(u8, u8, u8)> {
     let git_program = cfg!(windows).then(|| "git.exe").unwrap_or("git");
     let output = std::process::Command::new(git_program).arg("--version").output()?;
 
-    let mut numbers = output
-        .stdout
-        .split(|b| *b == b' ')
+    git_version_from_bytes(&output.stdout)
+}
+
+fn git_version_from_bytes(bytes: &[u8]) -> Result<(u8, u8, u8)> {
+    let mut numbers = bytes
+        .split(|b| *b == b' ' || *b == b'\n')
         .nth(2)
         .expect("git version <version>")
         .split(|b| *b == b'.')
@@ -105,11 +108,20 @@ fn parse_git_version() -> Result<(u8, u8, u8)> {
         .map(|n| std::str::from_utf8(n).expect("valid utf8 in version number"))
         .map(u8::from_str);
 
-    Ok((
-        numbers.next().expect("major")?,
-        numbers.next().expect("minor")?,
-        numbers.next().expect("patch")?,
-    ))
+    Ok((|| -> Result<_> {
+        Ok((
+            numbers.next().expect("major")?,
+            numbers.next().expect("minor")?,
+            numbers.next().expect("patch")?,
+        ))
+    })()
+    .map_err(|err| {
+        format!(
+            "Could not parse version from output of 'git --version' ({:?}) with error: {}",
+            bytes.to_str_lossy(),
+            err
+        )
+    })?)
 }
 
 /// Run `git` in `working_dir` with all provided `args`.
@@ -235,24 +247,25 @@ fn scripted_fixture_repo_read_only_with_args_inner(
 
     // keep this lock to assure we don't return unfinished directories for threaded callers
     let args: Vec<String> = args.into_iter().map(Into::into).collect();
-    let mut map = SCRIPT_IDENTITY.lock();
-    let script_identity = map
-        .entry(args.iter().fold(script_path.clone(), |p, a| p.join(a)))
-        .or_insert_with(|| {
-            let crc_value = crc::Crc::<u32>::new(&crc::CRC_32_CKSUM);
-            let mut crc_digest = crc_value.digest();
-            crc_digest.update(&std::fs::read(&script_path).unwrap_or_else(|err| {
-                panic!(
-                    "file {script_path:?} in CWD {:?} could not be read: {err}",
-                    std::env::current_dir().expect("valid cwd"),
-                )
-            }));
-            for arg in args.iter() {
-                crc_digest.update(arg.as_bytes());
-            }
-            crc_digest.finalize()
-        })
-        .to_owned();
+    let script_identity = {
+        let mut map = SCRIPT_IDENTITY.lock();
+        map.entry(args.iter().fold(script_path.clone(), |p, a| p.join(a)))
+            .or_insert_with(|| {
+                let crc_value = crc::Crc::<u32>::new(&crc::CRC_32_CKSUM);
+                let mut crc_digest = crc_value.digest();
+                crc_digest.update(&std::fs::read(&script_path).unwrap_or_else(|err| {
+                    panic!(
+                        "file {script_path:?} in CWD {:?} could not be read: {err}",
+                        std::env::current_dir().expect("valid cwd"),
+                    )
+                }));
+                for arg in args.iter() {
+                    crc_digest.update(arg.as_bytes());
+                }
+                crc_digest.finalize()
+            })
+            .to_owned()
+    };
 
     let script_basename = script_location.file_stem().unwrap_or(script_location.as_os_str());
     let archive_file_path = fixture_path(
@@ -305,6 +318,9 @@ fn scripted_fixture_repo_read_only_with_args_inner(
                     .stderr(std::process::Stdio::piped())
                     .current_dir(&script_result_directory)
                     .env_remove("GIT_DIR")
+                    .env_remove("GIT_ASKPASS")
+                    .env_remove("SSH_ASKPASS")
+                    .env("GIT_TERMINAL_PROMPT", "false")
                     .env("GIT_AUTHOR_DATE", "2000-01-01 00:00:00 +0000")
                     .env("GIT_AUTHOR_EMAIL", "author@example.com")
                     .env("GIT_AUTHOR_NAME", "author")
@@ -529,5 +545,24 @@ impl<'a> Drop for Env<'a> {
                 None => std::env::remove_var(var),
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_version() {
+        assert_eq!(git_version_from_bytes(b"git version 2.37.2").unwrap(), (2, 37, 2));
+        assert_eq!(
+            git_version_from_bytes(b"git version 2.32.1 (Apple Git-133)").unwrap(),
+            (2, 32, 1)
+        );
+    }
+
+    #[test]
+    fn parse_version_with_trailing_newline() {
+        assert_eq!(git_version_from_bytes(b"git version 2.37.2\n").unwrap(), (2, 37, 2));
     }
 }

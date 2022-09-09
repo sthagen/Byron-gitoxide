@@ -1,15 +1,19 @@
-use crate::remote::Connection;
-use crate::{Progress, Remote};
 use git_protocol::transport::client::Transport;
 
+use crate::{remote::Connection, Progress, Remote};
+
+#[cfg(any(feature = "blocking-network-client", feature = "async-network-client-async-std"))]
 mod error {
-    use crate::bstr::BString;
-    use crate::remote;
+    use crate::{bstr::BString, remote};
 
     /// The error returned by [connect()][crate::Remote::connect()].
     #[derive(Debug, thiserror::Error)]
     #[allow(missing_docs)]
     pub enum Error {
+        #[error(transparent)]
+        SchemePermission(#[from] remote::url::scheme_permission::init::Error),
+        #[error("Protocol {scheme:?} of url {url:?} is denied per configuration")]
+        ProtocolDenied { url: BString, scheme: git_url::Scheme },
         #[error(transparent)]
         Connect(#[from] git_protocol::transport::client::connect::Error),
         #[error("The {} url was missing - don't know where to establish a connection to", direction.as_str())]
@@ -20,6 +24,7 @@ mod error {
         FileUrl(#[from] git_discover::is_git::Error),
     }
 }
+#[cfg(any(feature = "blocking-network-client", feature = "async-network-client-async-std"))]
 pub use error::Error;
 
 /// Establishing connections to remote hosts
@@ -35,6 +40,7 @@ impl<'repo> Remote<'repo> {
     {
         Connection {
             remote: self,
+            credentials: None,
             transport,
             progress,
         }
@@ -69,7 +75,7 @@ impl<'repo> Remote<'repo> {
             Ok(url)
         }
 
-        let protocol = self
+        let version = self
             .repo
             .config
             .resolved
@@ -89,7 +95,13 @@ impl<'repo> Remote<'repo> {
             })?;
 
         let url = self.url(direction).ok_or(Error::MissingUrl { direction })?.to_owned();
-        let transport = git_protocol::transport::connect(sanitize(url)?, protocol).await?;
+        if !self.repo.config.url_scheme()?.allow(&url.scheme) {
+            return Err(Error::ProtocolDenied {
+                url: url.to_bstring(),
+                scheme: url.scheme,
+            });
+        }
+        let transport = git_protocol::transport::connect(sanitize(url)?, version).await?;
         Ok(self.to_connection_with_transport(transport, progress))
     }
 }

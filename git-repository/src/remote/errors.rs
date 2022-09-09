@@ -1,7 +1,6 @@
 ///
 pub mod find {
-    use crate::bstr::BString;
-    use crate::remote;
+    use crate::{bstr::BString, remote};
 
     /// The error returned by [`Repository::find_remote(…)`][crate::Repository::find_remote()].
     #[derive(Debug, thiserror::Error)]
@@ -33,6 +32,8 @@ pub mod find {
         pub enum Error {
             #[error(transparent)]
             Find(#[from] super::Error),
+            #[error("remote name could not be parsed as URL")]
+            UrlParse(#[from] git_url::parse::Error),
             #[error("The remote named {name:?} did not exist")]
             NotFound { name: String },
         }

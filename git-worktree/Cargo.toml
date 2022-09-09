@@ -30,12 +30,12 @@ internal-testing-to-avoid-being-run-by-cargo-test-all = []
 
 [dependencies]
 git-index = { version = "^0.4.3", path = "../git-index" }
-git-hash = { version = "^0.9.8", path = "../git-hash" }
+git-hash = { version = "^0.9.9", path = "../git-hash" }
 git-object = { version = "^0.20.2", path = "../git-object" }
 git-glob = { version = "^0.3.2", path = "../git-glob" }
-git-path = { version = "^0.4.1", path = "../git-path" }
+git-path = { version = "^0.4.2", path = "../git-path" }
 git-attributes = { version = "^0.3.3", path = "../git-attributes" }
-git-features = { version = "^0.22.3", path = "../git-features" }
+git-features = { version = "^0.22.4", path = "../git-features" }
 
 serde = { version = "1.0.114", optional = true, default-features = false, features = ["derive"]}
 

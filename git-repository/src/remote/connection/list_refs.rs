@@ -1,7 +1,7 @@
-use crate::remote::connection::HandshakeWithRefs;
-use crate::remote::{Connection, Direction};
 use git_features::progress::Progress;
 use git_protocol::transport::client::Transport;
+
+use crate::remote::{connection::HandshakeWithRefs, Connection, Direction};
 
 mod error {
     #[derive(Debug, thiserror::Error)]
@@ -33,9 +33,16 @@ where
 
     #[git_protocol::maybe_async::maybe_async]
     async fn fetch_refs(&mut self) -> Result<HandshakeWithRefs, Error> {
+        let mut credentials_storage;
         let mut outcome = git_protocol::fetch::handshake(
             &mut self.transport,
-            git_protocol::credentials::helper,
+            match self.credentials.as_mut() {
+                Some(f) => f,
+                None => {
+                    credentials_storage = Self::configured_credentials();
+                    &mut credentials_storage
+                }
+            },
             Vec::new(),
             &mut self.progress,
         )

@@ -1,7 +1,7 @@
-use git_repository as git;
-use git_repository::bstr::BString;
 use std::path::PathBuf;
 
+use git_repository as git;
+use git_repository::bstr::BString;
 use gitoxide_core as core;
 
 #[derive(Debug, clap::Parser)]
@@ -78,6 +78,9 @@ pub enum Subcommands {
     /// Query and obtain information about revisions.
     #[clap(subcommand)]
     Revision(revision::Subcommands),
+    /// A program just like `git credential`.
+    #[clap(subcommand)]
+    Credential(credential::Subcommands),
     /// Interact with the mailmap.
     #[clap(subcommand)]
     Mailmap(mailmap::Subcommands),
@@ -218,10 +221,28 @@ pub mod commit {
     }
 }
 
+pub mod credential {
+    #[derive(Debug, clap::Subcommand)]
+    pub enum Subcommands {
+        /// Get the credentials fed for `url=<url>` via STDIN.
+        #[clap(visible_alias = "get")]
+        Fill,
+        /// Approve the information piped via STDIN as obtained with last call to `fill`
+        #[clap(visible_alias = "store")]
+        Approve,
+        /// Try to resolve the given revspec and print the object names.
+        #[clap(visible_alias = "erase")]
+        Reject,
+    }
+}
+
 pub mod revision {
     #[derive(Debug, clap::Subcommand)]
     #[clap(visible_alias = "rev", visible_alias = "r")]
     pub enum Subcommands {
+        /// List all commits reachable from the given rev-spec.
+        #[clap(visible_alias = "l")]
+        List { spec: std::ffi::OsString },
         /// Provide the revision specification like `@~1` to explain.
         #[clap(visible_alias = "e")]
         Explain { spec: std::ffi::OsString },

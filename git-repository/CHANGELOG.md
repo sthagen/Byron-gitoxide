@@ -5,16 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.22.1 (2022-08-24)
+## 0.23.1 (2022-09-01)
 
-A maintenance release without user facing changes.
+### Bug Fixes
+
+ - <csr-id-d18e76cfb512ef7fe5bfee6e87726372c6a4a8b6/> `max-performance-safe` mode does not include zlib-ng adjustments anymore.
+   git2 cannot handle this and fails to fetch packs after a couple of
+   seconds.
+   
+   It's unclear what is causing this except that git2 doesn't like libz
+   with zlibng support enabled, which happens if git2 in the
+   same tree is with us.
+ - Transitively through a kindly contributed fix in the `git-discover` crate, `Respository` can now be opened on `exFat` volumes.
 
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
  - 2 commits contributed to the release.
- - 0 commits where understood as [conventional](https://www.conventionalcommits.org).
+ - 3 days passed between releases.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' where seen in commit messages
 
 ### Commit Details
@@ -24,6 +34,84 @@ A maintenance release without user facing changes.
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - prepare changelog  prior to release ([`fc6b958`](https://github.com/Byron/gitoxide/commit/fc6b9583d0534f70e0c8afdcad46e09a5001d62b))
+    - `max-performance-safe` mode does not include zlib-ng adjustments anymore. ([`d18e76c`](https://github.com/Byron/gitoxide/commit/d18e76cfb512ef7fe5bfee6e87726372c6a4a8b6))
+</details>
+
+## 0.23.0 (2022-08-28)
+
+### New Features
+
+ - <csr-id-70aa850591de268488ae9bf2d3839a5c9c543c35/> The empty tree can always be returned by `Repository::(try_)find_object()`
+   This matches the behaviour of git and libgit2.
+   We conciously chose to only do this on the highest level, allowing lower
+   levels to determine if the object exists or not.
+ - <csr-id-8d0786646e17a82d20ca6b2799b54f6349d389f4/> Make `find::object::*::Error` publicly available.
+ - <csr-id-2d0b63997b276a53b3cf8f09fac51f8e3f044bcd/> Add `Reference::delete()` for simple reference deletion
+ - <csr-id-9170562059c3eaa529850025ef35ac5ffffc0fdf/> `Reference::set_target_id()` to easily set the target id of a reference
+ - <csr-id-950da602925e6376b08640ed3ebfdf407394db34/> `Reference::head_ref()` to quickly access the reference the head points to.
+
+### Bug Fixes
+
+ - <csr-id-2834311b4f262c57e76627addaa4932196fd26b3/> `Commit::tree_id()` now returns a connected id
+
+### New Features (BREAKING)
+
+ - <csr-id-e090f843f5cffc8e8e47a8cac2e6fb98e4c47771/> `git-diff` is now included by default as part of core functionality
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 14 commits contributed to the release over the course of 1 calendar day.
+ - 4 days passed between releases.
+ - 7 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 1 unique issue was worked on: [#XXX](https://github.com/Byron/gitoxide/issues/XXX)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#XXX](https://github.com/Byron/gitoxide/issues/XXX)**
+    - prepare changelogs prior to release ([`8c0bca3`](https://github.com/Byron/gitoxide/commit/8c0bca37ff9fbaadbe55561fb2b0d649980c95b1))
+    - The empty tree can always be returned by `Repository::(try_)find_object()` ([`70aa850`](https://github.com/Byron/gitoxide/commit/70aa850591de268488ae9bf2d3839a5c9c543c35))
+    - Make `find::object::*::Error` publicly available. ([`8d07866`](https://github.com/Byron/gitoxide/commit/8d0786646e17a82d20ca6b2799b54f6349d389f4))
+    - `git-diff` is now included by default as part of core functionality ([`e090f84`](https://github.com/Byron/gitoxide/commit/e090f843f5cffc8e8e47a8cac2e6fb98e4c47771))
+    - `Commit::tree_id()` now returns a connected id ([`2834311`](https://github.com/Byron/gitoxide/commit/2834311b4f262c57e76627addaa4932196fd26b3))
+ * **Uncategorized**
+    - Release git-object v0.20.3, git-ref v0.15.4, git-config v0.7.1, git-diff v0.18.0, git-traverse v0.16.3, git-pack v0.22.0, git-odb v0.32.0, git-url v0.7.3, git-transport v0.19.3, git-protocol v0.19.1, git-refspec v0.1.1, git-repository v0.23.0, safety bump 6 crates ([`85a3bed`](https://github.com/Byron/gitoxide/commit/85a3bedd68d2e5f36592a2f691c977dc55298279))
+    - adjust to changes in `git-diff` ([`54954ee`](https://github.com/Byron/gitoxide/commit/54954ee5022a900f9f97baec63e9a073eca514e9))
+    - fix docs ([`740c658`](https://github.com/Byron/gitoxide/commit/740c658e40eb8533bfb60d29c857f8693e355dba))
+    - refactor ([`5892192`](https://github.com/Byron/gitoxide/commit/5892192cb246185981a11dc7aac96a07a47ed25a))
+    - Add `Reference::delete()` for simple reference deletion ([`2d0b639`](https://github.com/Byron/gitoxide/commit/2d0b63997b276a53b3cf8f09fac51f8e3f044bcd))
+    - `Reference::set_target_id()` to easily set the target id of a reference ([`9170562`](https://github.com/Byron/gitoxide/commit/9170562059c3eaa529850025ef35ac5ffffc0fdf))
+    - `Reference::head_ref()` to quickly access the reference the head points to. ([`950da60`](https://github.com/Byron/gitoxide/commit/950da602925e6376b08640ed3ebfdf407394db34))
+    - Release git-attributes v0.3.3, git-ref v0.15.3, git-index v0.4.3, git-worktree v0.4.3, git-testtools v0.8.0 ([`baad4ce`](https://github.com/Byron/gitoxide/commit/baad4ce51fe0e8c0c1de1b08148d8303878ca37b))
+    - Release git-features v0.22.3, git-revision v0.4.4 ([`c2660e2`](https://github.com/Byron/gitoxide/commit/c2660e2503323531ba02519eaa51124ee22fec51))
+</details>
+
+## 0.22.1 (2022-08-24)
+
+A maintenance release without user facing changes.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 3 commits contributed to the release.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' where seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release git-date v0.1.0, git-actor v0.11.4, git-revision v0.4.3, git-repository v0.22.1, cargo-smart-release v0.11.0, git-commitgraph v0.8.2, gitoxide-core v0.17.0, gitoxide v0.15.0 ([`1fb931a`](https://github.com/Byron/gitoxide/commit/1fb931a7ea59f1cf895a6c1392fd8615b723c743))
     - update changelogs prior to release ([`23cb58f`](https://github.com/Byron/gitoxide/commit/23cb58f02043e0e5027136fd6e8e724c03a2efbe))
     - adjust to new version of git-date ([`b3fe26b`](https://github.com/Byron/gitoxide/commit/b3fe26bf03db7e1babb5ffbc89d71bf9614e3df3))
 </details>
@@ -63,7 +151,7 @@ A maintenance release without user facing changes.
 
  - 44 commits contributed to the release over the course of 4 calendar days.
  - 4 days passed between releases.
- - 8 commits where understood as [conventional](https://www.conventionalcommits.org).
+ - 8 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 2 unique issues were worked on: [#450](https://github.com/Byron/gitoxide/issues/450), [#488](https://github.com/Byron/gitoxide/issues/488)
 
 ### Thanks Clippy
@@ -137,7 +225,7 @@ A maintenance release that speeds up `commit.describe()` performance if `max_can
 
  - 4 commits contributed to the release.
  - 1 day passed between releases.
- - 0 commits where understood as [conventional](https://www.conventionalcommits.org).
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' where seen in commit messages
 
 ### Commit Details
@@ -241,7 +329,7 @@ A maintenance release that speeds up `commit.describe()` performance if `max_can
 
  - 186 commits contributed to the release over the course of 26 calendar days.
  - 26 days passed between releases.
- - 30 commits where understood as [conventional](https://www.conventionalcommits.org).
+ - 30 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 3 unique issues were worked on: [#427](https://github.com/Byron/gitoxide/issues/427), [#450](https://github.com/Byron/gitoxide/issues/450), [#482](https://github.com/Byron/gitoxide/issues/482)
 
 ### Thanks Clippy
@@ -504,7 +592,7 @@ A maintenance release that speeds up `commit.describe()` performance if `max_can
 
  - 101 commits contributed to the release over the course of 38 calendar days.
  - 39 days passed between releases.
- - 16 commits where understood as [conventional](https://www.conventionalcommits.org).
+ - 16 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 2 unique issues were worked on: [#331](https://github.com/Byron/gitoxide/issues/331), [#427](https://github.com/Byron/gitoxide/issues/427)
 
 ### Thanks Clippy
@@ -638,7 +726,7 @@ A maintenance release that speeds up `commit.describe()` performance if `max_can
 
  - 13 commits contributed to the release over the course of 20 calendar days.
  - 20 days passed between releases.
- - 1 commit where understood as [conventional](https://www.conventionalcommits.org).
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' where seen in commit messages
 
 ### Commit Details
@@ -675,7 +763,7 @@ A maintenance release that speeds up `commit.describe()` performance if `max_can
 
  - 3 commits contributed to the release over the course of 1 calendar day.
  - 1 day passed between releases.
- - 1 commit where understood as [conventional](https://www.conventionalcommits.org).
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' where seen in commit messages
 
 ### Commit Details
@@ -704,7 +792,7 @@ A maintenance release that speeds up `commit.describe()` performance if `max_can
 
  - 5 commits contributed to the release over the course of 2 calendar days.
  - 3 days passed between releases.
- - 1 commit where understood as [conventional](https://www.conventionalcommits.org).
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' where seen in commit messages
 
 ### Commit Details
@@ -776,7 +864,7 @@ A maintenance release that speeds up `commit.describe()` performance if `max_can
 
  - 134 commits contributed to the release over the course of 42 calendar days.
  - 43 days passed between releases.
- - 10 commits where understood as [conventional](https://www.conventionalcommits.org).
+ - 10 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 10 unique issues were worked on: [#298](https://github.com/Byron/gitoxide/issues/298), [#301](https://github.com/Byron/gitoxide/issues/301), [#331](https://github.com/Byron/gitoxide/issues/331), [#364](https://github.com/Byron/gitoxide/issues/364), [#382](https://github.com/Byron/gitoxide/issues/382), [#383](https://github.com/Byron/gitoxide/issues/383), [#384](https://github.com/Byron/gitoxide/issues/384), [#386](https://github.com/Byron/gitoxide/issues/386), [#389](https://github.com/Byron/gitoxide/issues/389), [#393](https://github.com/Byron/gitoxide/issues/393)
 
 ### Thanks Clippy
@@ -958,7 +1046,7 @@ A maintenance release that speeds up `commit.describe()` performance if `max_can
 
  - 20 commits contributed to the release.
  - 2 days passed between releases.
- - 2 commits where understood as [conventional](https://www.conventionalcommits.org).
+ - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 1 unique issue was worked on: [#298](https://github.com/Byron/gitoxide/issues/298)
 
 ### Thanks Clippy
@@ -1079,7 +1167,7 @@ A maintenance release that speeds up `commit.describe()` performance if `max_can
 
  - 84 commits contributed to the release over the course of 69 calendar days.
  - 69 days passed between releases.
- - 21 commits where understood as [conventional](https://www.conventionalcommits.org).
+ - 21 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 7 unique issues were worked on: [#293](https://github.com/Byron/gitoxide/issues/293), [#298](https://github.com/Byron/gitoxide/issues/298), [#301](https://github.com/Byron/gitoxide/issues/301), [#329](https://github.com/Byron/gitoxide/issues/329), [#336](https://github.com/Byron/gitoxide/issues/336), [#364](https://github.com/Byron/gitoxide/issues/364), [#366](https://github.com/Byron/gitoxide/issues/366)
 
 ### Thanks Clippy
@@ -1264,7 +1352,7 @@ A maintenance release that speeds up `commit.describe()` performance if `max_can
 
  - 67 commits contributed to the release over the course of 51 calendar days.
  - 55 days passed between releases.
- - 18 commits where understood as [conventional](https://www.conventionalcommits.org).
+ - 18 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 7 unique issues were worked on: [#215](https://github.com/Byron/gitoxide/issues/215), [#266](https://github.com/Byron/gitoxide/issues/266), [#274](https://github.com/Byron/gitoxide/issues/274), [#279](https://github.com/Byron/gitoxide/issues/279), [#287](https://github.com/Byron/gitoxide/issues/287), [#293](https://github.com/Byron/gitoxide/issues/293), [#298](https://github.com/Byron/gitoxide/issues/298)
 
 ### Commit Details
@@ -1401,7 +1489,7 @@ With changes to `git-ref`, what follows is all the adjustments made to simplify 
 
  - 16 commits contributed to the release over the course of 11 calendar days.
  - 12 days passed between releases.
- - 6 commits where understood as [conventional](https://www.conventionalcommits.org).
+ - 6 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 2 unique issues were worked on: [#259](https://github.com/Byron/gitoxide/issues/259), [#263](https://github.com/Byron/gitoxide/issues/263)
 
 ### Thanks Clippy
@@ -1453,7 +1541,7 @@ With changes to `git-ref`, what follows is all the adjustments made to simplify 
 
  - 13 commits contributed to the release over the course of 20 calendar days.
  - 27 days passed between releases.
- - 2 commits where understood as [conventional](https://www.conventionalcommits.org).
+ - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 4 unique issues were worked on: [#241](https://github.com/Byron/gitoxide/issues/241), [#247](https://github.com/Byron/gitoxide/issues/247), [#251](https://github.com/Byron/gitoxide/issues/251), [#254](https://github.com/Byron/gitoxide/issues/254)
 
 ### Commit Details
@@ -1492,7 +1580,7 @@ A maintenance release to properly dealing with previously breaking changes in `g
 
  - 5 commits contributed to the release over the course of 3 calendar days.
  - 3 days passed between releases.
- - 0 commits where understood as [conventional](https://www.conventionalcommits.org).
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 2 unique issues were worked on: [#221](https://github.com/Byron/gitoxide/issues/221), [#222](https://github.com/Byron/gitoxide/issues/222)
 
 ## v0.10.0 (2021-10-15)
@@ -1650,7 +1738,7 @@ A maintenance release to properly dealing with previously breaking changes in `g
 
  - 94 commits contributed to the release over the course of 33 calendar days.
  - 34 days passed between releases.
- - 44 commits where understood as [conventional](https://www.conventionalcommits.org).
+ - 44 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 4 unique issues were worked on: [#164](https://github.com/Byron/gitoxide/issues/164), [#198](https://github.com/Byron/gitoxide/issues/198), [#200](https://github.com/Byron/gitoxide/issues/200), [#67](https://github.com/Byron/gitoxide/issues/67)
 
 ### Thanks Clippy
@@ -1800,7 +1888,7 @@ A maintenance release to properly dealing with previously breaking changes in `g
 
  - 6 commits contributed to the release.
  - 1 day passed between releases.
- - 0 commits where understood as [conventional](https://www.conventionalcommits.org).
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' where seen in commit messages
 
 ### Commit Details
@@ -1846,7 +1934,7 @@ A maintenance release to properly dealing with previously breaking changes in `g
 
  - 7 commits contributed to the release.
  - 1 day passed between releases.
- - 0 commits where understood as [conventional](https://www.conventionalcommits.org).
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' where seen in commit messages
 
 ### Commit Details
@@ -1873,7 +1961,7 @@ A maintenance release to properly dealing with previously breaking changes in `g
 
  - 66 commits contributed to the release over the course of 8 calendar days.
  - 9 days passed between releases.
- - 0 commits where understood as [conventional](https://www.conventionalcommits.org).
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' where seen in commit messages
 
 ### Commit Details
@@ -1961,7 +2049,7 @@ A maintenance release to properly dealing with previously breaking changes in `g
 
  - 2 commits contributed to the release.
  - 1 day passed between releases.
- - 0 commits where understood as [conventional](https://www.conventionalcommits.org).
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' where seen in commit messages
 
 ### Commit Details
@@ -1986,7 +2074,7 @@ A maintenance release to properly dealing with previously breaking changes in `g
 
  - 117 commits contributed to the release over the course of 10 calendar days.
  - 10 days passed between releases.
- - 0 commits where understood as [conventional](https://www.conventionalcommits.org).
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' where seen in commit messages
 
 ### Thanks Clippy
@@ -2129,7 +2217,7 @@ A maintenance release to properly dealing with previously breaking changes in `g
 
  - 20 commits contributed to the release over the course of 1 calendar day.
  - 3 days passed between releases.
- - 0 commits where understood as [conventional](https://www.conventionalcommits.org).
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' where seen in commit messages
 
 ### Thanks Clippy
@@ -2175,7 +2263,7 @@ A maintenance release to properly dealing with previously breaking changes in `g
 
  - 19 commits contributed to the release over the course of 2 calendar days.
  - 2 days passed between releases.
- - 0 commits where understood as [conventional](https://www.conventionalcommits.org).
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' where seen in commit messages
 
 ### Commit Details
@@ -2214,7 +2302,7 @@ A maintenance release to properly dealing with previously breaking changes in `g
 
  - 41 commits contributed to the release over the course of 63 calendar days.
  - 74 days passed between releases.
- - 0 commits where understood as [conventional](https://www.conventionalcommits.org).
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' where seen in commit messages
 
 ### Thanks Clippy
@@ -2281,7 +2369,7 @@ A maintenance release to properly dealing with previously breaking changes in `g
 
  - 31 commits contributed to the release.
  - 49 days passed between releases.
- - 0 commits where understood as [conventional](https://www.conventionalcommits.org).
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' where seen in commit messages
 
 ### Commit Details
@@ -2332,7 +2420,7 @@ A maintenance release to properly dealing with previously breaking changes in `g
 
  - 8 commits contributed to the release over the course of 204 calendar days.
  - 208 days passed between releases.
- - 0 commits where understood as [conventional](https://www.conventionalcommits.org).
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' where seen in commit messages
 
 ### Commit Details
@@ -2360,7 +2448,7 @@ A maintenance release to properly dealing with previously breaking changes in `g
 
  - 2 commits contributed to the release over the course of 28 calendar days.
  - 30 days passed between releases.
- - 0 commits where understood as [conventional](https://www.conventionalcommits.org).
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' where seen in commit messages
 
 ### Commit Details
@@ -2382,7 +2470,7 @@ A maintenance release to properly dealing with previously breaking changes in `g
 
  - 5 commits contributed to the release over the course of 31 calendar days.
  - 31 days passed between releases.
- - 0 commits where understood as [conventional](https://www.conventionalcommits.org).
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' where seen in commit messages
 
 ### Commit Details
@@ -2406,7 +2494,7 @@ A maintenance release to properly dealing with previously breaking changes in `g
 <csr-read-only-do-not-edit/>
 
  - 5 commits contributed to the release over the course of 17 calendar days.
- - 0 commits where understood as [conventional](https://www.conventionalcommits.org).
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' where seen in commit messages
 
 ### Commit Details

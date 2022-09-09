@@ -1,10 +1,12 @@
-use std::borrow::Cow;
-use std::convert::Infallible;
+use std::{
+    borrow::Cow,
+    convert::{Infallible, TryFrom},
+};
 
+pub use bstr;
 use bstr::{BStr, ByteSlice};
 
 use crate::Scheme;
-pub use bstr;
 
 /// The Error returned by [`parse()`]
 #[derive(Debug, thiserror::Error)]
@@ -29,14 +31,8 @@ impl From<Infallible> for Error {
 }
 
 fn str_to_protocol(s: &str) -> Result<Scheme, Error> {
-    Ok(match s {
-        "ssh" => Scheme::Ssh,
-        "file" => Scheme::File,
-        "git" => Scheme::Git,
-        "http" => Scheme::Http,
-        "https" => Scheme::Https,
-        "rad" => Scheme::Radicle,
-        _ => return Err(Error::UnsupportedProtocol { protocol: s.into() }),
+    Scheme::try_from(s).map_err(|invalid| Error::UnsupportedProtocol {
+        protocol: invalid.into(),
     })
 }
 

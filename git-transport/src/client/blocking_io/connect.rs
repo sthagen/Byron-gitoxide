@@ -1,9 +1,9 @@
 pub use crate::client::non_io_types::connect::Error;
 
 pub(crate) mod function {
-    use crate::client::non_io_types::connect::Error;
-    use crate::client::Transport;
     use std::convert::TryInto;
+
+    use crate::client::{non_io_types::connect::Error, Transport};
 
     /// A general purpose connector connecting to a repository identified by the given `url`.
     ///
@@ -21,7 +21,7 @@ pub(crate) mod function {
     {
         let mut url = url.try_into().map_err(git_url::parse::Error::from)?;
         Ok(match url.scheme {
-            git_url::Scheme::Radicle => return Err(Error::UnsupportedScheme(url.scheme)),
+            git_url::Scheme::Ext(_) => return Err(Error::UnsupportedScheme(url.scheme)),
             git_url::Scheme::File => {
                 if url.user().is_some() || url.host().is_some() || url.port.is_some() {
                     return Err(Error::UnsupportedUrlTokens {

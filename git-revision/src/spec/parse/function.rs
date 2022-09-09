@@ -1,4 +1,4 @@
-use std::{convert::TryInto, str::FromStr};
+use std::{convert::TryInto, str::FromStr, time::SystemTime};
 
 use bstr::{BStr, BString, ByteSlice, ByteVec};
 
@@ -434,9 +434,16 @@ where
             } else if has_ref_or_implied_name {
                 let time = nav
                     .to_str()
-                    .ok()
-                    .and_then(git_date::parse)
-                    .ok_or_else(|| Error::Time { input: nav.into() })?;
+                    .map_err(|_| Error::Time {
+                        input: nav.into(),
+                        source: None,
+                    })
+                    .and_then(|date| {
+                        git_date::parse(date, Some(SystemTime::now())).map_err(|err| Error::Time {
+                            input: nav.into(),
+                            source: err.into(),
+                        })
+                    })?;
                 delegate
                     .reflog(delegate::ReflogLookup::Date(time))
                     .ok_or(Error::Delegate)?;
