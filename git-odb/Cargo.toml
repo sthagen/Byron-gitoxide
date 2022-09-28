@@ -1,6 +1,6 @@
 [package]
 name = "git-odb"
-version = "0.32.0"
+version = "0.33.0"
 repository = "https://github.com/Byron/gitoxide"
 authors = ["Sebastian Thiel <sebastian.thiel@icloud.com>"]
 license = "MIT/Apache-2.0"
@@ -27,12 +27,12 @@ path = "tests/odb-single-threaded.rs"
 required-features = []
 
 [dependencies]
-git-features = { version = "^0.22.4", path = "../git-features", features = ["rustsha1", "walkdir", "zlib", "crc32" ] }
-git-hash = { version = "^0.9.9", path = "../git-hash" }
-git-path = { version = "^0.4.2", path = "../git-path" }
-git-quote = { version = "^0.2.1", path = "../git-quote" }
-git-object = { version = "^0.20.3", path = "../git-object" }
-git-pack = { version = "^0.22.0", path = "../git-pack" }
+git-features = { version = "^0.22.6", path = "../git-features", features = ["rustsha1", "walkdir", "zlib", "crc32" ] }
+git-hash = { version = "^0.9.10", path = "../git-hash" }
+git-path = { version = "^0.5.0", path = "../git-path" }
+git-quote = { version = "^0.3.0", path = "../git-quote" }
+git-object = { version = "^0.21.0", path = "../git-object" }
+git-pack = { version = "^0.23.0", path = "../git-pack" }
 serde = { version = "1.0.114", optional = true, default-features = false, features = ["derive"]}
 
 tempfile = "3.1.0"
@@ -48,6 +48,8 @@ git-actor = { path = "../git-actor" }
 pretty_assertions = "1.0.0"
 filetime = "0.2.15"
 maplit = "1.0.2"
+num_cpus = "1.13.1"
+crossbeam-channel = "0.5.6"
 
 [package.metadata.docs.rs]
 features = ["document-features", "serde1"]

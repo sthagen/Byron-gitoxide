@@ -48,6 +48,7 @@ Please see _'Development Status'_ for a listing of all crates and their capabili
         * [x] **previous-branches** - list all previously checked out branches, powered by the ref-log.
     * **remote**    
         * [x] **refs** - list all references available on the remote based on the current remote configuration.
+        * [x] **ref-map** - show how remote references relate to their local tracking branches as mapped by refspecs.
     * **credential**
         * [x] **fill/approve/reject** - The same as `git credential`, but implemented in Rust, calling helpers only when from trusted configuration.
     * **free** - no git repository necessary
@@ -142,6 +143,7 @@ is usable to some extend.
   * [git-revision](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-revision)
   * [git-command](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-command)
   * [git-prompt](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-prompt)
+  * [git-refspec](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-refspec)
   * `gitoxide-core`
 * **very early**  _(possibly without any documentation and many rough edges)_
   * [git-worktree](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-worktree)
@@ -165,12 +167,6 @@ is usable to some extend.
   * [x] Generate and verify large commit graphs
   * [ ] Generate huge pack from a lot of loose objects
   
-### Cargo features
-
-Many crates use feature flags to allow tuning the compiled result based on your needs. Have a [look at the guide][cargo-features] for more information.
-
-[cargo-features]: https://github.com/Byron/gitoxide/blob/main/cargo-features.md#git-config
-
 ### Stability and MSRV
 
 Our [stability guide] helps to judge how much churn can be expected when depending on crates in this workspace.

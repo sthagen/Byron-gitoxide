@@ -48,9 +48,12 @@ mod single {
 }
 
 mod multiple {
+    use git_refspec::{
+        match_group::validate::Fix,
+        parse::{Error, Operation},
+    };
+
     use crate::matching::baseline;
-    use git_refspec::match_group::validate::Fix;
-    use git_refspec::parse::Error;
 
     #[test]
     fn fetch_only() {
@@ -160,20 +163,21 @@ mod multiple {
     #[test]
     fn fetch_and_update_with_fixes() {
         let glob_spec = "refs/heads/f*:foo/f*";
+        let glob_spec_ref = git_refspec::parse(glob_spec.into(), Operation::Fetch).unwrap();
         baseline::agrees_and_applies_fixes(
             [glob_spec, "f1:f1"],
             [
                 Fix::MappingWithPartialDestinationRemoved {
                     name: "foo/f1".into(),
-                    spec: glob_spec.into(),
+                    spec: glob_spec_ref,
                 },
                 Fix::MappingWithPartialDestinationRemoved {
                     name: "foo/f2".into(),
-                    spec: glob_spec.into(),
+                    spec: glob_spec_ref,
                 },
                 Fix::MappingWithPartialDestinationRemoved {
                     name: "foo/f3".into(),
-                    spec: glob_spec.into(),
+                    spec: glob_spec_ref,
                 },
             ],
             ["refs/heads/f1:refs/heads/f1"],

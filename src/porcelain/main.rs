@@ -38,7 +38,11 @@ pub fn main() -> Result<()> {
         Subcommands::Tool(tool) => match tool {
             crate::porcelain::options::ToolCommands::EstimateHours(crate::porcelain::options::EstimateHours {
                 working_dir,
-                refname,
+                rev_spec,
+                no_bots,
+                threads,
+                file_stats,
+                line_stats,
                 show_pii,
                 omit_unify_identities,
             }) => {
@@ -52,10 +56,14 @@ pub fn main() -> Result<()> {
                     move |progress, out, _err| {
                         hours::estimate(
                             &working_dir,
-                            &refname,
+                            rev_spec.as_ref(),
                             progress,
                             hours::Context {
                                 show_pii,
+                                ignore_bots: no_bots,
+                                threads,
+                                file_stats,
+                                line_stats,
                                 omit_unify_identities,
                                 out,
                             },

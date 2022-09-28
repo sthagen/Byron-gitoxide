@@ -48,12 +48,12 @@ mod access {
     impl Entry {
         /// Return an entry's path, relative to the repository, which is extracted from its owning `state`.
         pub fn path<'a>(&self, state: &'a State) -> &'a BStr {
-            (&state.path_backing[self.path.clone()]).as_bstr()
+            state.path_backing[self.path.clone()].as_bstr()
         }
 
         /// Return an entry's path using the given `backing`.
         pub fn path_in<'backing>(&self, backing: &'backing crate::PathStorageRef) -> &'backing BStr {
-            (backing[self.path.clone()]).as_bstr()
+            backing[self.path.clone()].as_bstr()
         }
 
         /// Return an entry's stage.
@@ -64,9 +64,11 @@ mod access {
 }
 
 mod _impls {
-    use crate::{Entry, State};
-    use bstr::BStr;
     use std::cmp::Ordering;
+
+    use bstr::BStr;
+
+    use crate::{Entry, State};
 
     impl Entry {
         /// Compare one entry to another by their path, by comparing only their common path portion byte by byte, then resorting to

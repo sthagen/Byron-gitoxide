@@ -1,7 +1,6 @@
-use crate::parse::Operation;
-use crate::types::Mode;
-use crate::{MatchGroup, RefSpecRef};
 use std::collections::BTreeSet;
+
+use crate::{parse::Operation, types::Mode, MatchGroup, RefSpecRef};
 
 pub(crate) mod types;
 pub use types::{Item, Mapping, Outcome, Source, SourceRef};
@@ -88,7 +87,7 @@ impl<'a> MatchGroup<'a> {
                             .matches_lhs(Item {
                                 full_ref_name: name,
                                 target: &null_id,
-                                tag: None,
+                                object: None,
                             })
                             .0
                     }
@@ -99,11 +98,6 @@ impl<'a> MatchGroup<'a> {
             group: self,
             mappings: out,
         }
-    }
-
-    /// Return the spec that produced the given `mapping`.
-    pub fn spec_by_mapping(&self, mapping: &Mapping<'_, '_>) -> RefSpecRef<'a> {
-        self.specs[mapping.spec_index]
     }
 }
 

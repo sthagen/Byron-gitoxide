@@ -1,5 +1,6 @@
-use crate::{entry, extension, Entry, PathStorage, State, Version};
 use bstr::{BStr, ByteSlice};
+
+use crate::{entry, extension, Entry, PathStorage, State, Version};
 
 /// General information and entries
 impl State {
@@ -55,7 +56,7 @@ impl State {
     pub fn entries_mut_with_paths(&mut self) -> impl Iterator<Item = (&mut Entry, &BStr)> {
         let paths = &self.path_backing;
         self.entries.iter_mut().map(move |e| {
-            let path = (&paths[e.path.clone()]).as_bstr();
+            let path = paths[e.path.clone()].as_bstr();
             (e, path)
         })
     }
@@ -66,7 +67,7 @@ impl State {
         backing: &'backing PathStorage,
     ) -> impl Iterator<Item = (&'state mut Entry, &'backing BStr)> {
         self.entries.iter_mut().map(move |e| {
-            let path = (&backing[e.path.clone()]).as_bstr();
+            let path = backing[e.path.clone()].as_bstr();
             (e, path)
         })
     }
