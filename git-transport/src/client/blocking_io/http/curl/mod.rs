@@ -1,5 +1,5 @@
-use std::error::Error;
 use std::{
+    error::Error,
     sync::mpsc::{Receiver, SyncSender},
     thread,
 };
@@ -81,7 +81,7 @@ impl Default for Curl {
 }
 
 #[allow(clippy::type_complexity)]
-impl crate::client::http::Http for Curl {
+impl http::Http for Curl {
     type Headers = io::pipe::Reader;
     type ResponseBody = io::pipe::Reader;
     type PostBody = io::pipe::Writer;

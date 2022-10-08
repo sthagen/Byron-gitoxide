@@ -1,12 +1,13 @@
 #[cfg(feature = "blocking-network-client")]
 mod blocking_io {
-    use crate::remote;
+    use std::sync::atomic::AtomicBool;
+
     use git_features::progress;
     use git_repository as git;
-    use git_repository::remote::fetch;
-    use git_repository::remote::Direction::Fetch;
+    use git_repository::remote::{fetch, Direction::Fetch};
     use git_testtools::hex_to_id;
-    use std::sync::atomic::AtomicBool;
+
+    use crate::remote;
 
     fn repo_rw(name: &str) -> (git::Repository, git_testtools::tempfile::TempDir) {
         let dir = git_testtools::scripted_fixture_repo_writable_with_args(
@@ -22,11 +23,39 @@ mod blocking_io {
     }
 
     #[test]
+    fn fetch_empty_pack() -> crate::Result {
+        let (repo, _tmp) = repo_rw("two-origins");
+        let mut remote = repo.head()?.into_remote(Fetch).expect("present")?;
+        remote.replace_refspecs(Some("HEAD:refs/remotes/origin/does-not-exist"), Fetch)?;
+
+        let res: git::remote::fetch::Outcome<'_> = remote
+            .connect(Fetch, git::progress::Discard)?
+            .prepare_fetch(Default::default())?
+            .receive(&AtomicBool::default())?;
+
+        match res.status {
+            git::remote::fetch::Status::Change {write_pack_bundle, ..} => {
+                assert_eq!(write_pack_bundle.index.data_hash, hex_to_id("029d08823bd8a8eab510ad6ac75c823cfd3ed31e"));
+                assert_eq!(write_pack_bundle.index.num_objects, 0, "empty pack")},
+            _ => unreachable!("Naive negotiation sends the same have and wants, resulting in an empty pack (technically no change, but we don't detect it) - empty packs are fine")
+        }
+        Ok(())
+    }
+
+    #[test]
     fn fetch_pack() -> crate::Result {
-        for version in [
-            None,
-            Some(git::protocol::transport::Protocol::V2),
-            Some(git::protocol::transport::Protocol::V1),
+        for (version, expected_objects, expected_hash) in [
+            (None, 4, "d07c527cf14e524a8494ce6d5d08e28079f5c6ea"),
+            (
+                Some(git::protocol::transport::Protocol::V2),
+                4,
+                "d07c527cf14e524a8494ce6d5d08e28079f5c6ea",
+            ),
+            (
+                Some(git::protocol::transport::Protocol::V1),
+                3,
+                "c75114f60ab2c9389916f3de1082bbaa47491e3b",
+            ),
         ] {
             let (mut repo, _tmp) = repo_rw("two-origins");
             if let Some(version) = version {
@@ -67,17 +96,14 @@ mod blocking_io {
                         write_pack_bundle,
                         update_refs,
                     } => {
-                        assert_eq!(write_pack_bundle.pack_kind, git::odb::pack::data::Version::V2);
+                        assert_eq!(write_pack_bundle.pack_version, git::odb::pack::data::Version::V2);
                         assert_eq!(write_pack_bundle.object_hash, repo.object_hash());
-                        assert_eq!(write_pack_bundle.index.num_objects, 3, "this value is 4 when git does it with 'consecutive' negotiation style, but could be 33 if completely naive.");
+                        assert_eq!(write_pack_bundle.index.num_objects, expected_objects, "this value is 4 when git does it with 'consecutive' negotiation style, but could be 33 if completely naive.");
                         assert_eq!(
                             write_pack_bundle.index.index_version,
                             git::odb::pack::index::Version::V2
                         );
-                        assert_eq!(
-                            write_pack_bundle.index.index_hash,
-                            hex_to_id("c75114f60ab2c9389916f3de1082bbaa47491e3b")
-                        );
+                        assert_eq!(write_pack_bundle.index.index_hash, hex_to_id(expected_hash));
                         assert!(write_pack_bundle.data_path.map_or(false, |f| f.is_file()));
                         assert!(write_pack_bundle.index_path.map_or(false, |f| f.is_file()));
 
