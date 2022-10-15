@@ -50,12 +50,8 @@ pub fn collect(repo: &git::Repository) -> anyhow::Result<Option<commit::History>
             let (message, tree_id, commit_time, parent_commit_id) = {
                 let object = commit_id.object()?;
                 let commit = object.to_commit_ref();
-                (
-                    commit.message.to_vec(),
-                    commit.tree(),
-                    commit.committer.time,
-                    commit.parents().last(),
-                )
+                let parent = commit.parents().next();
+                (commit.message.to_vec(), commit.tree(), commit.committer.time, parent)
             };
             (
                 message,
@@ -245,7 +241,7 @@ fn add_item_if_package_changed<'a>(
             };
             match (current, parent) {
                 (Some(current), Some(parent)) => {
-                    if current.oid != parent.oid {
+                    if current.oid() != parent.oid() {
                         history.push(item)
                     }
                 }
