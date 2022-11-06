@@ -327,11 +327,13 @@ fn scripted_fixture_repo_read_only_with_args_inner(
                     .env("GIT_COMMITTER_DATE", "2000-01-02 00:00:00 +0000")
                     .env("GIT_COMMITTER_EMAIL", "committer@example.com")
                     .env("GIT_COMMITTER_NAME", "committer")
-                    .env("GIT_CONFIG_COUNT", "2")
+                    .env("GIT_CONFIG_COUNT", "3")
                     .env("GIT_CONFIG_KEY_0", "commit.gpgsign")
                     .env("GIT_CONFIG_VALUE_0", "false")
                     .env("GIT_CONFIG_KEY_1", "init.defaultBranch")
                     .env("GIT_CONFIG_VALUE_1", "main")
+                    .env("GIT_CONFIG_KEY_2", "protocol.file.allow")
+                    .env("GIT_CONFIG_VALUE_2", "always")
                     .output()?;
                 if !output.status.success() {
                     write_failure_marker(&failure_marker);
@@ -355,7 +357,7 @@ fn scripted_fixture_repo_read_only_with_args_inner(
 }
 
 fn write_failure_marker(failure_marker: &Path) {
-    std::fs::write(failure_marker, &[]).ok();
+    std::fs::write(failure_marker, []).ok();
 }
 
 /// The `script_identity` will be baked into the soon to be created `archive` as it identitifies the script
@@ -490,7 +492,7 @@ fn extract_archive(
         if path.to_str() == Some(META_DIR_NAME) || path.parent().and_then(|p| p.to_str()) == Some(META_DIR_NAME) {
             continue;
         }
-        entry.unpack_in(&destination_dir)?;
+        entry.unpack_in(destination_dir)?;
     }
     Ok((archive_identity, platform))
 }

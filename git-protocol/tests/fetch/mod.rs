@@ -11,6 +11,7 @@ type Cursor = std::io::Cursor<Vec<u8>>;
 #[cfg(feature = "async-client")]
 type Cursor = futures_lite::io::Cursor<Vec<u8>>;
 
+#[allow(clippy::result_large_err)]
 fn helper_unused(_action: git_credentials::helper::Action) -> git_credentials::protocol::Result {
     panic!("Call to credentials helper is unexpected")
 }
@@ -41,7 +42,9 @@ impl fetch::DelegateBlocking for CloneDelegate {
         _previous_response: Option<&Response>,
     ) -> io::Result<Action> {
         for r in refs {
-            arguments.want(r.unpack().1);
+            if let Some(id) = r.unpack().1 {
+                arguments.want(id);
+            }
         }
         Ok(Action::Cancel)
     }

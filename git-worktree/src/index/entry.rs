@@ -19,7 +19,7 @@ pub fn checkout<Find, E>(
     entry_path: &BStr,
     Context { find, path_cache, buf }: Context<'_, '_, Find>,
     index::checkout::Options {
-        fs: crate::fs::Capabilities {
+        fs: fs::Capabilities {
             symlink,
             executable_bit,
             ..
@@ -65,9 +65,9 @@ where
             #[cfg(unix)]
             if needs_executable_bit && !destination_is_initially_empty {
                 use std::os::unix::fs::PermissionsExt;
-                let mut perm = std::fs::symlink_metadata(&dest)?.permissions();
+                let mut perm = std::fs::symlink_metadata(dest)?.permissions();
                 perm.set_mode(0o777);
-                std::fs::set_permissions(&dest, perm)?;
+                std::fs::set_permissions(dest, perm)?;
             }
             // NOTE: we don't call `file.sync_all()` here knowing that some filesystems don't handle this well.
             //       revisit this once there is a bug to fix.
@@ -85,18 +85,16 @@ where
                 .map_err(|_| index::checkout::Error::IllformedUtf8 { path: obj.data.into() })?;
 
             if symlink {
-                try_write_or_unlink(dest, overwrite_existing, |p| {
-                    crate::os::create_symlink(symlink_destination, p)
-                })?;
+                try_write_or_unlink(dest, overwrite_existing, |p| os::create_symlink(symlink_destination, p))?;
             } else {
                 let mut file = try_write_or_unlink(dest, overwrite_existing, |p| {
-                    open_options(p, destination_is_initially_empty, overwrite_existing).open(&dest)
+                    open_options(p, destination_is_initially_empty, overwrite_existing).open(dest)
                 })?;
                 file.write_all(obj.data)?;
                 file.close()?;
             }
 
-            update_fstat(entry, std::fs::symlink_metadata(&dest)?)?;
+            update_fstat(entry, std::fs::symlink_metadata(dest)?)?;
             obj.data.len()
         }
         git_index::entry::Mode::DIR => todo!(),

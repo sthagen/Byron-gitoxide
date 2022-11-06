@@ -61,6 +61,7 @@ pub struct Entry {
 }
 
 /// An index file whose state was read from a file on disk.
+#[derive(Clone)]
 pub struct File {
     /// The state containing the actual index data.
     pub(crate) state: State,
@@ -96,7 +97,6 @@ pub struct State {
     /// A memory area keeping all index paths, in full length, independently of the index version.
     path_backing: PathStorage,
     /// True if one entry in the index has a special marker mode
-    #[allow(dead_code)]
     is_sparse: bool,
 
     // Extensions
