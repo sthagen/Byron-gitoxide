@@ -332,11 +332,16 @@ Accept: application/x-git-upload-pack-result
 
 #[test]
 fn handshake_and_lsrefs_and_fetch_v2() -> crate::Result {
-    let (server, mut c) = mock::serve_and_connect(
-        "v2/http-handshake.response",
-        "path/not/important/due/to/mock",
-        Protocol::V2,
-    )?;
+    handshake_and_lsrefs_and_fetch_v2_impl("v2/http-handshake.response")
+}
+
+#[test]
+fn handshake_and_lsrefs_and_fetch_v2_service_announced() -> crate::Result {
+    handshake_and_lsrefs_and_fetch_v2_impl("v2/http-handshake-service-announced.response")
+}
+
+fn handshake_and_lsrefs_and_fetch_v2_impl(handshake_fixture: &str) -> crate::Result {
+    let (server, mut c) = mock::serve_and_connect(handshake_fixture, "path/not/important/due/to/mock", Protocol::V2)?;
     assert!(
         !c.connection_persists_across_multiple_requests(),
         "http connections are never stateful"

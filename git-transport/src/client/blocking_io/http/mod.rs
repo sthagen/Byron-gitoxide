@@ -226,17 +226,26 @@ impl<H: Http> client::Transport for Transport<H> {
             .line_provider
             .get_or_insert_with(|| git_packetline::StreamingPeekableIter::new(body, &[PacketLineRef::Flush]));
 
-        let mut announced_service = String::new();
-        line_reader.as_read().read_to_string(&mut announced_service)?;
-        let expected_service_announcement = format!("# service={}", service.as_str());
-        if announced_service.trim() != expected_service_announcement {
-            return Err(client::Error::Http(Error::Detail {
-                description: format!(
-                    "Expected to see {:?}, but got {:?}",
-                    expected_service_announcement,
-                    announced_service.trim()
-                ),
-            }));
+        // the service announcement is only sent sometimes depending on the exact server/proctol version/used protocol (http?)
+        // eat the announcement when its there to avoid errors later (and check that the correct service was announced).
+        // Ignore the announcement otherwise.
+        let line_ = line_reader
+            .peek_line()
+            .ok_or(client::Error::ExpectedLine("capabilities, version or service"))???;
+        let line = line_.as_text().ok_or(client::Error::ExpectedLine("text"))?;
+
+        if let Some(announced_service) = line.as_bstr().strip_prefix(b"# service=") {
+            if announced_service != service.as_str().as_bytes() {
+                return Err(client::Error::Http(Error::Detail {
+                    description: format!(
+                        "Expected to see service {:?}, but got {:?}",
+                        service.as_str(),
+                        announced_service
+                    ),
+                }));
+            }
+
+            line_reader.as_read().read_to_end(&mut Vec::new())?;
         }
 
         let capabilities::recv::Outcome {

@@ -133,14 +133,8 @@ impl Capabilities {
 /// internal use
 #[cfg(any(feature = "blocking-client", feature = "async-client"))]
 impl Capabilities {
-    fn extract_protocol<'a>(
-        capabilities_or_version: &'a git_packetline::PacketLineRef<'_>,
-    ) -> Result<(git_packetline::TextRef<'a>, Protocol), client::Error> {
-        let first_line = capabilities_or_version
-            .as_text()
-            .ok_or(client::Error::ExpectedLine("text"))?;
-
-        let line = first_line.as_bstr();
+    fn extract_protocol(capabilities_or_version: git_packetline::TextRef<'_>) -> Result<Protocol, client::Error> {
+        let line = capabilities_or_version.as_bstr();
         let version = if line.starts_with_str("version ") {
             if line.len() != "version X".len() {
                 return Err(client::Error::UnsupportedProtocolVersion(line.as_bstr().into()));
@@ -153,7 +147,7 @@ impl Capabilities {
         } else {
             Protocol::V1
         };
-        Ok((first_line, version))
+        Ok(version)
     }
 }
 
@@ -191,14 +185,15 @@ pub mod recv {
             // format looks like, thus there is no binary blob that could ever look like an ERR line by accident.
             rd.fail_on_err_lines(true);
 
-            let capabilities_or_version = rd
+            let line = rd
                 .peek_line()
                 .ok_or(client::Error::ExpectedLine("capabilities or version"))???;
+            let line = line.as_text().ok_or(client::Error::ExpectedLine("text"))?;
 
-            let (first_line, version) = Capabilities::extract_protocol(&capabilities_or_version)?;
+            let version = Capabilities::extract_protocol(line)?;
             match version {
                 Protocol::V1 => {
-                    let (capabilities, delimiter_position) = Capabilities::from_bytes(first_line.0)?;
+                    let (capabilities, delimiter_position) = Capabilities::from_bytes(line.0)?;
                     rd.peek_buffer_replace_and_truncate(delimiter_position, b'\n');
                     Ok(Outcome {
                         capabilities,
@@ -256,15 +251,16 @@ pub mod recv {
             // format looks like, thus there is no binary blob that could ever look like an ERR line by accident.
             rd.fail_on_err_lines(true);
 
-            let capabilities_or_version = rd
+            let line = rd
                 .peek_line()
                 .await
                 .ok_or(client::Error::ExpectedLine("capabilities or version"))???;
+            let line = line.as_text().ok_or(client::Error::ExpectedLine("text"))?;
 
-            let (first_line, version) = Capabilities::extract_protocol(&capabilities_or_version)?;
+            let version = Capabilities::extract_protocol(line)?;
             match version {
                 Protocol::V1 => {
-                    let (capabilities, delimiter_position) = Capabilities::from_bytes(first_line.0)?;
+                    let (capabilities, delimiter_position) = Capabilities::from_bytes(line.0)?;
                     rd.peek_buffer_replace_and_truncate(delimiter_position, b'\n');
                     Ok(Outcome {
                         capabilities,

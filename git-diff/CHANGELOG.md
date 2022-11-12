@@ -5,18 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.20.0 (2022-10-10)
+## 0.22.0 (2022-11-08)
 
-Maintenance release without user-facing changes.
+### Changed (BREAKING)
+
+ - <csr-id-16b553367518153b8f5b0bb6b23d2fcefcaac801/> re-export the `imara-diff` crate as `git_diff::blob::*`.
+   It's flexible API needs nothing more and can be wrapped into more
+   convenient APIs from higher-level crates.
+   
+   Note that despite being limited to `blob`, technically `imara-diff`
+   can handle diffing any kind of sequence.
+ - <csr-id-68a336502351ce16b804e7c099479bc974c3787c/> remove `text::with(…)` as it's not usable in practice.
+   The only viable API for now, and not a bad one at that, is the one
+   `imara-diff` provides.
 
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 4 commits contributed to the release over the course of 20 calendar days.
- - 20 days passed between releases.
- - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
- - 0 issues like '(#ID)' where seen in commit messages
+ - 6 commits contributed to the release.
+ - 1 day passed between releases.
+ - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
 
 ### Commit Details
 
@@ -25,6 +35,80 @@ Maintenance release without user-facing changes.
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - prepare changelogs prior to release ([`f5f3a9e`](https://github.com/Byron/gitoxide/commit/f5f3a9edd038a89c8c6c4da02054e5439bcc0071))
+    - Merge branch 'fixes-for-crates-index-diff' ([`255be4d`](https://github.com/Byron/gitoxide/commit/255be4ddcd6cbca0a89f286eeecdd19ff70e000f))
+    - re-export the `imara-diff` crate as `git_diff::blob::*`. ([`16b5533`](https://github.com/Byron/gitoxide/commit/16b553367518153b8f5b0bb6b23d2fcefcaac801))
+    - remove `text::with(…)` as it's not usable in practice. ([`68a3365`](https://github.com/Byron/gitoxide/commit/68a336502351ce16b804e7c099479bc974c3787c))
+    - Show how the current API isn't actually working well ([`bd971e7`](https://github.com/Byron/gitoxide/commit/bd971e7aedc30285f183f4470b2fafba9236c6c4))
+    - refactor ([`395a590`](https://github.com/Byron/gitoxide/commit/395a5902b803174e18a53df6079095d25cb2fc8e))
+</details>
+
+## 0.21.0 (2022-11-06)
+
+<csr-id-fed47d45b7e39958921a230b485b5b0384c8672f/>
+
+### Changed (BREAKING)
+
+ - <csr-id-ee26ddfe645ca39024795f85bb8e1cab6b6f5863/> replace `similar` with `imara-diff`.
+   The latter clearly has a more complex call signature, but that also
+   makes it far more powerful which will pay off with better performance.
+
+### Other (BREAKING)
+
+ - <csr-id-fed47d45b7e39958921a230b485b5b0384c8672f/> rename `lines` module to `text`.
+   Thanks to `imara-diff`, diffs can easily abstract over different kinds
+   of tokens, at the expense of a much more complex call signature.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 11 commits contributed to the release over the course of 9 calendar days.
+ - 27 days passed between releases.
+ - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release git-features v0.23.1, git-glob v0.4.1, git-config-value v0.8.1, git-tempfile v2.0.6, git-object v0.22.1, git-ref v0.18.0, git-sec v0.4.2, git-config v0.10.0, git-prompt v0.1.1, git-url v0.10.1, git-credentials v0.6.1, git-diff v0.21.0, git-discover v0.7.0, git-index v0.7.0, git-pack v0.25.0, git-odb v0.35.0, git-transport v0.21.1, git-protocol v0.22.0, git-refspec v0.3.1, git-worktree v0.7.0, git-repository v0.26.0, git-commitgraph v0.10.0, gitoxide-core v0.19.0, gitoxide v0.17.0, safety bump 9 crates ([`d071583`](https://github.com/Byron/gitoxide/commit/d071583c5576fdf5f7717765ffed5681792aa81f))
+    - prepare changelogs prior to release ([`423af90`](https://github.com/Byron/gitoxide/commit/423af90c8202d62dc1ea4a76a0df6421d1f0aa06))
+    - Merge branch 'main' into write-sparse-index (upgrade to Rust 1.65) ([`5406630`](https://github.com/Byron/gitoxide/commit/5406630466145990b5adbdadb59151036993060d))
+    - Adapt in-memory size check to Rust 1.65 and below ([`1919e8e`](https://github.com/Byron/gitoxide/commit/1919e8ec2f6bca8237a0356972b86f28c18da908))
+    - Merge branch 'main' into write-sparse-index ([`c4e6849`](https://github.com/Byron/gitoxide/commit/c4e68496c368611ebe17c6693d06c8147c28c717))
+    - Merge branch 'gix-clone' ([`def53b3`](https://github.com/Byron/gitoxide/commit/def53b36c3dec26fa78939ab0584fe4ff930909c))
+    - adjust docs ([`381924c`](https://github.com/Byron/gitoxide/commit/381924c3fc84277b6f9c4713540f8cda449e8ad2))
+    - Merge branch 'main' into gix-clone ([`fa27570`](https://github.com/Byron/gitoxide/commit/fa27570f491388cce6137af44330d76870d07202))
+    - Merge branch 'imra-diff' ([`f53f942`](https://github.com/Byron/gitoxide/commit/f53f9426f206686b30abd73a201a92b1405e782d))
+    - rename `lines` module to `text`. ([`fed47d4`](https://github.com/Byron/gitoxide/commit/fed47d45b7e39958921a230b485b5b0384c8672f))
+    - replace `similar` with `imara-diff`. ([`ee26ddf`](https://github.com/Byron/gitoxide/commit/ee26ddfe645ca39024795f85bb8e1cab6b6f5863))
+</details>
+
+## 0.20.0 (2022-10-10)
+
+Maintenance release without user-facing changes.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 5 commits contributed to the release over the course of 20 calendar days.
+ - 20 days passed between releases.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release git-hash v0.9.11, git-features v0.23.0, git-actor v0.13.0, git-attributes v0.5.0, git-object v0.22.0, git-ref v0.17.0, git-sec v0.4.1, git-config v0.9.0, git-url v0.10.0, git-credentials v0.6.0, git-diff v0.20.0, git-discover v0.6.0, git-traverse v0.18.0, git-index v0.6.0, git-mailmap v0.5.0, git-pack v0.24.0, git-odb v0.34.0, git-packetline v0.13.1, git-transport v0.21.0, git-protocol v0.21.0, git-revision v0.6.0, git-refspec v0.3.0, git-worktree v0.6.0, git-repository v0.25.0, safety bump 24 crates ([`104d922`](https://github.com/Byron/gitoxide/commit/104d922add61ab21c534c24ce8ed37cddf3e275a))
     - prepare changelogs for release ([`d232567`](https://github.com/Byron/gitoxide/commit/d23256701a95284857dc8d1cb37c7c94cada973c))
     - Merge branch 'main' into new-http-impl ([`702a161`](https://github.com/Byron/gitoxide/commit/702a161ef11fc959611bf44b70e9ffe04561c7ad))
     - make fmt ([`53acf25`](https://github.com/Byron/gitoxide/commit/53acf2565743eff7cead7a42011107b2fc8d7e0e))
@@ -149,7 +233,7 @@ Maintenance release without user-facing changes.
  - 6 commits contributed to the release over the course of 5 calendar days.
  - 6 days passed between releases.
  - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
- - 0 issues like '(#ID)' where seen in commit messages
+ - 0 issues like '(#ID)' were seen in commit messages
 
 ### Commit Details
 
@@ -177,7 +261,7 @@ A maintenance release without user facing changes.
  - 10 commits contributed to the release over the course of 26 calendar days.
  - 26 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
- - 0 issues like '(#ID)' where seen in commit messages
+ - 0 issues like '(#ID)' were seen in commit messages
 
 ### Commit Details
 
@@ -209,7 +293,7 @@ This is a maintenance release with no functional changes.
  - 8 commits contributed to the release over the course of 64 calendar days.
  - 64 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
- - 0 issues like '(#ID)' where seen in commit messages
+ - 0 issues like '(#ID)' were seen in commit messages
 
 ### Commit Details
 
@@ -384,7 +468,7 @@ A maintenance release, triggered by putting too many adjustments into a single c
  - 3 commits contributed to the release.
  - 12 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
- - 0 issues like '(#ID)' where seen in commit messages
+ - 0 issues like '(#ID)' were seen in commit messages
 
 ### Commit Details
 
@@ -506,7 +590,7 @@ version number generation.
  - 2 commits contributed to the release.
  - 1 day passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
- - 0 issues like '(#ID)' where seen in commit messages
+ - 0 issues like '(#ID)' were seen in commit messages
 
 ### Commit Details
 
@@ -528,7 +612,7 @@ version number generation.
  - 4 commits contributed to the release over the course of 1 calendar day.
  - 10 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
- - 0 issues like '(#ID)' where seen in commit messages
+ - 0 issues like '(#ID)' were seen in commit messages
 
 ### Commit Details
 
@@ -552,7 +636,7 @@ version number generation.
  - 6 commits contributed to the release over the course of 1 calendar day.
  - 10 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
- - 0 issues like '(#ID)' where seen in commit messages
+ - 0 issues like '(#ID)' were seen in commit messages
 
 ### Commit Details
 
@@ -578,7 +662,7 @@ version number generation.
  - 2 commits contributed to the release over the course of 1 calendar day.
  - 3 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
- - 0 issues like '(#ID)' where seen in commit messages
+ - 0 issues like '(#ID)' were seen in commit messages
 
 ### Commit Details
 
@@ -599,7 +683,7 @@ version number generation.
 
  - 2 commits contributed to the release.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
- - 0 issues like '(#ID)' where seen in commit messages
+ - 0 issues like '(#ID)' were seen in commit messages
 
 ### Commit Details
 
@@ -621,7 +705,7 @@ version number generation.
  - 4 commits contributed to the release over the course of 1 calendar day.
  - 1 day passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
- - 0 issues like '(#ID)' where seen in commit messages
+ - 0 issues like '(#ID)' were seen in commit messages
 
 ### Commit Details
 
@@ -644,7 +728,7 @@ version number generation.
 
  - 3 commits contributed to the release.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
- - 0 issues like '(#ID)' where seen in commit messages
+ - 0 issues like '(#ID)' were seen in commit messages
 
 ### Commit Details
 
@@ -666,7 +750,7 @@ version number generation.
 
  - 4 commits contributed to the release.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
- - 0 issues like '(#ID)' where seen in commit messages
+ - 0 issues like '(#ID)' were seen in commit messages
 
 ### Commit Details
 
@@ -689,7 +773,7 @@ version number generation.
 
  - 2 commits contributed to the release.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
- - 0 issues like '(#ID)' where seen in commit messages
+ - 0 issues like '(#ID)' were seen in commit messages
 
 ### Commit Details
 
@@ -711,7 +795,7 @@ version number generation.
  - 18 commits contributed to the release over the course of 83 calendar days.
  - 93 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
- - 0 issues like '(#ID)' where seen in commit messages
+ - 0 issues like '(#ID)' were seen in commit messages
 
 ### Commit Details
 
@@ -749,7 +833,7 @@ version number generation.
  - 7 commits contributed to the release over the course of 6 calendar days.
  - 6 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
- - 0 issues like '(#ID)' where seen in commit messages
+ - 0 issues like '(#ID)' were seen in commit messages
 
 ### Commit Details
 
@@ -776,7 +860,7 @@ version number generation.
  - 12 commits contributed to the release over the course of 2 calendar days.
  - 2 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
- - 0 issues like '(#ID)' where seen in commit messages
+ - 0 issues like '(#ID)' were seen in commit messages
 
 ### Commit Details
 
@@ -808,7 +892,7 @@ version number generation.
  - 65 commits contributed to the release over the course of 4 calendar days.
  - 4 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
- - 0 issues like '(#ID)' where seen in commit messages
+ - 0 issues like '(#ID)' were seen in commit messages
 
 ### Commit Details
 
@@ -898,7 +982,7 @@ version number generation.
 
  - 1 commit contributed to the release.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
- - 0 issues like '(#ID)' where seen in commit messages
+ - 0 issues like '(#ID)' were seen in commit messages
 
 ### Commit Details
 
