@@ -37,6 +37,21 @@ pub use tempfile;
 /// ```
 pub type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
+/// A wrapper for a running git-daemon process which is killed automatically on drop.
+///
+/// Note that we will swallow any errors, assuming that the test would have failed if the daemon crashed.
+pub struct GitDaemon {
+    child: std::process::Child,
+    /// The base url under which all repositories are hosted, typically `git://127.0.0.1:port`.
+    pub url: String,
+}
+
+impl Drop for GitDaemon {
+    fn drop(&mut self) {
+        self.child.kill().ok();
+    }
+}
+
 static SCRIPT_IDENTITY: Lazy<Mutex<BTreeMap<PathBuf, u32>>> = Lazy::new(|| Mutex::new(BTreeMap::new()));
 static EXCLUDE_LUT: Lazy<Mutex<Option<git_worktree::fs::Cache<'static>>>> = Lazy::new(|| {
     let cache = (|| {
@@ -132,6 +147,46 @@ pub fn run_git(working_dir: &Path, args: &[&str]) -> std::io::Result<std::proces
         .status()
 }
 
+/// Spawn a git daemon process to host all repository at or below `working_dir`.
+pub fn spawn_git_daemon(working_dir: impl AsRef<Path>) -> std::io::Result<GitDaemon> {
+    static EXEC_PATH: Lazy<PathBuf> = Lazy::new(|| {
+        let path = std::process::Command::new("git")
+            .arg("--exec-path")
+            .stderr(std::process::Stdio::null())
+            .output()
+            .expect("can execute `git --exec-path`")
+            .stdout;
+        String::from_utf8(path.trim().into())
+            .expect("no invalid UTF8 in exec-path")
+            .into()
+    });
+    let mut ports: Vec<_> = (9419u16..9419 + 100).collect();
+    fastrand::shuffle(&mut ports);
+    let addr_at = |port| std::net::SocketAddr::from(([127, 0, 0, 1], port));
+    let free_port = {
+        let listener = std::net::TcpListener::bind(ports.into_iter().map(addr_at).collect::<Vec<_>>().as_slice())?;
+        listener.local_addr().expect("listener address is available").port()
+    };
+
+    let child = std::process::Command::new(EXEC_PATH.join(if cfg!(windows) { "git-daemon.exe" } else { "git-daemon" }))
+        .current_dir(working_dir)
+        .args(["--verbose", "--base-path=.", "--export-all", "--user-path"])
+        .arg(format!("--port={free_port}"))
+        .spawn()?;
+
+    let server_addr = addr_at(free_port);
+    for time in git_lock::backoff::Exponential::default_with_random() {
+        std::thread::sleep(time);
+        if std::net::TcpStream::connect(server_addr).is_ok() {
+            break;
+        }
+    }
+    Ok(GitDaemon {
+        child,
+        url: format!("git://{}", server_addr),
+    })
+}
+
 /// Convert a hexadecimal hash into its corresponding `ObjectId` or _panic_.
 pub fn hex_to_id(hex: &str) -> git_hash::ObjectId {
     git_hash::ObjectId::from_hex(hex.as_bytes()).expect("40 bytes hex")
@@ -162,7 +217,7 @@ pub fn fixture_bytes(path: impl AsRef<Path>) -> Vec<u8> {
 /// If a script result doesn't exist, these will be checked first and extracted if present, which they are by default.
 /// This behaviour can be prohibited by setting the `GITOXIDE_TEST_IGNORE_ARCHIVES` to any value.
 ///
-/// To speed CI up, one can add these archives to the repository. It's absoutely recommended to use `git-lfs` for that to
+/// To speed CI up, one can add these archives to the repository. It's absolutely recommended to use `git-lfs` for that to
 /// not bloat the repository size.
 ///
 /// #### Disable Archive Creation
@@ -282,7 +337,7 @@ fn scripted_fixture_repo_read_only_with_args_inner(
 
     let _marker = git_lock::Marker::acquire_to_hold_resource(
         script_basename,
-        git_lock::acquire::Fail::AfterDurationWithBackoff(Duration::from_secs(if cfg!(windows) { 3 * 60 } else { 60 })),
+        git_lock::acquire::Fail::AfterDurationWithBackoff(Duration::from_secs(3 * 60)),
         None,
     )?;
     let failure_marker = script_result_directory.join("_invalid_state_due_to_script_failure_");
@@ -327,13 +382,15 @@ fn scripted_fixture_repo_read_only_with_args_inner(
                     .env("GIT_COMMITTER_DATE", "2000-01-02 00:00:00 +0000")
                     .env("GIT_COMMITTER_EMAIL", "committer@example.com")
                     .env("GIT_COMMITTER_NAME", "committer")
-                    .env("GIT_CONFIG_COUNT", "3")
+                    .env("GIT_CONFIG_COUNT", "4")
                     .env("GIT_CONFIG_KEY_0", "commit.gpgsign")
                     .env("GIT_CONFIG_VALUE_0", "false")
-                    .env("GIT_CONFIG_KEY_1", "init.defaultBranch")
-                    .env("GIT_CONFIG_VALUE_1", "main")
-                    .env("GIT_CONFIG_KEY_2", "protocol.file.allow")
-                    .env("GIT_CONFIG_VALUE_2", "always")
+                    .env("GIT_CONFIG_KEY_1", "tag.gpgsign")
+                    .env("GIT_CONFIG_VALUE_1", "false")
+                    .env("GIT_CONFIG_KEY_2", "init.defaultBranch")
+                    .env("GIT_CONFIG_VALUE_2", "main")
+                    .env("GIT_CONFIG_KEY_3", "protocol.file.allow")
+                    .env("GIT_CONFIG_VALUE_3", "always")
                     .output()?;
                 if !output.status.success() {
                     write_failure_marker(&failure_marker);
@@ -360,6 +417,16 @@ fn write_failure_marker(failure_marker: &Path) {
     std::fs::write(failure_marker, []).ok();
 }
 
+fn is_lfs_pointer_file(path: &Path) -> bool {
+    const PREFIX: &[u8] = b"version https://git-lfs";
+    let mut buf = [0_u8; PREFIX.len()];
+    std::fs::OpenOptions::new()
+        .read(true)
+        .open(path)
+        .and_then(|mut f| f.read_exact(&mut buf))
+        .map_or(false, |_| buf.starts_with(PREFIX))
+}
+
 /// The `script_identity` will be baked into the soon to be created `archive` as it identitifies the script
 /// that created the contents of `source_dir`.
 fn create_archive_if_not_on_ci(source_dir: &Path, archive: &Path, script_identity: u32) -> std::io::Result<()> {
@@ -367,6 +434,13 @@ fn create_archive_if_not_on_ci(source_dir: &Path, archive: &Path, script_identit
         return Ok(());
     }
     if is_excluded(archive) {
+        return Ok(());
+    }
+    if is_lfs_pointer_file(archive) {
+        eprintln!(
+            "Refusing to overwrite `git-lfs` pointer file at \"{}\" - git lfs might not be properly installed.",
+            archive.display()
+        );
         return Ok(());
     }
     std::fs::create_dir_all(archive.parent().expect("archive is a file"))?;

@@ -38,7 +38,7 @@ nix-shell-macos: ## Enter a nix-shell able to build on macos
 
 ##@ Testing
 
-tests: clippy check doc unit-tests journey-tests-small journey-tests-async journey-tests journey-tests-smart-release ## run all tests, including journey tests, try building docs
+tests: clippy check doc unit-tests journey-tests-pure journey-tests-small journey-tests-async journey-tests journey-tests-smart-release ## run all tests, including journey tests, try building docs
 
 audit: ## run various auditing tools to assure we are legal and safe
 	cargo deny check advisories bans licenses sources
@@ -51,6 +51,7 @@ doc: ## Run cargo doc on all crates
 clippy: ## Run cargo clippy on all crates
 	cargo clippy --all --tests --examples
 	cargo clippy --all --no-default-features --features small
+	cargo clippy --all --no-default-features --features max-pure
 	cargo clippy --all --no-default-features --features lean-async --tests
 
 check-msrv: ## run cargo msrv to validate the current msrv requirements, similar to what CI does
@@ -126,7 +127,8 @@ check: ## Build all code in suitable configurations
 	cd git-repository && cargo check --no-default-features --features async-network-client \
 					  && cargo check --no-default-features --features async-network-client-async-std \
 					  && cargo check --no-default-features --features blocking-network-client \
-					  && cargo check --no-default-features --features blocking-network-client,blocking-http-transport \
+					  && cargo check --no-default-features --features blocking-http-transport-curl \
+					  && cargo check --no-default-features --features blocking-http-transport-reqwest \
 					  && cargo check --no-default-features --features max-performance \
 					  && cargo check --no-default-features --features max-performance-safe \
 					  && cargo check --no-default-features
@@ -176,7 +178,12 @@ journey-tests: always  ## run journey tests (max)
 	cargo build --package git-testtools --bin jtt
 	./tests/journey.sh target/debug/ein target/debug/gix $(jtt) max
 
-journey-tests-small: always ## run journey tests (lean-cli)
+journey-tests-pure: always  ## run journey tests (max-pure)
+	cargo build --no-default-features --features max-pure
+	cargo build --package git-testtools --bin jtt
+	./tests/journey.sh target/debug/ein target/debug/gix $(jtt) max-pure
+
+journey-tests-small: always ## run journey tests (small)
 	cargo build --no-default-features --features small
 	cd tests/tools && cargo build
 	./tests/journey.sh target/debug/ein target/debug/gix $(jtt) small

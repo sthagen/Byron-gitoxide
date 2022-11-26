@@ -8,9 +8,8 @@ mod v1 {
     const GITHUB_CAPABILITIES: &str = "multi_ack thin-pack side-band ofs-delta shallow deepen-since deepen-not deepen-relative no-progress include-tag allow-tip-sha1-in-want allow-reachable-sha1-in-want no-done symref=HEAD:refs/heads/main filter agent=git/github-gdf51a71f0236";
     mod fetch {
         mod default_features {
-            use crate::fetch::{
-                self,
-                tests::command::v1::{capabilities, GITHUB_CAPABILITIES},
+            use crate::{
+                command::tests::v1::{capabilities, GITHUB_CAPABILITIES},
                 Command,
             };
 
@@ -21,7 +20,7 @@ mod v1 {
                         git_transport::Protocol::V1,
                         &capabilities("multi_ack side-band side-band-64k multi_ack_detailed")
                     ),
-                    &[("side-band-64k", None), ("multi_ack_detailed", None), fetch::agent()]
+                    &[("side-band-64k", None), ("multi_ack_detailed", None),]
                 );
             }
 
@@ -42,7 +41,6 @@ mod v1 {
                         ("allow-reachable-sha1-in-want", None),
                         ("no-done", None),
                         ("filter", None),
-                        fetch::agent()
                     ],
                     "we don't enforce include-tag or no-progress"
                 );
@@ -61,7 +59,7 @@ mod v2 {
 
     mod fetch {
         mod default_features {
-            use crate::fetch::{self, tests::command::v2::capabilities, Command};
+            use crate::{command::tests::v2::capabilities, Command};
 
             #[test]
             fn all_features() {
@@ -73,7 +71,6 @@ mod v2 {
                     ["shallow", "filter", "ref-in-want", "sideband-all", "packfile-uris"]
                         .iter()
                         .map(|s| (*s, None))
-                        .chain(Some(fetch::agent()))
                         .collect::<Vec<_>>()
                 )
             }
@@ -82,7 +79,7 @@ mod v2 {
         mod initial_arguments {
             use bstr::ByteSlice;
 
-            use crate::fetch::{tests::command::v2::capabilities, Command};
+            use crate::{command::tests::v2::capabilities, Command};
 
             #[test]
             fn for_all_features() {
@@ -102,7 +99,7 @@ mod v2 {
 
     mod ls_refs {
         mod default_features {
-            use crate::fetch::{self, tests::command::v2::capabilities, Command};
+            use crate::{command::tests::v2::capabilities, Command};
 
             #[test]
             fn default_as_there_are_no_features() {
@@ -111,7 +108,7 @@ mod v2 {
                         git_transport::Protocol::V2,
                         &capabilities("something-else", "does not matter as there are none")
                     ),
-                    &[fetch::agent()]
+                    &[]
                 );
             }
         }
@@ -119,7 +116,7 @@ mod v2 {
         mod validate {
             use bstr::ByteSlice;
 
-            use crate::fetch::{tests::command::v2::capabilities, Command};
+            use crate::{command::tests::v2::capabilities, Command};
 
             #[test]
             fn ref_prefixes_can_always_be_used() {

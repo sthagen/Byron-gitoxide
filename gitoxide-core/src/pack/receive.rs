@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     io,
     path::PathBuf,
     sync::{atomic::AtomicBool, Arc},
@@ -11,7 +12,8 @@ use git_repository::{
     odb::pack,
     protocol,
     protocol::{
-        fetch::{Action, Arguments, LsRefsAction, Ref, Response},
+        fetch::{Action, Arguments, Response},
+        handshake::Ref,
         transport,
         transport::client::Capabilities,
     },
@@ -51,15 +53,15 @@ impl<W> protocol::fetch::DelegateBlocking for CloneDelegate<W> {
         &mut self,
         server: &Capabilities,
         arguments: &mut Vec<BString>,
-        _features: &mut Vec<(&str, Option<&str>)>,
-    ) -> io::Result<LsRefsAction> {
+        _features: &mut Vec<(&str, Option<Cow<'_, str>>)>,
+    ) -> io::Result<ls_refs::Action> {
         if server.contains("ls-refs") {
             arguments.extend(FILTER.iter().map(|r| format!("ref-prefix {}", r).into()));
         }
         Ok(if self.wanted_refs.is_empty() {
-            LsRefsAction::Continue
+            ls_refs::Action::Continue
         } else {
-            LsRefsAction::Skip
+            ls_refs::Action::Skip
         })
     }
 
@@ -67,7 +69,7 @@ impl<W> protocol::fetch::DelegateBlocking for CloneDelegate<W> {
         &mut self,
         version: transport::Protocol,
         server: &Capabilities,
-        _features: &mut Vec<(&str, Option<&str>)>,
+        _features: &mut Vec<(&str, Option<Cow<'_, str>>)>,
         _refs: &[Ref],
     ) -> io::Result<Action> {
         if !self.wanted_refs.is_empty() && !remote_supports_ref_in_want(server) {
@@ -115,10 +117,11 @@ impl<W> protocol::fetch::DelegateBlocking for CloneDelegate<W> {
 mod blocking_io {
     use std::{io, io::BufRead, path::PathBuf};
 
+    use git_repository as git;
     use git_repository::{
         bstr::BString,
         protocol,
-        protocol::fetch::{Ref, Response},
+        protocol::{fetch::Response, handshake::Ref},
         Progress,
     };
 
@@ -172,6 +175,7 @@ mod blocking_io {
             protocol::credentials::builtin,
             progress,
             protocol::FetchConnection::TerminateOnSuccessfulCompletion,
+            git::env::agent(),
         )?;
         Ok(())
     }
@@ -179,6 +183,7 @@ mod blocking_io {
 
 #[cfg(feature = "blocking-client")]
 pub use blocking_io::receive;
+use git_repository::protocol::ls_refs;
 
 #[cfg(feature = "async-client")]
 mod async_io {
@@ -186,11 +191,12 @@ mod async_io {
 
     use async_trait::async_trait;
     use futures_io::AsyncBufRead;
+    use git_repository as git;
     use git_repository::{
         bstr::{BString, ByteSlice},
         odb::pack,
         protocol,
-        protocol::fetch::{Ref, Response},
+        protocol::{fetch::Response, handshake::Ref},
         Progress,
     };
 
@@ -245,6 +251,7 @@ mod async_io {
                 protocol::credentials::builtin,
                 progress,
                 protocol::FetchConnection::TerminateOnSuccessfulCompletion,
+                git::env::agent(),
             ))
         })
         .await?;

@@ -13,6 +13,8 @@ use crate::{
 mod error;
 pub use error::Error;
 
+use crate::remote::fetch::WritePackedRefs;
+
 /// The way reflog messages should be composed whenever a ref is written with recent objects from a remote.
 pub enum RefLogMessage {
     /// Prefix the log with `action` and generate the typical suffix as `git` would.
@@ -98,16 +100,21 @@ where
     /// should the fetch not be performed. Furthermore, there the code doing the fetch is inherently blocking so there is no benefit.
     /// It's best to unblock it by placing it into its own thread or offload it should usage in an async context be required.
     #[allow(clippy::result_large_err)]
-    pub fn prepare_fetch(mut self, options: ref_map::Options) -> Result<Prepare<'remote, 'repo, T, P>, prepare::Error> {
+    #[git_protocol::maybe_async::maybe_async]
+    pub async fn prepare_fetch(
+        mut self,
+        options: ref_map::Options,
+    ) -> Result<Prepare<'remote, 'repo, T, P>, prepare::Error> {
         if self.remote.refspecs(remote::Direction::Fetch).is_empty() {
             return Err(prepare::Error::MissingRefSpecs);
         }
-        let ref_map = self.ref_map_inner(options)?;
+        let ref_map = self.ref_map_inner(options).await?;
         Ok(Prepare {
             con: Some(self),
             ref_map,
             dry_run: DryRun::No,
             reflog_message: None,
+            write_packed_refs: WritePackedRefs::Never,
         })
     }
 }
@@ -137,6 +144,7 @@ where
     ref_map: RefMap,
     dry_run: DryRun,
     reflog_message: Option<RefLogMessage>,
+    write_packed_refs: WritePackedRefs,
 }
 
 /// Builder
@@ -149,6 +157,15 @@ where
     /// This works by not actually fetching the pack after negotiating it, nor will refs be updated.
     pub fn with_dry_run(mut self, enabled: bool) -> Self {
         self.dry_run = enabled.then(|| DryRun::Yes).unwrap_or(DryRun::No);
+        self
+    }
+
+    /// If enabled, don't write ref updates to loose refs, but put them exclusively to packed-refs.
+    ///
+    /// This improves performances and allows case-sensitive filesystems to deal with ref names that would otherwise
+    /// collide.
+    pub fn with_write_packed_refs_only(mut self, enabled: bool) -> Self {
+        self.write_packed_refs = enabled.then(|| WritePackedRefs::Only).unwrap_or(WritePackedRefs::Never);
         self
     }
 
@@ -165,7 +182,21 @@ where
 {
     fn drop(&mut self) {
         if let Some(mut con) = self.con.take() {
-            git_protocol::fetch::indicate_end_of_interaction(&mut con.transport).ok();
+            #[cfg(feature = "async-network-client")]
+            {
+                // TODO: this should be an async drop once the feature is available.
+                //       Right now we block the executor by forcing this communication, but that only
+                //       happens if the user didn't actually try to receive a pack, which consumes the
+                //       connection in an async context.
+                git_protocol::futures_lite::future::block_on(git_protocol::indicate_end_of_interaction(
+                    &mut con.transport,
+                ))
+                .ok();
+            }
+            #[cfg(not(feature = "async-network-client"))]
+            {
+                git_protocol::indicate_end_of_interaction(&mut con.transport).ok();
+            }
         }
     }
 }

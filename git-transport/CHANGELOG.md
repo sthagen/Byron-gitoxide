@@ -5,6 +5,135 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.23.0 (2022-11-21)
+
+### New Features (BREAKING)
+
+ - <csr-id-3d8fa8fef9800b1576beab8a5bc39b821157a5ed/> upgrade edition to 2021 in most crates.
+   MSRV for this is 1.56, and we are now at 1.60 so should be compatible.
+   This isn't more than a patch release as it should break nobody
+   who is adhering to the MSRV, but let's be careful and mark it
+   breaking.
+   
+   Note that `git-features` and `git-pack` are still on edition 2018
+   as they make use of a workaround to support (safe) mutable access
+   to non-overlapping entries in a slice which doesn't work anymore
+   in edition 2021.
+
+### Bug Fixes (BREAKING)
+
+ - <csr-id-4308a209dddcbb461c34d45fb9af8b4621d4600a/> `max-pure` now builds without any C build tooling due to lack of `openssl-sys`.
+   To make this work, we leave the `reqwest` configuration to downstream crates.
+   Note that this means downstream will have to select their TLS settings
+   themselves, so builds may fail after upgrade until this is done.
+   
+   An example for a `reqwest` configuration can be found in the
+   `gitoxide` Cargo.toml in the root of the `gitoxide` repository.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 6 commits contributed to the release over the course of 2 calendar days.
+ - 4 days passed between releases.
+ - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 1 unique issue was worked on: [#602](https://github.com/Byron/gitoxide/issues/602)
+
+### Thanks Clippy
+
+<csr-read-only-do-not-edit/>
+
+[Clippy](https://github.com/rust-lang/rust-clippy) helped 1 time to make code idiomatic. 
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#602](https://github.com/Byron/gitoxide/issues/602)**
+    - `max-pure` now builds without any C build tooling due to lack of `openssl-sys`. ([`4308a20`](https://github.com/Byron/gitoxide/commit/4308a209dddcbb461c34d45fb9af8b4621d4600a))
+ * **Uncategorized**
+    - prepare changelogs prior to release ([`e4648f8`](https://github.com/Byron/gitoxide/commit/e4648f827c97e9d13636d1bbdc83dd63436e6e5c))
+    - Merge branch 'max-pure' ([`03ff188`](https://github.com/Byron/gitoxide/commit/03ff1882f2982fba38fbbf245eea13ef9df50f33))
+    - thanks clippy ([`c7cba33`](https://github.com/Byron/gitoxide/commit/c7cba333dd8654995b367498609b4280fe394402))
+    - Merge branch 'version2021' ([`0e4462d`](https://github.com/Byron/gitoxide/commit/0e4462df7a5166fe85c23a779462cdca8ee013e8))
+    - upgrade edition to 2021 in most crates. ([`3d8fa8f`](https://github.com/Byron/gitoxide/commit/3d8fa8fef9800b1576beab8a5bc39b821157a5ed))
+</details>
+
+## 0.22.0 (2022-11-17)
+
+### Changed
+
+ - <csr-id-28615b3bb9acff86d7a5520172513e3cc22aeda1/> `TransportV2Ext::invoke(…,features,…)` can take key-value pairs more flexibly.
+   Value can now also be owned, which is useful if the value type is a
+   `Cow<'_, String>`.
+
+### New Features
+
+ - <csr-id-42acc88bbc63850c0d38db70bc46b1058875e2a0/> `client::RequestWriter::into_parts()` to obtain a bare write handled along with a buf reader with packetline capabilties.
+   That way it's possible to perform interactions akin to a V1 puash.
+
+### Changed (BREAKING)
+
+ - <csr-id-07512db093e62d9b9185368bd3fa561cfcd1d1d2/> `client::TransportWithoutIO::to_url()` returns `Cow<'_, BStr>`.
+   That way, it's possible to efficiently return URLs in the right format,
+   or return generates ones as needed.
+ - <csr-id-fe2042bff9ae38bf76b76cef14986f9f76bded7d/> `client::TransportWithoutIO::to_url()` returns `BString`.
+   That way it will not be lossy in case the URL represents a path, which
+   is relevant for transports that refer to paths.
+   
+   Note that this doesn't matter when the url actually is a URL, as it's
+   specified to be valid unicode (I think).
+ - <csr-id-759b5d482de048deb24d14043a173079914e7ac8/> `client::TransportV2Ext::invoke()` supports owned `capabilities`.
+   That way it's easier to pass custom agent strings when invoking.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 28 commits contributed to the release over the course of 8 calendar days.
+ - 8 days passed between releases.
+ - 5 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release git-glob v0.4.2, git-config-value v0.8.2, git-lock v2.2.0, git-ref v0.19.0, git-config v0.11.0, git-discover v0.8.0, git-index v0.8.0, git-transport v0.22.0, git-protocol v0.23.0, git-worktree v0.8.0, git-repository v0.28.0, gitoxide-core v0.20.0, gitoxide v0.18.0, safety bump 9 crates ([`0c253b1`](https://github.com/Byron/gitoxide/commit/0c253b15143dcedfe4c66d64ab1ea6e097030651))
+    - prepare changelogs prior to release ([`fe5721f`](https://github.com/Byron/gitoxide/commit/fe5721f888c64c79fe9a734a9e33b94a282f8d97))
+    - Merge branch 'http-config' ([`665b53e`](https://github.com/Byron/gitoxide/commit/665b53e1c2e1de65fafa28b669f58977868bbc81))
+    - Merge branch 'push-support' ([`42356ab`](https://github.com/Byron/gitoxide/commit/42356abf9d08dd86ce464fa48e25bbcc98ceefd4))
+    - Add test to see if we can correctly read the server response. ([`4d84a20`](https://github.com/Byron/gitoxide/commit/4d84a208e4d0a8bf3dbcfa6912b92ec1bdf4ec05))
+    - `client::RequestWriter::into_parts()` to obtain a bare write handled along with a buf reader with packetline capabilties. ([`42acc88`](https://github.com/Byron/gitoxide/commit/42acc88bbc63850c0d38db70bc46b1058875e2a0))
+    - Add simple push request/response as obtained through HTTP proxying ([`0573107`](https://github.com/Byron/gitoxide/commit/05731070a5cfb403bb82d8d8baa360ffe8cc45a9))
+    - Avoid hardcoding some arbitrary default for connect timeouts, use curl default instead like git ([`1766568`](https://github.com/Byron/gitoxide/commit/17665683efc8e25cbb35737a8c4132b98e5b6b7a))
+    - Set TCP keepalive just like `git` does ([`ee0276c`](https://github.com/Byron/gitoxide/commit/ee0276c7659122e32851da8ee6a9e663982bcda5))
+    - Set curl `proxy-type` similar to how git does it ([`717b09f`](https://github.com/Byron/gitoxide/commit/717b09fb3cac024b85a885e253c52e1f37bc0590))
+    - Merge branch 'main' into http-config ([`f4ff821`](https://github.com/Byron/gitoxide/commit/f4ff821fd4233dd1dc1a449af4d4600becf3b4ac))
+    - Merge branch 'async-fetch' ([`0c9c48b`](https://github.com/Byron/gitoxide/commit/0c9c48b3b91a1396eb1796f288a2cb10380d1f14))
+    - fix docs ([`0d1a00d`](https://github.com/Byron/gitoxide/commit/0d1a00da4f4e84f989f18d16878cc95ace797b68))
+    - Add `Debug` to `client::http::Options` ([`375565f`](https://github.com/Byron/gitoxide/commit/375565f20906b4ca373978b89573cf711c3637a9))
+    - `client::TransportWithoutIO::to_url()` returns `Cow<'_, BStr>`. ([`07512db`](https://github.com/Byron/gitoxide/commit/07512db093e62d9b9185368bd3fa561cfcd1d1d2))
+    - `client::TransportWithoutIO::to_url()` returns `BString`. ([`fe2042b`](https://github.com/Byron/gitoxide/commit/fe2042bff9ae38bf76b76cef14986f9f76bded7d))
+    - add missing `Debug` impl on transport option types ([`7ca4dec`](https://github.com/Byron/gitoxide/commit/7ca4dec2df83ce7763383fb93db5ba0001c2cc27))
+    - fix build ([`b9a5eea`](https://github.com/Byron/gitoxide/commit/b9a5eeafb8e86d7f8faaa4ce1884487db24e554d))
+    - `client::TransportV2Ext::invoke()` supports owned `capabilities`. ([`759b5d4`](https://github.com/Byron/gitoxide/commit/759b5d482de048deb24d14043a173079914e7ac8))
+    - `TransportV2Ext::invoke(…,features,…)` can take key-value pairs more flexibly. ([`28615b3`](https://github.com/Byron/gitoxide/commit/28615b3bb9acff86d7a5520172513e3cc22aeda1))
+    - explain how the `user_agent` option is going to work on the transport layer ([`328c069`](https://github.com/Byron/gitoxide/commit/328c0695692ebde5999c941b95c4cd330edb0f04))
+    - implement all straightforward curl options, which includes basic proxy settings. ([`0b60097`](https://github.com/Byron/gitoxide/commit/0b60097671fe2d8037fe44271678fe380ecbd543))
+    - Add all fields we'd like to implement for the curl transport. ([`cfc1b9c`](https://github.com/Byron/gitoxide/commit/cfc1b9ccea32b2f870427014543196f09cbae9ac))
+    - A note about the status of the http `reqwest` backend ([`4724604`](https://github.com/Byron/gitoxide/commit/47246047dc9c476149511086612411d39b257bc6))
+    - Remove double-arc construct in `reqwest` backend ([`c6a474c`](https://github.com/Byron/gitoxide/commit/c6a474c9b22e969b040e7ce05f6fba245dc408d0))
+    - sketch of reqwest specific backends can be handled ([`a8b3f96`](https://github.com/Byron/gitoxide/commit/a8b3f96110dc9a68c680bad07c52b0204bd539a3))
+    - a sketch of passing curl options down to curl… ([`63e24fc`](https://github.com/Byron/gitoxide/commit/63e24fcb0ad66a9fd3de1e4e440bbdbc430fc614))
+    - Merge branch 'main' into http-config ([`7c5b37d`](https://github.com/Byron/gitoxide/commit/7c5b37d28e98f59a6847368a0d0166d2dbb4acc1))
+</details>
+
 ## 0.21.2 (2022-11-08)
 
 ### Fixes
@@ -16,7 +145,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 6 commits contributed to the release over the course of 1 calendar day.
+ - 7 commits contributed to the release over the course of 1 calendar day.
  - 1 day passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -34,6 +163,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release git-diff v0.22.0, git-index v0.7.1, git-pack v0.26.0, git-odb v0.36.0, git-transport v0.21.2, git-repository v0.27.0, safety bump 6 crates ([`f0cab31`](https://github.com/Byron/gitoxide/commit/f0cab317bb0c2799fa80d16f3ae1b89d6aee4284))
     - prepare changelogs prior to release ([`f5f3a9e`](https://github.com/Byron/gitoxide/commit/f5f3a9edd038a89c8c6c4da02054e5439bcc0071))
     - fix build ([`910d665`](https://github.com/Byron/gitoxide/commit/910d665e66d6e737a7bab3598c0c0ebfdda1a9cc))
     - thanks clippy ([`0dc4c6f`](https://github.com/Byron/gitoxide/commit/0dc4c6fb2199514437acd7629ea2a4c6bc0555c5))
