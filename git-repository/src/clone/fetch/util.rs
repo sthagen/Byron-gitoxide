@@ -8,13 +8,13 @@ use git_ref::{
 
 use super::Error;
 use crate::{
-    bstr::{BStr, ByteSlice},
+    bstr::{BStr, BString, ByteSlice},
     Repository,
 };
 
 pub fn write_remote_to_local_config_file(
     remote: &mut crate::Remote<'_>,
-    remote_name: String,
+    remote_name: BString,
 ) -> Result<git_config::File<'static>, Error> {
     let mut metadata = git_config::file::Metadata::from(git_config::Source::Local);
     let config_path = remote.repo.git_dir().join("config");
@@ -37,8 +37,13 @@ pub fn replace_changed_local_config_file(repo: &mut Repository, mut config: git_
     for id in ids_to_remove {
         repo_config.remove_section_by_id(id);
     }
-    crate::config::overrides::apply(&mut config, &repo.options.config_overrides, git_config::Source::Api)
-        .expect("applied once and can be applied again");
+    crate::config::overrides::append(
+        &mut config,
+        &repo.options.api_config_overrides,
+        git_config::Source::Api,
+        |_| None,
+    )
+    .expect("applied once and can be applied again");
     repo_config.append(config);
     repo.reread_values_and_clear_caches()
         .expect("values could be read once and can be read again");
@@ -50,7 +55,7 @@ pub fn update_head(
     repo: &mut Repository,
     remote_refs: &[git_protocol::handshake::Ref],
     reflog_message: &BStr,
-    remote_name: &str,
+    remote_name: &BStr,
 ) -> Result<(), Error> {
     use git_ref::{
         transaction::{PreviousValue, RefEdit},
@@ -171,7 +176,7 @@ fn setup_branch_config(
     repo: &mut Repository,
     branch: &FullNameRef,
     branch_id: Option<&git_hash::oid>,
-    remote_name: &str,
+    remote_name: &BStr,
 ) -> Result<(), Error> {
     let short_name = match branch.category_and_short_name() {
         Some((cat, shortened)) if cat == git_ref::Category::LocalBranch => match shortened.to_str() {
@@ -203,10 +208,7 @@ fn setup_branch_config(
         let mut section = config
             .new_section("branch", Some(Cow::Owned(short_name.into())))
             .expect("section header name is always valid per naming rules, our input branch name is valid");
-        section.push(
-            "remote".try_into().expect("valid at compile time"),
-            Some(remote_name.into()),
-        );
+        section.push("remote".try_into().expect("valid at compile time"), Some(remote_name));
         section.push(
             "merge".try_into().expect("valid at compile time"),
             Some(branch.as_bstr()),

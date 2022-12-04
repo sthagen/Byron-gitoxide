@@ -7,7 +7,7 @@ fn section_mut_must_exist_as_section_is_not_created_automatically() {
 #[test]
 fn section_mut_or_create_new_is_infallible() -> crate::Result {
     let mut config = multi_value_section();
-    let section = config.section_mut_or_create_new("name", Some("subsection"))?;
+    let section = config.section_mut_or_create_new("name", Some("subsection".into()))?;
     assert_eq!(section.header().name(), "name");
     assert_eq!(section.header().subsection_name().expect("set"), "subsection");
     Ok(())
@@ -69,7 +69,7 @@ mod pop {
     #[test]
     fn all() -> crate::Result {
         let mut config = multi_value_section();
-        let mut section = config.section_mut("a", None)?;
+        let mut section = config.section_mut_by_key("a")?;
 
         assert_eq!(section.num_values(), 5);
         assert_eq!(section.keys().count(), 5);
@@ -130,7 +130,7 @@ mod push {
     #[test]
     fn none_as_value_omits_the_key_value_separator() -> crate::Result {
         let mut file = git_config::File::default();
-        let mut section = file.section_mut_or_create_new("a", Some("sub"))?;
+        let mut section = file.section_mut_or_create_new("a", Some("sub".into()))?;
         section.push("key".try_into()?, None);
         let expected = format!("[a \"sub\"]{nl}\tkey{nl}", nl = section.newline());
         assert_eq!(section.value("key"), None, "single value counts as None");
@@ -194,6 +194,37 @@ mod push {
             let mut section = config.new_section("a", None).unwrap();
             section.set_implicit_newline(false);
             section.push(Key::try_from("k").unwrap(), Some(value.into()));
+            let expected = expected
+                .replace("$head", &format!("[a]{nl}", nl = section.newline()))
+                .replace("$nl", &section.newline().to_string());
+            assert_eq!(config.to_bstring(), expected);
+        }
+    }
+}
+
+mod push_with_comment {
+    use git_config::parse::section::Key;
+
+    #[test]
+    fn various_comments_and_escaping() {
+        for (comment, expected) in [
+            ("", "$head\tk = v #$nl"),
+            ("this is v!", "$head\tk = v # this is v!$nl"),
+            (" no double space", "$head\tk = v # no double space$nl"),
+            ("\tno double whitespace", "$head\tk = v #\tno double whitespace$nl"),
+            (
+                "one\ntwo\nnewlines are replaced with space",
+                "$head\tk = v # one two newlines are replaced with space$nl",
+            ),
+            (
+                "a\rb\r\nlinefeeds aren't special",
+                "$head\tk = v # a\rb\r linefeeds aren't special$nl",
+            ),
+        ] {
+            let mut config = git_config::File::default();
+            let mut section = config.new_section("a", None).unwrap();
+            section.set_implicit_newline(false);
+            section.push_with_comment(Key::try_from("k").unwrap(), Some("v".into()), comment);
             let expected = expected
                 .replace("$head", &format!("[a]{nl}", nl = section.newline()))
                 .replace("$nl", &section.newline().to_string());

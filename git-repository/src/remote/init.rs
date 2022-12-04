@@ -12,8 +12,6 @@ mod error {
     #[allow(missing_docs)]
     pub enum Error {
         #[error(transparent)]
-        Name(#[from] crate::remote::name::Error),
-        #[error(transparent)]
         Url(#[from] git_url::parse::Error),
         #[error("The rewritten {kind} url {rewritten_url:?} failed to parse")]
         RewrittenUrlInvalid {
@@ -25,10 +23,12 @@ mod error {
 }
 pub use error::Error;
 
+use crate::bstr::BString;
+
 /// Initialization
 impl<'repo> Remote<'repo> {
     pub(crate) fn from_preparsed_config(
-        name: Option<String>,
+        name_or_url: Option<BString>,
         url: Option<git_url::Url>,
         push_url: Option<git_url::Url>,
         fetch_specs: Vec<RefSpec>,
@@ -44,7 +44,7 @@ impl<'repo> Remote<'repo> {
             .then(|| rewrite_urls(&repo.config, url.as_ref(), push_url.as_ref()))
             .unwrap_or(Ok((None, None)))?;
         Ok(Remote {
-            name: name.map(remote::name::validated).transpose()?,
+            name: name_or_url.map(Into::into),
             url,
             url_alias,
             push_url,

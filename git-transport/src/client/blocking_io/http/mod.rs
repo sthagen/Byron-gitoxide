@@ -9,6 +9,7 @@ use bstr::BStr;
 use git_packetline::PacketLineRef;
 pub use traits::{Error, GetResponse, Http, PostResponse};
 
+use crate::client::blocking_io::bufread_ext::ReadlineBufRead;
 use crate::{
     client::{self, capabilities, Capabilities, ExtendedBufRead, HandleProgress, MessageKind, RequestWriter},
     Protocol, Service,
@@ -101,6 +102,8 @@ pub struct Options {
     ///
     /// Refers to `http.proxy`.
     pub proxy: Option<String>,
+    /// The comma-separated list of hosts to not send through the `proxy`, or `*` to entirely disable all proxying.
+    pub no_proxy: Option<String>,
     /// The way to authenticate against the proxy if the `proxy` field contains a username.
     ///
     /// Refers to `http.proxyAuthMethod`.
@@ -123,6 +126,8 @@ pub struct Options {
     /// If `None`, this typically defaults to 2 minutes to 5 minutes.
     /// Refers to `gitoxide.http.connectTimeout`.
     pub connect_timeout: Option<std::time::Duration>,
+    /// If enabled, emit additional information about connections and possibly the data received or written.
+    pub verbose: bool,
     /// Backend specific options, if available.
     pub backend: Option<Arc<Mutex<dyn Any + Send + Sync + 'static>>>,
 }
@@ -252,7 +257,9 @@ impl<H: Http> client::TransportWithoutIO for Transport<H> {
             headers,
             body,
             post_body,
-        } = self.http.post(&url, static_headers.iter().chain(&dynamic_headers))?;
+        } = self
+            .http
+            .post(&url, &self.url, static_headers.iter().chain(&dynamic_headers))?;
         let line_provider = self
             .line_provider
             .as_mut()
@@ -319,9 +326,9 @@ impl<H: Http> client::Transport for Transport<H> {
             dynamic_headers.push(format!("Git-Protocol: {}", parameters).into());
         }
         self.add_basic_auth_if_present(&mut dynamic_headers)?;
-        let GetResponse { headers, body } = self
-            .http
-            .get(url.as_ref(), static_headers.iter().chain(&dynamic_headers))?;
+        let GetResponse { headers, body } =
+            self.http
+                .get(url.as_ref(), &self.url, static_headers.iter().chain(&dynamic_headers))?;
         <Transport<H>>::check_content_type(service, "advertisement", headers)?;
 
         let line_reader = self
@@ -381,14 +388,14 @@ impl<H: Http, B: Unpin> HeadersThenBody<H, B> {
     }
 }
 
-impl<H: Http, B: ExtendedBufRead + Unpin> Read for HeadersThenBody<H, B> {
+impl<H: Http, B: Read + Unpin> Read for HeadersThenBody<H, B> {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         self.handle_headers()?;
         self.body.read(buf)
     }
 }
 
-impl<H: Http, B: ExtendedBufRead + Unpin> BufRead for HeadersThenBody<H, B> {
+impl<H: Http, B: BufRead + Unpin> BufRead for HeadersThenBody<H, B> {
     fn fill_buf(&mut self) -> std::io::Result<&[u8]> {
         self.handle_headers()?;
         self.body.fill_buf()
@@ -396,6 +403,15 @@ impl<H: Http, B: ExtendedBufRead + Unpin> BufRead for HeadersThenBody<H, B> {
 
     fn consume(&mut self, amt: usize) {
         self.body.consume(amt)
+    }
+}
+
+impl<H: Http, B: ReadlineBufRead + Unpin> ReadlineBufRead for HeadersThenBody<H, B> {
+    fn readline(&mut self) -> Option<std::io::Result<Result<PacketLineRef<'_>, git_packetline::decode::Error>>> {
+        if let Err(err) = self.handle_headers() {
+            return Some(Err(err));
+        }
+        self.body.readline()
     }
 }
 
@@ -430,4 +446,75 @@ pub fn connect_http<H: Http>(http: H, url: &str, desired_version: Protocol) -> T
 #[cfg(any(feature = "http-client-curl", feature = "http-client-reqwest"))]
 pub fn connect(url: &str, desired_version: Protocol) -> Transport<Impl> {
     Transport::new(url, desired_version)
+}
+
+///
+#[cfg(feature = "http-client-curl")]
+pub mod redirect {
+    /// The error provided when redirection went beyond what we deem acceptable.
+    #[derive(Debug, thiserror::Error)]
+    #[error("Redirect url {redirect_url:?} could not be reconciled with original url {expected_url} as they don't share the same suffix")]
+    pub struct Error {
+        redirect_url: String,
+        expected_url: String,
+    }
+
+    pub(crate) fn base_url(redirect_url: &str, base_url: &str, url: String) -> Result<String, Error> {
+        let tail = url
+            .strip_prefix(base_url)
+            .expect("BUG: caller assures `base_url` is subset of `url`");
+        redirect_url
+            .strip_suffix(tail)
+            .ok_or_else(|| Error {
+                redirect_url: redirect_url.into(),
+                expected_url: url,
+            })
+            .map(ToOwned::to_owned)
+    }
+
+    pub(crate) fn swap_tails(effective_base_url: Option<&str>, base_url: &str, mut url: String) -> String {
+        match effective_base_url {
+            Some(effective_base) => {
+                url.replace_range(..base_url.len(), effective_base);
+                url
+            }
+            None => url,
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn base_url_complete() {
+            assert_eq!(
+                base_url(
+                    "https://redirected.org/b/info/refs?hi",
+                    "https://original/a",
+                    "https://original/a/info/refs?hi".into()
+                )
+                .unwrap(),
+                "https://redirected.org/b"
+            );
+        }
+
+        #[test]
+        fn swap_tails_complete() {
+            assert_eq!(
+                swap_tails(None, "not interesting", "used".into()),
+                "used",
+                "without effective base url, it passes url, no redirect happened yet"
+            );
+            assert_eq!(
+                swap_tails(
+                    Some("https://redirected.org/b"),
+                    "https://original/a",
+                    "https://original/a/info/refs?something".into()
+                ),
+                "https://redirected.org/b/info/refs?something",
+                "the tail stays the same if redirection happened"
+            )
+        }
+    }
 }

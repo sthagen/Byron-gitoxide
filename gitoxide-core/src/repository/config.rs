@@ -1,12 +1,12 @@
 use anyhow::{bail, Result};
+use git::bstr::{BStr, BString};
 use git_repository as git;
-use git_repository::bstr::BString;
 
 use crate::OutputFormat;
 
 pub fn list(
     repo: git::Repository,
-    filters: Vec<String>,
+    filters: Vec<BString>,
     overrides: Vec<BString>,
     format: OutputFormat,
     mut out: impl std::io::Write,
@@ -14,10 +14,11 @@ pub fn list(
     if format != OutputFormat::Human {
         bail!("Only human output format is supported at the moment");
     }
-    let mut repo = git::open_opts(repo.git_dir(), repo.open_options().clone().lossy_config(false))?;
-    repo.config_snapshot_mut().apply_cli_overrides(overrides.into_iter())?;
+    let repo = git::open_opts(
+        repo.git_dir(),
+        repo.open_options().clone().lossy_config(false).cli_overrides(overrides),
+    )?;
     let config = repo.config_snapshot();
-    let config = config.plumbing();
     if let Some(frontmatter) = config.frontmatter() {
         for event in frontmatter {
             event.write_to(&mut out)?;
@@ -52,18 +53,18 @@ pub fn list(
 
 struct Filter {
     name: String,
-    subsection: Option<String>,
+    subsection: Option<BString>,
 }
 
 impl Filter {
-    fn new(input: String) -> Self {
-        match git::config::parse::key(&input) {
+    fn new(input: BString) -> Self {
+        match git::config::parse::key(<_ as AsRef<BStr>>::as_ref(&input)) {
             Some(key) => Filter {
                 name: key.section_name.into(),
                 subsection: key.subsection_name.map(ToOwned::to_owned),
             },
             None => Filter {
-                name: input,
+                name: input.to_string(),
                 subsection: None,
             },
         }
@@ -77,7 +78,7 @@ impl Filter {
         }
         match (self.subsection.as_deref(), section.header().subsection_name()) {
             (Some(filter), Some(name)) => {
-                if !git::glob::wildmatch(filter.as_bytes().into(), name, ignore_case) {
+                if !git::glob::wildmatch(filter.as_slice().into(), name, ignore_case) {
                     return false;
                 }
             }

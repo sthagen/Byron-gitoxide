@@ -93,6 +93,42 @@ where
     }
 }
 
+pub(crate) fn reflog_or_default(
+    config_reflog: Option<git_ref::store::WriteReflog>,
+    has_worktree: bool,
+) -> git_ref::store::WriteReflog {
+    config_reflog.unwrap_or_else(|| {
+        has_worktree
+            .then(|| git_ref::store::WriteReflog::Normal)
+            .unwrap_or(git_ref::store::WriteReflog::Disable)
+    })
+}
+
+/// Return `(pack_cache_bytes, object_cache_bytes)` as parsed from git-config
+pub(crate) fn parse_object_caches(
+    config: &git_config::File<'static>,
+    lenient: bool,
+    mut filter_config_section: fn(&git_config::file::Metadata) -> bool,
+) -> Result<(Option<usize>, usize), Error> {
+    let key = "core.deltaBaseCacheLimit";
+    let pack_cache_bytes = config
+        .integer_filter_by_key(key, &mut filter_config_section)
+        .transpose()
+        .with_leniency(lenient)
+        .map_err(|err| Error::Value { source: err, key })?;
+    let key = "gitoxide.objects.cacheLimit";
+    let object_cache_bytes = config
+        .integer_filter_by_key(key, &mut filter_config_section)
+        .transpose()
+        .with_leniency(lenient)
+        .map_err(|err| Error::Value { source: err, key })?
+        .unwrap_or_default();
+    Ok((
+        pack_cache_bytes.and_then(|v| v.try_into().ok()),
+        object_cache_bytes.try_into().unwrap_or_default(),
+    ))
+}
+
 pub(crate) fn parse_core_abbrev(
     config: &git_config::File<'static>,
     object_hash: git_hash::Kind,

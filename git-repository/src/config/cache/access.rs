@@ -3,6 +3,7 @@ use std::{borrow::Cow, convert::TryInto, path::PathBuf, time::Duration};
 use git_lock::acquire::Fail;
 
 use crate::{
+    bstr::BStr,
     config::{cache::util::ApplyLeniencyDefault, checkout_options, Cache},
     remote,
     repository::identity,
@@ -49,7 +50,7 @@ impl Cache {
             .user_agent
             .get_or_init(|| {
                 self.resolved
-                    .string("gitoxide", None, "userAgent")
+                    .string_by_key("gitoxide.userAgent")
                     .map(|s| s.to_string())
                     .unwrap_or_else(|| crate::env::agent().into())
             })
@@ -59,7 +60,7 @@ impl Cache {
 
     pub(crate) fn personas(&self) -> &identity::Personas {
         self.personas
-            .get_or_init(|| identity::Personas::from_config_and_env(&self.resolved, self.git_prefix))
+            .get_or_init(|| identity::Personas::from_config_and_env(&self.resolved))
     }
 
     pub(crate) fn url_rewrite(&self) -> &remote::url::Rewrite {
@@ -71,9 +72,8 @@ impl Cache {
     pub(crate) fn url_scheme(
         &self,
     ) -> Result<&remote::url::SchemePermission, remote::url::scheme_permission::init::Error> {
-        self.url_scheme.get_or_try_init(|| {
-            remote::url::SchemePermission::from_config(&self.resolved, self.git_prefix, self.filter_config_section)
-        })
+        self.url_scheme
+            .get_or_try_init(|| remote::url::SchemePermission::from_config(&self.resolved, self.filter_config_section))
     }
 
     /// Returns (file-timeout, pack-refs timeout)
@@ -121,7 +121,7 @@ impl Cache {
     pub(crate) fn trusted_file_path(
         &self,
         section_name: impl AsRef<str>,
-        subsection_name: Option<&str>,
+        subsection_name: Option<&BStr>,
         key: impl AsRef<str>,
     ) -> Option<Result<Cow<'_, std::path::Path>, git_config::path::interpolate::Error>> {
         let path = self.resolved.path_filter(

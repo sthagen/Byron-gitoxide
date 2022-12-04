@@ -53,7 +53,7 @@ mod v2 {
     use git_transport::client::Capabilities;
 
     fn capabilities(command: &str, input: &str) -> Capabilities {
-        Capabilities::from_lines(Some(Ok("version 2".into())), format!("{}={}", command, input))
+        Capabilities::from_lines(format!("version 2\n{}={}", command, input).into())
             .expect("valid input for V2 capabilities")
     }
 
@@ -88,10 +88,11 @@ mod v2 {
                         git_transport::Protocol::V2,
                         &capabilities("fetch", "shallow filter sideband-all packfile-uris")
                     )),
-                    ["thin-pack", "include-tag", "ofs-delta", "sideband-all", "packfile-uris"]
+                    ["thin-pack", "include-tag", "ofs-delta", "sideband-all"]
                         .iter()
                         .map(|s| s.as_bytes().as_bstr().to_owned())
-                        .collect::<Vec<_>>()
+                        .collect::<Vec<_>>(),
+                    "packfile-uris isn't really supported that well and we don't support it either yet"
                 )
             }
         }

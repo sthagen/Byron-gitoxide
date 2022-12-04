@@ -1,6 +1,6 @@
 use std::{borrow::Cow, ops::Deref};
 
-use bstr::{BString, ByteSlice};
+use bstr::{BStr, BString, ByteSlice};
 use smallvec::SmallVec;
 
 use crate::{
@@ -14,7 +14,10 @@ pub(crate) mod body;
 pub use body::{Body, BodyIter};
 use git_features::threading::OwnShared;
 
-use crate::file::write::{extract_newline, platform_newline};
+use crate::file::{
+    write::{extract_newline, platform_newline},
+    SectionId,
+};
 
 impl<'a> Deref for Section<'a> {
     type Target = Body<'a>;
@@ -29,13 +32,14 @@ impl<'a> Section<'a> {
     /// Create a new section with the given `name` and optional, `subsection`, `meta`-data and an empty body.
     pub fn new(
         name: impl Into<Cow<'a, str>>,
-        subsection: impl Into<Option<Cow<'a, str>>>,
+        subsection: impl Into<Option<Cow<'a, BStr>>>,
         meta: impl Into<OwnShared<file::Metadata>>,
     ) -> Result<Self, parse::section::header::Error> {
         Ok(Section {
             header: parse::section::Header::new(name, subsection)?,
             body: Default::default(),
             meta: meta.into(),
+            id: SectionId::default(),
         })
     }
 }
@@ -45,6 +49,12 @@ impl<'a> Section<'a> {
     /// Return our header.
     pub fn header(&self) -> &section::Header<'a> {
         &self.header
+    }
+
+    /// Return the unique `id` of the section, for use with the `*_by_id()` family of methods
+    /// in [git_config::File][crate::File].
+    pub fn id(&self) -> SectionId {
+        self.id
     }
 
     /// Return our body, containing all keys and values.

@@ -51,6 +51,11 @@ pub(crate) mod section {
 pub enum Error {
     #[error("Could not read configuration file")]
     Io(#[from] std::io::Error),
+    #[error("Could not decode configuration value at {key:?}")]
+    Value {
+        source: git_config::value::Error,
+        key: &'static str,
+    },
     #[error(transparent)]
     Init(#[from] git_config::file::init::Error),
     #[error(transparent)]
@@ -67,8 +72,12 @@ pub enum Error {
     DecodeBoolean { key: String, value: BString },
     #[error(transparent)]
     PathInterpolation(#[from] git_config::path::interpolate::Error),
-    #[error("Configuration overrides at open or init time could not be applied.")]
-    ConfigOverrides(#[from] overrides::Error),
+    #[error("{source:?} configuration overrides at open or init time could not be applied.")]
+    ConfigOverrides {
+        #[source]
+        err: overrides::Error,
+        source: git_config::Source,
+    },
     #[error("Invalid value for 'core.logAllRefUpdates': \"{value}\"")]
     LogAllRefUpdates { value: BString },
 }
@@ -109,7 +118,9 @@ pub mod checkout_options {
 
 ///
 pub mod transport {
-    use crate::bstr;
+    use std::borrow::Cow;
+
+    use crate::{bstr, bstr::BStr};
 
     /// The error produced when configuring a transport for a particular protocol.
     #[derive(Debug, thiserror::Error)]
@@ -130,7 +141,7 @@ pub mod transport {
         },
         #[error("Could not decode value at key {key:?} as UTF-8 string")]
         IllformedUtf8 {
-            key: &'static str,
+            key: Cow<'static, BStr>,
             source: bstr::FromUtf8Error,
         },
         #[error("Invalid URL passed for configuration")]
@@ -141,12 +152,16 @@ pub mod transport {
 
     ///
     pub mod http {
+        use std::borrow::Cow;
+
+        use crate::bstr::BStr;
+
         /// The error produced when configuring a HTTP transport.
         #[derive(Debug, thiserror::Error)]
         #[allow(missing_docs)]
         pub enum Error {
-            #[error("The proxy authentication method name {value:?} is invalid")]
-            InvalidProxyAuthMethod { value: String },
+            #[error("The proxy authentication method name {value:?} found at key `{key}` is invalid")]
+            InvalidProxyAuthMethod { value: String, key: Cow<'static, BStr> },
             #[error("Could not configure the credential helpers for the authenticated proxy url")]
             ConfigureProxyAuthenticate(#[from] crate::config::snapshot::credential_helpers::Error),
         }
@@ -181,6 +196,11 @@ pub(crate) struct Cache {
     pub(crate) url_scheme: OnceCell<remote::url::SchemePermission>,
     /// The algorithm to use when diffing blobs
     pub(crate) diff_algorithm: OnceCell<git_diff::blob::Algorithm>,
+    /// The amount of bytes to use for a memory backed delta pack cache. If `Some(0)`, no cache is used, if `None`
+    /// a standard cache is used which costs near to nothing and always pays for itself.
+    pub(crate) pack_cache_bytes: Option<usize>,
+    /// The amount of bytes to use for caching whole objects, or 0 to turn it off entirely.
+    pub(crate) object_cache_bytes: usize,
     /// The config section filter from the options used to initialize this instance. Keep these in sync!
     filter_config_section: fn(&git_config::file::Metadata) -> bool,
     /// The object kind to pick if a prefix is ambiguous.
@@ -194,7 +214,5 @@ pub(crate) struct Cache {
     xdg_config_home_env: git_sec::Permission,
     /// Define how we can use values obtained with `xdg_config(…)`. and its `HOME` variable.
     home_env: git_sec::Permission,
-    /// How to use git-prefixed environment variables
-    git_prefix: git_sec::Permission,
     // TODO: make core.precomposeUnicode available as well.
 }

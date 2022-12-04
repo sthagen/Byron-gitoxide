@@ -9,7 +9,9 @@ pub struct Permissions {
     pub config: Config,
 }
 
-/// Configure security relevant options when loading a git configuration.
+/// Configure from which sources git configuration may be loaded.
+///
+/// Note that configuration from inside of the repository is always loaded as it's definitely required for correctness.
 #[derive(Copy, Clone, Ord, PartialOrd, PartialEq, Eq, Debug, Hash)]
 pub struct Config {
     /// The git binary may come with configuration as part of its configuration, and if this is true (default false)
@@ -29,9 +31,6 @@ pub struct Config {
     /// Whether to use the user configuration.
     /// This is usually `~/.gitconfig` on unix.
     pub user: bool,
-    // TODO: figure out how this really applies and provide more information here.
-    // Whether to use worktree configuration from `config.worktree`.
-    // pub worktree: bool,
     /// Whether to use the configuration from environment variables.
     pub env: bool,
     /// Whether to follow include files are encountered in loaded configuration,
@@ -68,7 +67,21 @@ pub struct Environment {
     pub xdg_config_home: git_sec::Permission,
     /// Control the way resources pointed to by the home directory (similar to `xdg_config_home`) may be used.
     pub home: git_sec::Permission,
-    /// Control if resources pointed to by `GIT_*` prefixed environment variables can be used.
+    /// Control if environment variables to configure the HTTP transport, like `http_proxy` may be used.
+    ///
+    /// Note that http-transport related environment variables prefixed with `GIT_` may also be included here
+    /// if they match this category like `GIT_HTTP_USER_AGENT`.
+    pub http_transport: git_sec::Permission,
+    /// Control if the `EMAIL` environment variables may be read.
+    ///
+    /// Note that identity related environment variables prefixed with `GIT_` may also be included here
+    /// if they match this category.
+    pub identity: git_sec::Permission,
+    /// Control if environment variables related to the object database are handled. This includes features and performance
+    /// options alike.
+    pub objects: git_sec::Permission,
+    /// Control if resources pointed to by `GIT_*` prefixed environment variables can be used, **but only** if they
+    /// are not contained in any other category. This is a catch-all section.
     pub git_prefix: git_sec::Permission,
     /// Control if resources pointed to by `SSH_*` prefixed environment variables can be used (like `SSH_ASKPASS`)
     pub ssh_prefix: git_sec::Permission,
@@ -77,11 +90,15 @@ pub struct Environment {
 impl Environment {
     /// Allow access to the entire environment.
     pub fn all() -> Self {
+        let allow = git_sec::Permission::Allow;
         Environment {
-            xdg_config_home: git_sec::Permission::Allow,
-            home: git_sec::Permission::Allow,
-            git_prefix: git_sec::Permission::Allow,
-            ssh_prefix: git_sec::Permission::Allow,
+            xdg_config_home: allow,
+            home: allow,
+            git_prefix: allow,
+            ssh_prefix: allow,
+            http_transport: allow,
+            identity: allow,
+            objects: allow,
         }
     }
 }
@@ -126,6 +143,9 @@ impl Permissions {
                     home: deny,
                     ssh_prefix: deny,
                     git_prefix: deny,
+                    http_transport: deny,
+                    identity: deny,
+                    objects: deny,
                 }
             },
         }

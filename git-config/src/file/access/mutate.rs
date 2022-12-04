@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 
+use bstr::BStr;
 use git_features::threading::OwnShared;
 
 use crate::{
@@ -15,7 +16,7 @@ impl<'event> File<'event> {
     pub fn section_mut<'a>(
         &'a mut self,
         name: impl AsRef<str>,
-        subsection_name: Option<&str>,
+        subsection_name: Option<&BStr>,
     ) -> Result<SectionMut<'a, 'event>, lookup::existing::Error> {
         let id = self
             .section_ids_by_name_and_subname(name.as_ref(), subsection_name)?
@@ -30,6 +31,15 @@ impl<'event> File<'event> {
             .to_mut(nl))
     }
 
+    /// Returns the last found mutable section with a given `key`, identifying the name and subsection name like `core` or `remote.origin`.
+    pub fn section_mut_by_key<'a, 'b>(
+        &'a mut self,
+        key: impl Into<&'b BStr>,
+    ) -> Result<SectionMut<'a, 'event>, lookup::existing::Error> {
+        let key = section::unvalidated::Key::parse(key).ok_or(lookup::existing::Error::KeyMissing)?;
+        self.section_mut(key.section_name, key.subsection_name)
+    }
+
     /// Return the mutable section identified by `id`, or `None` if it didn't exist.
     ///
     /// Note that `id` is stable across deletions and insertions.
@@ -42,7 +52,7 @@ impl<'event> File<'event> {
     pub fn section_mut_or_create_new<'a>(
         &'a mut self,
         name: impl AsRef<str>,
-        subsection_name: Option<&str>,
+        subsection_name: Option<&BStr>,
     ) -> Result<SectionMut<'a, 'event>, section::header::Error> {
         self.section_mut_or_create_new_filter(name, subsection_name, &mut |_| true)
     }
@@ -52,7 +62,7 @@ impl<'event> File<'event> {
     pub fn section_mut_or_create_new_filter<'a>(
         &'a mut self,
         name: impl AsRef<str>,
-        subsection_name: Option<&str>,
+        subsection_name: Option<&BStr>,
         filter: &mut MetadataFilter,
     ) -> Result<SectionMut<'a, 'event>, section::header::Error> {
         let name = name.as_ref();
@@ -84,7 +94,7 @@ impl<'event> File<'event> {
     pub fn section_mut_filter<'a>(
         &'a mut self,
         name: impl AsRef<str>,
-        subsection_name: Option<&str>,
+        subsection_name: Option<&BStr>,
         filter: &mut MetadataFilter,
     ) -> Result<Option<file::SectionMut<'a, 'event>>, lookup::existing::Error> {
         let id = self
@@ -98,6 +108,17 @@ impl<'event> File<'event> {
         Ok(id.and_then(move |id| self.sections.get_mut(&id).map(move |s| s.to_mut(nl))))
     }
 
+    /// Like [`section_mut_filter()`][File::section_mut_filter()], but identifies the with a given `key`,
+    /// like `core` or `remote.origin`.
+    pub fn section_mut_filter_by_key<'a, 'b>(
+        &'a mut self,
+        key: impl Into<&'b BStr>,
+        filter: &mut MetadataFilter,
+    ) -> Result<Option<file::SectionMut<'a, 'event>>, lookup::existing::Error> {
+        let key = section::unvalidated::Key::parse(key).ok_or(lookup::existing::Error::KeyMissing)?;
+        self.section_mut_filter(key.section_name, key.subsection_name, filter)
+    }
+
     /// Adds a new section. If a subsection name was provided, then
     /// the generated header will use the modern subsection syntax.
     /// Returns a reference to the new section for immediate editing.
@@ -107,10 +128,11 @@ impl<'event> File<'event> {
     /// Creating a new empty section:
     ///
     /// ```
+    /// # use std::borrow::Cow;
     /// # use git_config::File;
     /// # use std::convert::TryFrom;
     /// let mut git_config = git_config::File::default();
-    /// let section = git_config.new_section("hello", Some("world".into()))?;
+    /// let section = git_config.new_section("hello", Some(Cow::Borrowed("world".into())))?;
     /// let nl = section.newline().to_owned();
     /// assert_eq!(git_config.to_string(), format!("[hello \"world\"]{nl}"));
     /// # Ok::<(), Box<dyn std::error::Error>>(())
@@ -120,11 +142,12 @@ impl<'event> File<'event> {
     ///
     /// ```
     /// # use git_config::File;
+    /// # use std::borrow::Cow;
     /// # use std::convert::TryFrom;
     /// # use bstr::ByteSlice;
     /// # use git_config::parse::section;
     /// let mut git_config = git_config::File::default();
-    /// let mut section = git_config.new_section("hello", Some("world".into()))?;
+    /// let mut section = git_config.new_section("hello", Some(Cow::Borrowed("world".into())))?;
     /// section.push(section::Key::try_from("a")?, Some("b".into()));
     /// let nl = section.newline().to_owned();
     /// assert_eq!(git_config.to_string(), format!("[hello \"world\"]{nl}\ta = b{nl}"));
@@ -135,7 +158,7 @@ impl<'event> File<'event> {
     pub fn new_section(
         &mut self,
         name: impl Into<Cow<'event, str>>,
-        subsection: impl Into<Option<Cow<'event, str>>>,
+        subsection: impl Into<Option<Cow<'event, BStr>>>,
     ) -> Result<SectionMut<'_, 'event>, section::header::Error> {
         let id = self.push_section_internal(file::Section::new(name, subsection, OwnShared::clone(&self.meta))?);
         let nl = self.detect_newline_style_smallvec();
@@ -184,7 +207,7 @@ impl<'event> File<'event> {
     pub fn remove_section<'a>(
         &mut self,
         name: &str,
-        subsection_name: impl Into<Option<&'a str>>,
+        subsection_name: impl Into<Option<&'a BStr>>,
     ) -> Option<file::Section<'event>> {
         let id = self
             .section_ids_by_name_and_subname(name, subsection_name.into())
@@ -233,7 +256,7 @@ impl<'event> File<'event> {
     pub fn remove_section_filter<'a>(
         &mut self,
         name: &str,
-        subsection_name: impl Into<Option<&'a str>>,
+        subsection_name: impl Into<Option<&'a BStr>>,
         filter: &mut MetadataFilter,
     ) -> Option<file::Section<'event>> {
         let id = self
@@ -268,9 +291,9 @@ impl<'event> File<'event> {
     pub fn rename_section<'a>(
         &mut self,
         name: impl AsRef<str>,
-        subsection_name: impl Into<Option<&'a str>>,
+        subsection_name: impl Into<Option<&'a BStr>>,
         new_name: impl Into<Cow<'event, str>>,
-        new_subsection_name: impl Into<Option<Cow<'event, str>>>,
+        new_subsection_name: impl Into<Option<Cow<'event, BStr>>>,
     ) -> Result<(), rename_section::Error> {
         let id = self
             .section_ids_by_name_and_subname(name.as_ref(), subsection_name.into())?
@@ -290,9 +313,9 @@ impl<'event> File<'event> {
     pub fn rename_section_filter<'a>(
         &mut self,
         name: impl AsRef<str>,
-        subsection_name: impl Into<Option<&'a str>>,
+        subsection_name: impl Into<Option<&'a BStr>>,
         new_name: impl Into<Cow<'event, str>>,
-        new_subsection_name: impl Into<Option<Cow<'event, str>>>,
+        new_subsection_name: impl Into<Option<Cow<'event, BStr>>>,
         filter: &mut MetadataFilter,
     ) -> Result<(), rename_section::Error> {
         let id = self

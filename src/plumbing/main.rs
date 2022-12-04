@@ -71,21 +71,28 @@ pub fn main() -> Result<()> {
         let config = config.clone();
         move |mode: Mode| -> Result<git::Repository> {
             let mut mapping: git::sec::trust::Mapping<git::open::Options> = Default::default();
-            let strict_toggle = matches!(mode, Mode::Strict | Mode::StrictWithGitInstallConfig);
+            let strict_toggle = matches!(mode, Mode::Strict | Mode::StrictWithGitInstallConfig) || args.strict;
             mapping.full = mapping.full.strict_config(strict_toggle);
             mapping.reduced = mapping.reduced.strict_config(strict_toggle);
             let git_installation = matches!(
                 mode,
                 Mode::StrictWithGitInstallConfig | Mode::LenientWithGitInstallConfig
             );
-            mapping.full.permissions.config.git_binary = git_installation;
-            mapping.reduced.permissions.config.git_binary = git_installation;
+            let to_match_settings = |mut opts: git::open::Options| {
+                opts.permissions.config.git_binary = git_installation;
+                if config.is_empty() {
+                    opts
+                } else {
+                    opts.cli_overrides(config.clone())
+                }
+            };
+            mapping.full.modify(to_match_settings);
+            mapping.reduced.modify(to_match_settings);
             let mut repo = git::ThreadSafeRepository::discover_opts(repository, Default::default(), mapping)
-                .map(git::Repository::from)
-                .map(|r| r.apply_environment())?;
+                .map(git::Repository::from)?;
             if !config.is_empty() {
                 repo.config_snapshot_mut()
-                    .apply_cli_overrides(config.iter())
+                    .append_config(config.iter(), git::config::Source::Cli)
                     .context("Unable to parse command-line configuration")?;
             }
             Ok(repo)
@@ -104,6 +111,7 @@ pub fn main() -> Result<()> {
         progress = false;
         progress_keep_open = false;
     }
+    let auto_verbose = !progress && !args.no_verbose;
 
     let should_interrupt = Arc::new(AtomicBool::new(false));
     git_repository::interrupt::init_handler({
@@ -126,7 +134,7 @@ pub fn main() -> Result<()> {
             };
             prepare_and_run(
                 "clone",
-                verbose,
+                auto_verbose,
                 progress,
                 progress_keep_open,
                 core::repository::clone::PROGRESS_RANGE,
@@ -149,7 +157,7 @@ pub fn main() -> Result<()> {
             };
             prepare_and_run(
                 "fetch",
-                verbose,
+                auto_verbose,
                 progress,
                 progress_keep_open,
                 core::repository::fetch::PROGRESS_RANGE,
@@ -195,7 +203,7 @@ pub fn main() -> Result<()> {
                     {
                         prepare_and_run(
                             "remote-refs",
-                            verbose,
+                            auto_verbose,
                             progress,
                             progress_keep_open,
                             core::repository::remote::refs::PROGRESS_RANGE,
@@ -214,7 +222,7 @@ pub fn main() -> Result<()> {
                     #[cfg(feature = "gitoxide-core-async-client")]
                     {
                         let (_handle, progress) = async_util::prepare(
-                            verbose,
+                            auto_verbose,
                             "remote-refs",
                             Some(core::repository::remote::refs::PROGRESS_RANGE),
                         );
@@ -251,7 +259,7 @@ pub fn main() -> Result<()> {
             free::Subcommands::CommitGraph(subcommands) => match subcommands {
                 free::commitgraph::Subcommands::Verify { path, statistics } => prepare_and_run(
                     "commitgraph-verify",
-                    verbose,
+                    auto_verbose,
                     progress,
                     progress_keep_open,
                     None,
@@ -332,7 +340,7 @@ pub fn main() -> Result<()> {
                 ),
                 free::index::Subcommands::Verify => prepare_and_run(
                     "index-verify",
-                    verbose,
+                    auto_verbose,
                     progress,
                     progress_keep_open,
                     None,
@@ -346,7 +354,7 @@ pub fn main() -> Result<()> {
             } => match cmd {
                 free::mailmap::Subcommands::Verify => prepare_and_run(
                     "mailmap-verify",
-                    verbose,
+                    auto_verbose,
                     progress,
                     progress_keep_open,
                     core::mailmap::PROGRESS_RANGE,
@@ -461,7 +469,7 @@ pub fn main() -> Result<()> {
                     verify,
                 } => prepare_and_run(
                     "pack-explode",
-                    verbose,
+                    auto_verbose,
                     progress,
                     progress_keep_open,
                     None,
@@ -493,7 +501,7 @@ pub fn main() -> Result<()> {
                     path,
                 } => prepare_and_run(
                     "pack-verify",
-                    verbose,
+                    auto_verbose,
                     progress,
                     progress_keep_open,
                     verify::PROGRESS_RANGE,
@@ -539,7 +547,7 @@ pub fn main() -> Result<()> {
                         ),
                         free::pack::multi_index::Subcommands::Verify => prepare_and_run(
                             "pack-multi-index-verify",
-                            verbose,
+                            auto_verbose,
                             progress,
                             progress_keep_open,
                             core::pack::multi_index::PROGRESS_RANGE,
@@ -581,10 +589,11 @@ pub fn main() -> Result<()> {
                             let input = if let Some(path) = pack_path {
                                 PathOrRead::Path(path)
                             } else {
-                                if atty::is(atty::Stream::Stdin) {
+                                use is_terminal::IsTerminal;
+                                if std::io::stdin().is_terminal() {
                                     anyhow::bail!(
-                                    "Refusing to read from standard input as no path is given, but it's a terminal."
-                                )
+                                        "Refusing to read from standard input as no path is given, but it's a terminal."
+                                    )
                                 }
                                 PathOrRead::Read(Box::new(stdin()))
                             };
@@ -616,7 +625,7 @@ pub fn main() -> Result<()> {
                 },
         } => prepare_and_run(
             "verify",
-            verbose,
+            auto_verbose,
             progress,
             progress_keep_open,
             core::repository::verify::PROGRESS_RANGE,
@@ -849,7 +858,8 @@ pub fn main() -> Result<()> {
 }
 
 fn stdin_or_bail() -> Result<std::io::BufReader<std::io::Stdin>> {
-    if atty::is(atty::Stream::Stdin) {
+    use is_terminal::IsTerminal;
+    if std::io::stdin().is_terminal() {
         anyhow::bail!("Refusing to read from standard input while a terminal is connected")
     }
     Ok(BufReader::new(stdin()))

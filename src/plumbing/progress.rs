@@ -125,7 +125,10 @@ static GIT_CONFIG: &[Record] = &[
     },
     Record {
         config: "core.deltaBaseCacheLimit",
-        usage: NotApplicable { reason: "we use a small 64 slot pack delta cache by default, which can be replaced with larger caches as determined by the algorithm. This keeps memory usage low and is fast enough" }
+        usage: InModule {
+            name: "repository::cache",
+            deviation: Some("if unset, we default to a small 64 slot fixed-size cache that holds at most 64 full delta base objects of any size. Overridable by 'GITOXIDE_PACK_CACHE_MEMORY'. Set to 0 to deactivate it entirely.")
+        }
     },
     Record {
         config: "core.bigFileThreshold",
@@ -348,28 +351,28 @@ static GIT_CONFIG: &[Record] = &[
         config: "committer.name",
         usage: InModule {
             name: "repository::identity",
-            deviation: None,
+            deviation: Some("overridden by 'GIT_COMMITTER_NAME'"),
         },
     },
     Record {
         config: "committer.email",
         usage: InModule {
             name: "repository::identity",
-            deviation: None,
+            deviation: Some("overridden by 'GIT_COMMITTER_EMAIL'"),
         },
     },
     Record {
         config: "author.name",
         usage: InModule {
             name: "repository::identity",
-            deviation: None,
+            deviation: Some("overridden by 'GIT_AUTHOR_NAME'"),
         },
     },
     Record {
         config: "author.email",
         usage: InModule {
             name: "repository::identity",
-            deviation: None,
+            deviation: Some("overridden by 'GIT_AUTHOR_EMAIL'"),
         },
     },
     Record {
@@ -560,7 +563,7 @@ static GIT_CONFIG: &[Record] = &[
     },
     Record {
         config: "http.proxyAuthMethod",
-        usage: Planned { note: None },
+        usage: InModule { name: "repository::config::transport", deviation: Some("implemented like git, but I never tried it so who knows") },
     },
     Record {
         config: "http.proxySSLCert",
@@ -729,14 +732,43 @@ static GIT_CONFIG: &[Record] = &[
     Record {
         config: "gitoxide.userAgent",
         usage: InModule {
-            name: "remote::connection",
-            deviation: None
+            name: "config::cache",
+            deviation: Some("The user agent presented on the git protocol layer, serving as fallback for when no http.userAgent is set.")
+        }
+    },
+    Record {
+        config: "gitoxide.https.proxy",
+        usage: InModule {
+            name: "repository::config::transport",
+            deviation: Some("Used only if the url to access is https, created from 'HTTPS_PROXY' and 'https_proxy' env-vars")
+        }
+    },
+    Record {
+        config: "gitoxide.http.proxy",
+        usage: InModule {
+            name: "repository::config::transport",
+            deviation: Some("created from 'http_proxy' env-var.")
+        }
+    },
+    Record {
+        config: "gitoxide.http.allProxy",
+        usage: InModule {
+            name: "repository::config::transport",
+            deviation: Some("created from 'all_proxy' or 'ALL_PROXY' env-var.")
+        }
+    },
+    Record {
+        config: "gitoxide.http.verbose",
+        usage: InModule {
+            name: "repository::config::transport",
+            deviation: Some("created from 'GIT_CURL_VERBOSE' to print debug output to stderr.")
         }
     },
     Record {
         config: "gitoxide.http.noProxy",
-        usage: NotPlanned {
-            reason: "on demand, without it it's not possible to implement environment overrides via `no_proxy` or `NO_PROXY` for a list of hostnames or `*`"
+        usage: InModule {
+            name: "repository::config::transport",
+            deviation: Some("created from 'no_proxy' or 'NO_PROXY' env-var.")
         }
     },
     Record {
@@ -745,7 +777,84 @@ static GIT_CONFIG: &[Record] = &[
             name: "repository::config::transport",
             deviation: Some("entirely new, and in milliseconds like all other timeout suffixed variables in the git config")
         }
-    }
+    },
+    Record {
+        config: "gitoxide.allow.protocolFromUser",
+        usage: InModule {
+            name: "remote::url::scheme_permission",
+            deviation: Some("corresponds to GIT_PROTOCOL_FROM_USER environment variable")
+        }
+    },
+    Record {
+        config: "gitoxide.objects.replaceRefBase",
+        usage: InModule {
+            name: "open",
+            deviation: Some("corresponds to the GIT_REPLACE_REF_BASE environment variable")
+        }
+    },
+    Record {
+        config: "gitoxide.objects.noReplace",
+        usage: InModule {
+            name: "open",
+            deviation: Some("corresponds to the GIT_NO_REPLACE_OBJECTS environment variable")
+        }
+    },
+    Record {
+        config: "gitoxide.commit.authorDate",
+        usage: InModule {
+            name: "repository::identity",
+            deviation: Some("corresponds to the GIT_AUTHOR_DATE environment variable")
+        }
+    },
+    Record {
+        config: "gitoxide.commit.committerDate",
+        usage: InModule {
+            name: "repository::identity",
+            deviation: Some("corresponds to the GIT_COMMITTER_DATE environment variable")
+        }
+    },
+    Record {
+        config: "gitoxide.author.nameFallback",
+        usage: InModule {
+            name: "repository::identity",
+            deviation: Some("corresponds to the GIT_AUTHOR_NAME environment variable and is a fallback for `author.name`")
+        }
+    },
+    Record {
+        config: "gitoxide.author.emailFallback",
+        usage: InModule {
+            name: "repository::identity",
+            deviation: Some("corresponds to the GIT_AUTHOR_EMAIL environment variable and is a fallback for `author.email`")
+        }
+    },
+    Record {
+        config: "gitoxide.committer.nameFallback",
+        usage: InModule {
+            name: "repository::identity",
+            deviation: Some("corresponds to the GIT_COMMITTER_NAME environment variable and is a fallback for `committer.name`")
+        }
+    },
+    Record {
+        config: "gitoxide.committer.emailFallback",
+        usage: InModule {
+            name: "repository::identity",
+            deviation: Some("corresponds to the GIT_COMMITTER_EMAIL environment variable and is a fallback for `committer.email`")
+        }
+    },
+    Record {
+        config: "gitoxide.user.emailFallback",
+        usage: InModule {
+            name: "repository::identity",
+            deviation: Some("corresponds to the EMAIL environment variable and is a fallback for `user.email`")
+        }
+    },
+    Record {
+        config: "gitoxide.objects.cacheLimit",
+        usage: InModule {
+            name: "repository::cache",
+            deviation: Some("corresponds to the GITOXIDE_OBJECT_CACHE_MEMORY environment variable. If unset or 0, there is no object cache")
+        }
+    },
 ];
 
 /// A programmatic way to record and display progress.

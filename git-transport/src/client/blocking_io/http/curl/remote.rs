@@ -9,8 +9,10 @@ use std::{
 use curl::easy::{Auth, Easy2};
 use git_features::io::pipe;
 
-use crate::client::blocking_io::http;
-use crate::client::http::options::ProxyAuthMethod;
+use crate::client::{
+    blocking_io::http::{self, curl::Error, redirect},
+    http::options::{FollowRedirects, ProxyAuthMethod},
+};
 
 #[derive(Default)]
 struct Handler {
@@ -19,6 +21,7 @@ struct Handler {
     receive_body: Option<pipe::Reader>,
     checked_status: bool,
     last_status: usize,
+    follow: FollowRedirects,
 }
 
 impl Handler {
@@ -34,9 +37,13 @@ impl Handler {
         let code = std::str::from_utf8(code)?;
         code.parse().map_err(Into::into)
     }
-    fn parse_status(data: &[u8]) -> Option<(usize, Box<dyn std::error::Error + Send + Sync>)> {
+    fn parse_status(data: &[u8], follow: FollowRedirects) -> Option<(usize, Box<dyn std::error::Error + Send + Sync>)> {
+        let valid_end = match follow {
+            FollowRedirects::Initial | FollowRedirects::All => 308,
+            FollowRedirects::None => 299,
+        };
         match Self::parse_status_inner(data) {
-            Ok(status) if !(200..=299).contains(&status) => {
+            Ok(status) if !(200..=valid_end).contains(&status) => {
                 Some((status, format!("Received HTTP status {}", status).into()))
             }
             Ok(_) => None,
@@ -68,7 +75,7 @@ impl curl::easy::Handler for Handler {
                 } else {
                     self.checked_status = true;
                     self.last_status = 200;
-                    match Handler::parse_status(data) {
+                    match Handler::parse_status(data, self.follow) {
                         None => true,
                         Some((status, err)) => {
                             self.last_status = status;
@@ -95,6 +102,7 @@ impl curl::easy::Handler for Handler {
 
 pub struct Request {
     pub url: String,
+    pub base_url: String,
     pub headers: curl::easy::List,
     pub upload: bool,
     pub config: http::Options,
@@ -107,41 +115,48 @@ pub struct Response {
 }
 
 pub fn new() -> (
-    thread::JoinHandle<Result<(), curl::Error>>,
+    thread::JoinHandle<Result<(), Error>>,
     SyncSender<Request>,
     Receiver<Response>,
 ) {
     let (req_send, req_recv) = sync_channel(0);
     let (res_send, res_recv) = sync_channel(0);
-    let handle = std::thread::spawn(move || -> Result<(), curl::Error> {
+    let handle = std::thread::spawn(move || -> Result<(), Error> {
         let mut handle = Easy2::new(Handler::default());
+        let mut follow = None;
+        let mut redirected_base_url = None::<String>;
 
         for Request {
             url,
+            base_url,
             mut headers,
             upload,
             config:
                 http::Options {
                     extra_headers,
-                    follow_redirects: _,
+                    follow_redirects,
                     low_speed_limit_bytes_per_second,
                     low_speed_time_seconds,
                     connect_timeout,
                     proxy,
+                    no_proxy,
                     proxy_auth_method,
                     user_agent,
                     proxy_authenticate,
+                    verbose,
                     backend: _,
                 },
         } in req_recv
         {
-            handle.url(&url)?;
+            let effective_url = redirect::swap_tails(redirected_base_url.as_deref(), &base_url, url.clone());
+            handle.url(&effective_url)?;
 
             // GitHub sends 'chunked' to avoid unknown clients to choke on the data, I suppose
             handle.post(upload)?;
             for header in extra_headers {
                 headers.append(&header)?;
             }
+            handle.verbose(verbose)?;
 
             let mut proxy_auth_action = None;
             if let Some(proxy) = proxy {
@@ -160,17 +175,15 @@ pub fn new() -> (
                 handle.proxy_type(proxy_type)?;
 
                 if let Some((obtain_creds_action, authenticate)) = proxy_authenticate {
-                    let creds = authenticate.lock().expect("no panics in other threads")(obtain_creds_action)
-                        .map_err(|err| {
-                            let mut e = curl::Error::new(0);
-                            e.set_extra(err.to_string());
-                            e
-                        })?
+                    let creds = authenticate.lock().expect("no panics in other threads")(obtain_creds_action)?
                         .expect("action to fetch credentials");
                     handle.proxy_username(&creds.identity.username)?;
                     handle.proxy_password(&creds.identity.password)?;
                     proxy_auth_action = Some((creds.next, authenticate));
                 }
+            }
+            if let Some(no_proxy) = no_proxy {
+                handle.noproxy(&no_proxy)?;
             }
             if let Some(user_agent) = user_agent {
                 handle.useragent(&user_agent)?;
@@ -214,6 +227,14 @@ pub fn new() -> (
                 (receive_data, receive_headers, send_body)
             };
 
+            let follow = follow.get_or_insert(follow_redirects);
+            handle.get_mut().follow = *follow;
+            handle.follow_location(matches!(*follow, FollowRedirects::Initial | FollowRedirects::All))?;
+
+            if *follow == FollowRedirects::Initial {
+                *follow = FollowRedirects::None;
+            }
+
             if res_send
                 .send(Response {
                     headers: receive_headers,
@@ -256,22 +277,31 @@ pub fn new() -> (
                         action.store()
                     } else {
                         action.erase()
-                    })
-                    .map_err(|err| {
-                        let mut e = curl::Error::new(0);
-                        e.set_extra(err.to_string());
-                        e
                     })?;
                 }
                 handler.reset();
                 handler.receive_body.take();
                 handler.send_header.take();
                 handler.send_data.take();
+                let actual_url = handle
+                    .effective_url()?
+                    .expect("effective url is present and valid UTF-8");
+                if actual_url != effective_url {
+                    redirected_base_url = redirect::base_url(actual_url, &base_url, url)?.into();
+                }
             }
         }
         Ok(())
     });
     (handle, req_send, res_recv)
+}
+
+impl From<Error> for http::Error {
+    fn from(err: Error) -> Self {
+        http::Error::Detail {
+            description: err.to_string(),
+        }
+    }
 }
 
 impl From<curl::Error> for http::Error {

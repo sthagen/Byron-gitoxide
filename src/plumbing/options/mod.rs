@@ -30,10 +30,22 @@ pub struct Args {
     #[clap(long, short = 'v')]
     pub verbose: bool,
 
+    /// Turn off verbose message display for commands where these are shown by default.
+    #[clap(long, conflicts_with("verbose"))]
+    pub no_verbose: bool,
+
     /// Bring up a terminal user interface displaying progress visually
     #[cfg(feature = "prodash-render-tui")]
     #[clap(long, conflicts_with("verbose"))]
     pub progress: bool,
+
+    /// Don't default malformed configuration flags, but show an error instead.
+    ///
+    /// Note that some subcommands use strict mode by default.
+    // TODO: needs a 'lenient' mutually exclusive counterpart. Opens the gate to auto-verbose some commands, and add --no-verbose
+    //       for these.
+    #[clap(long, short = 's')]
+    pub strict: bool,
 
     /// The progress TUI will stay up even though the work is already completed.
     ///
@@ -106,6 +118,9 @@ pub enum Subcommands {
 }
 
 pub mod config {
+    use git::bstr::BString;
+    use git_repository as git;
+
     /// Print all entries in a configuration file or access other sub-commands
     #[derive(Debug, clap::Parser)]
     #[clap(subcommand_required(false))]
@@ -114,7 +129,8 @@ pub mod config {
         ///
         /// Typical filters are `branch` or `remote.origin` or `remote.or*` - git-style globs are supported
         /// and comparisons are case-insensitive.
-        pub filter: Vec<String>,
+        #[clap(parse(try_from_os_str = git::env::os_str_to_bstring))]
+        pub filter: Vec<BString>,
     }
 }
 

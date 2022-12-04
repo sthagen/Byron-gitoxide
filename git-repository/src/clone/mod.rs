@@ -1,5 +1,7 @@
 use std::convert::TryInto;
 
+use crate::bstr::BString;
+
 type ConfigureRemoteFn = Box<dyn FnMut(crate::Remote<'_>) -> Result<crate::Remote<'_>, crate::remote::init::Error>>;
 
 /// A utility to collect configuration on how to fetch from a remote and initiate a fetch operation. It will delete the newly
@@ -9,7 +11,7 @@ pub struct PrepareFetch {
     /// A freshly initialized repository which is owned by us, or `None` if it was handed to the user
     repo: Option<crate::Repository>,
     /// The name of the remote, which defaults to `origin` if not overridden.
-    remote_name: Option<String>,
+    remote_name: Option<BString>,
     /// A function to configure a remote prior to fetching a pack.
     configure_remote: Option<ConfigureRemoteFn>,
     /// Options for preparing a fetch operation.
