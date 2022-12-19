@@ -12,6 +12,8 @@ pub enum Error {
     UnsupportedSshCommand(String),
 }
 
+impl crate::IsSpuriousError for Error {}
+
 /// Connect to `host` using the ssh program to obtain data from the repository at `path` on the remote.
 ///
 /// The optional `user` identifies the user's account to which to connect, while `port` allows to specify non-standard
@@ -41,7 +43,7 @@ pub fn connect(
             if desired_version != Protocol::V1 {
                 let mut args = vec![Cow::from("-o"), "SendEnv=GIT_PROTOCOL".into()];
                 if let Some(port) = port {
-                    args.push(format!("-p={}", port).into());
+                    args.push(format!("-p{}", port).into());
                 }
                 Some((
                     args,

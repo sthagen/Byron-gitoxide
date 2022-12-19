@@ -4,7 +4,9 @@ use git_features::io::pipe;
 
 use crate::client::{http, http::reqwest::Remote};
 
+/// The error returned by the 'remote' helper, a purely internal construct to perform http requests.
 #[derive(Debug, thiserror::Error)]
+#[allow(missing_docs)]
 pub enum Error {
     #[error(transparent)]
     Reqwest(#[from] reqwest::Error),
@@ -12,11 +14,28 @@ pub enum Error {
     ConfigureRequest(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),
 }
 
+impl crate::IsSpuriousError for Error {
+    fn is_spurious(&self) -> bool {
+        match self {
+            Error::Reqwest(err) => {
+                err.is_timeout() || err.is_connect() || err.status().map_or(false, |status| status.is_server_error())
+            }
+            _ => false,
+        }
+    }
+}
+
 impl Default for Remote {
     fn default() -> Self {
         let (req_send, req_recv) = std::sync::mpsc::sync_channel(0);
         let (res_send, res_recv) = std::sync::mpsc::sync_channel(0);
         let handle = std::thread::spawn(move || -> Result<(), Error> {
+            // We may error while configuring, which is expected as part of the internal protocol. The error will be
+            // received and the sender of the request might restart us.
+            let client = reqwest::blocking::ClientBuilder::new()
+                .connect_timeout(std::time::Duration::from_secs(20))
+                .http1_title_case_headers()
+                .build()?;
             for Request {
                 url,
                 headers,
@@ -24,11 +43,6 @@ impl Default for Remote {
                 config,
             } in req_recv
             {
-                // We may error while configuring, which is expected as part of the internal protocol. The error will be
-                // received and the sender of the request might restart us.
-                let client = reqwest::blocking::ClientBuilder::new()
-                    .connect_timeout(std::time::Duration::from_secs(20))
-                    .build()?;
                 let mut req_builder = if upload { client.post(url) } else { client.get(url) }.headers(headers);
                 let (post_body_tx, post_body_rx) = pipe::unidirectional(0);
                 if upload {
@@ -63,6 +77,8 @@ impl Default for Remote {
                             Some(status) => {
                                 let kind = if status == reqwest::StatusCode::UNAUTHORIZED {
                                     std::io::ErrorKind::PermissionDenied
+                                } else if status.is_server_error() {
+                                    std::io::ErrorKind::ConnectionAborted
                                 } else {
                                     std::io::ErrorKind::Other
                                 };

@@ -11,14 +11,14 @@ use git_features::{
 
 use crate::{data, index::traverse};
 
-fn add_decode_result(lhs: &mut data::decode_entry::Outcome, rhs: data::decode_entry::Outcome) {
+fn add_decode_result(lhs: &mut data::decode::entry::Outcome, rhs: data::decode::entry::Outcome) {
     lhs.num_deltas += rhs.num_deltas;
     lhs.decompressed_size += rhs.decompressed_size;
     lhs.compressed_size += rhs.compressed_size;
     lhs.object_size += rhs.object_size;
 }
 
-fn div_decode_result(lhs: &mut data::decode_entry::Outcome, div: usize) {
+fn div_decode_result(lhs: &mut data::decode::entry::Outcome, div: usize) {
     if div != 0 {
         lhs.num_deltas = (lhs.num_deltas as f32 / div as f32) as u32;
         lhs.decompressed_size /= div as u64;
@@ -68,7 +68,7 @@ where
     P: Progress,
     E: std::error::Error + Send + Sync + 'static,
 {
-    type Input = Result<Vec<data::decode_entry::Outcome>, traverse::Error<E>>;
+    type Input = Result<Vec<data::decode::entry::Outcome>, traverse::Error<E>>;
     type FeedProduce = ();
     type Output = traverse::Statistics;
     type Error = traverse::Error<E>;
@@ -84,12 +84,12 @@ where
         self.entries_seen += chunk_stats.len();
 
         let chunk_total = chunk_stats.into_iter().fold(
-            data::decode_entry::Outcome::default_from_kind(git_object::Kind::Tree),
+            data::decode::entry::Outcome::default_from_kind(git_object::Kind::Tree),
             |mut total, stats| {
                 *self.stats.objects_per_chain_length.entry(stats.num_deltas).or_insert(0) += 1;
                 self.stats.total_decompressed_entries_size += stats.decompressed_size;
                 self.stats.total_compressed_entries_size += stats.compressed_size as u64;
-                self.stats.total_object_size += stats.object_size as u64;
+                self.stats.total_object_size += stats.object_size;
                 use git_object::Kind::*;
                 match stats.kind {
                     Commit => self.stats.num_commits += 1,
@@ -112,7 +112,7 @@ where
     }
 
     fn finalize(mut self) -> Result<Self::Output, Self::Error> {
-        div_decode_result(&mut self.stats.average, self.entries_seen as usize);
+        div_decode_result(&mut self.stats.average, self.entries_seen);
 
         let elapsed_s = self.then.elapsed().as_secs_f32();
         let objects_per_second = (self.entries_seen as f32 / elapsed_s) as u32;

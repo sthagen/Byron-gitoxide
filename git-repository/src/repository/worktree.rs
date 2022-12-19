@@ -50,7 +50,7 @@ impl crate::Repository {
     /// This is not to be confused with the [`worktree()`][crate::Repository::worktree()] worktree, which may exists if this instance
     /// was opened in a worktree that was created separately.
     pub fn is_bare(&self) -> bool {
-        self.config.is_bare
+        self.config.is_bare && self.work_dir().is_none()
     }
 
     /// Open a new copy of the index file and decode it entirely.
@@ -64,7 +64,7 @@ impl crate::Repository {
             .resolved
             .boolean("index", None, "threads")
             .map(|res| {
-                res.map(|value| if value { 0usize } else { 1 }).or_else(|err| {
+                res.map(|value| usize::from(!value)).or_else(|err| {
                     git_config::Integer::try_from(err.input.as_ref())
                         .map_err(|err| worktree::open_index::Error::ConfigIndexThreads {
                             value: err.input.clone(),

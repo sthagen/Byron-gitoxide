@@ -1,3 +1,51 @@
+mod missing_config_file {
+    use crate::util::named_subrepo_opts;
+    use git_repository as git;
+
+    #[test]
+    fn bare() -> crate::Result {
+        let repo = named_subrepo_opts("make_config_repos.sh", "bare-no-config", git::open::Options::isolated())?;
+        assert!(
+            repo.is_bare(),
+            "without config, we can't really know what the repo is actually but can guess by not having a worktree"
+        );
+        assert_eq!(repo.work_dir(), None);
+        assert!(repo.worktree().is_none());
+        Ok(())
+    }
+
+    #[test]
+    fn non_bare() -> crate::Result {
+        let repo = named_subrepo_opts(
+            "make_config_repos.sh",
+            "worktree-no-config",
+            git::open::Options::isolated(),
+        )?;
+        assert!(repo.work_dir().is_some());
+        assert!(repo.worktree().is_some());
+        assert!(
+            !repo.is_bare(),
+            "without config, we can't really know what the repo is actually but can guess as there is a worktree"
+        );
+        Ok(())
+    }
+}
+
+mod not_a_repository {
+    use git_repository as git;
+
+    #[test]
+    fn shows_proper_error() -> crate::Result {
+        for name in ["empty-dir", "with-files"] {
+            let name = format!("not-a-repo-{name}");
+            let repo_path = git_testtools::scripted_fixture_read_only("make_config_repos.sh")?.join(name);
+            let err = git::open_opts(&repo_path, git::open::Options::isolated()).unwrap_err();
+            assert!(matches!(err, git::open::Error::NotARepository { path, .. } if path == repo_path));
+        }
+        Ok(())
+    }
+}
+
 mod submodules {
     use std::path::Path;
 
@@ -5,7 +53,7 @@ mod submodules {
 
     #[test]
     fn by_their_worktree_checkout_and_git_modules_dir() {
-        let dir = git_testtools::scripted_fixture_repo_read_only("make_submodules.sh").unwrap();
+        let dir = git_testtools::scripted_fixture_read_only("make_submodules.sh").unwrap();
         let parent_repo = Path::new("with-submodules");
         let modules = parent_repo.join(".git").join("modules");
         for module in ["m1", "dir/m1"] {
@@ -31,7 +79,7 @@ mod submodules {
     }
 
     fn discover_repo(name: impl AsRef<Path>) -> crate::Result<git::Repository> {
-        let dir = git_testtools::scripted_fixture_repo_read_only("make_submodules.sh")?;
+        let dir = git_testtools::scripted_fixture_read_only("make_submodules.sh")?;
         let repo_dir = dir.join(name);
         Ok(git::ThreadSafeRepository::discover_opts(
             repo_dir,
@@ -232,7 +280,7 @@ mod worktree {
     #[test]
     fn with_worktree_configs() -> git_testtools::Result {
         let manifest_dir = std::path::PathBuf::from(std::env::var("CARGO_MANIFEST_DIR")?);
-        let fixture_dir = git_testtools::scripted_fixture_repo_read_only("make_worktree_repo_with_configs.sh")?;
+        let fixture_dir = git_testtools::scripted_fixture_read_only("make_worktree_repo_with_configs.sh")?;
         let worktree_base = manifest_dir.join(&fixture_dir).join("repo/.git/worktrees");
 
         {

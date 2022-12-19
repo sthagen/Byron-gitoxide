@@ -7,7 +7,7 @@ use crate::{DOT_GIT_DIR, MODULES};
 /// Please note that repositories without an index generally _look_ bare, even though they might also be uninitialized.
 pub fn bare(git_dir_candidate: impl AsRef<Path>) -> bool {
     let git_dir = git_dir_candidate.as_ref();
-    !(git_dir.join("index").exists() || (git_dir.file_name() == Some(OsStr::new(DOT_GIT_DIR)) && git_dir.is_file()))
+    !(git_dir.join("index").exists() || (git_dir.file_name() == Some(OsStr::new(DOT_GIT_DIR))))
 }
 
 /// Returns true if `git_dir` is is located within a `.git/modules` directory, indicating it's a submodule clone.
@@ -47,7 +47,14 @@ pub fn git(git_dir: impl AsRef<Path>) -> Result<crate::repository::Kind, crate::
         WorkTreeGitDir { work_dir: std::path::PathBuf },
     }
     let git_dir = git_dir.as_ref();
-    let (dot_git, common_dir, kind) = if git_dir.metadata()?.is_file() {
+    let (dot_git, common_dir, kind) = if git_dir
+        .metadata()
+        .map_err(|err| crate::is_git::Error::Metadata {
+            source: err,
+            path: git_dir.into(),
+        })?
+        .is_file()
+    {
         let private_git_dir = crate::path::from_gitdir_file(git_dir)?;
         let common_dir = private_git_dir.join("commondir");
         match crate::path::from_plain_file(&common_dir) {
@@ -123,7 +130,6 @@ pub fn git(git_dir: impl AsRef<Path>) -> Result<crate::repository::Kind, crate::
             return Err(crate::is_git::Error::MissingRefsDirectory { missing: refs_path });
         }
     }
-
     Ok(match kind {
         Kind::LinkedWorkTreeDir => crate::repository::Kind::WorkTree {
             linked_git_dir: Some(dot_git.into_owned()),

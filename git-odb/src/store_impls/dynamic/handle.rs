@@ -11,24 +11,19 @@ use git_hash::oid;
 
 use crate::store::{handle, types, RefreshMode};
 
-pub(crate) mod multi_index {
-    // TODO: remove this declaration and replace it with the actual type where it's used
-    pub type File = git_pack::multi_index::File;
-}
-
-pub enum SingleOrMultiIndex {
+pub(crate) enum SingleOrMultiIndex {
     Single {
         index: Arc<git_pack::index::File>,
         data: Option<Arc<git_pack::data::File>>,
     },
     Multi {
-        index: Arc<multi_index::File>,
+        index: Arc<git_pack::multi_index::File>,
         data: Vec<Option<Arc<git_pack::data::File>>>,
     },
 }
 
 /// A utility to allow looking up pack offsets for a particular pack
-pub enum IntraPackLookup<'a> {
+pub(crate) enum IntraPackLookup<'a> {
     Single(&'a git_pack::index::File),
     /// the internal pack-id inside of a multi-index for which the lookup is supposed to be.
     /// Used to prevent ref-delta OIDs to, for some reason, point to a different pack.
@@ -94,7 +89,7 @@ pub(crate) mod index_lookup {
                         "BUG: multi-pack index must be set if this is a multi-pack, pack-indices seem unstable",
                     );
                     Box::new(index.iter().filter_map(move |e| {
-                        (e.pack_index == pack_index as u32).then(|| git_pack::index::Entry {
+                        (e.pack_index == pack_index).then(|| git_pack::index::Entry {
                             oid: e.oid,
                             pack_offset: e.pack_offset,
                             crc32: None,
@@ -145,7 +140,7 @@ pub(crate) mod index_lookup {
             &self,
             prefix: git_hash::Prefix,
             candidates: Option<&mut HashSet<git_hash::ObjectId>>,
-        ) -> Option<crate::find::PrefixLookupResult> {
+        ) -> Option<crate::store::prefix::lookup::Outcome> {
             let mut candidate_entries = candidates.as_ref().map(|_| 0..0);
             let res = match &self.file {
                 handle::SingleOrMultiIndex::Single { index, .. } => {

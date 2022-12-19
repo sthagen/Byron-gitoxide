@@ -82,9 +82,10 @@
 //! * [`hash`]
 //! * [`url`]
 //! * [`actor`]
-//! * [`bstr`][bstr]
+//! * [`bstr`]
 //! * [`date`]
 //! * [`mod@discover`]
+//! * [`features`]
 //! * [`index`]
 //! * [`glob`]
 //! * [`path`]
@@ -129,8 +130,9 @@ pub use git_attributes as attrs;
 pub use git_credentials as credentials;
 pub use git_date as date;
 pub use git_diff as diff;
+pub use git_features as features;
 use git_features::threading::OwnShared;
-pub use git_features::{parallel, progress, progress::Progress, threading};
+pub use git_features::{parallel, progress::Progress, threading};
 pub use git_glob as glob;
 pub use git_hash as hash;
 #[doc(inline)]
@@ -158,7 +160,7 @@ mod ext;
 ///
 pub mod prelude {
     pub use git_features::parallel::reduce::Finalize;
-    pub use git_odb::{Find, FindExt, Write};
+    pub use git_odb::{Find, FindExt, Header, HeaderExt, Write};
 
     pub use crate::ext::*;
 }
@@ -189,6 +191,12 @@ pub mod object;
 pub mod reference;
 mod repository;
 pub mod tag;
+
+///
+pub mod progress {
+    pub use git_features::progress::*;
+    pub use prodash::tree;
+}
 
 /// See [ThreadSafeRepository::discover()], but returns a [`Repository`] instead.
 pub fn discover(directory: impl AsRef<std::path::Path>) -> Result<Repository, discover::Error> {
@@ -240,7 +248,7 @@ where
     clone::PrepareFetch::new(
         url,
         path,
-        crate::create::Kind::WithWorktree,
+        create::Kind::WithWorktree,
         create::Options::default(),
         open_opts_with_git_binary_config(),
     )
