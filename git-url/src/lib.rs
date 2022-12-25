@@ -149,7 +149,7 @@ impl Url {
             Some(match self.scheme {
                 Http => 80,
                 Https => 443,
-                Ssh => 21,
+                Ssh => 22,
                 Git => 9418,
                 File | Ext(_) => return None,
             })
@@ -192,10 +192,8 @@ impl Url {
         }
         if self.serialize_alternative_form && self.scheme == Scheme::Ssh {
             out.write_all(b":")?;
-            out.write_all(&self.path[1..])?;
-        } else {
-            out.write_all(&self.path)?;
         }
+        out.write_all(&self.path)?;
         Ok(())
     }
 

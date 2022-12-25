@@ -46,6 +46,34 @@ mod not_a_repository {
     }
 }
 
+mod open_path_as_is {
+    use crate::util::{named_subrepo_opts, repo_opts};
+    use git_repository as git;
+
+    fn open_path_as_is() -> git::open::Options {
+        git::open::Options::isolated().open_path_as_is(true)
+    }
+
+    #[test]
+    fn bare_repos_open_normally() -> crate::Result {
+        assert!(named_subrepo_opts("make_basic_repo.sh", "bare.git", open_path_as_is())?.is_bare());
+        Ok(())
+    }
+
+    #[test]
+    fn worktrees_cannot_be_opened() -> crate::Result {
+        let err = repo_opts("make_basic_repo.sh", open_path_as_is()).unwrap_err();
+        assert!(matches!(err, git::open::Error::NotARepository { .. }));
+        Ok(())
+    }
+
+    #[test]
+    fn git_dir_within_worktrees_open_normally() -> crate::Result {
+        assert!(!named_subrepo_opts("make_basic_repo.sh", ".git", open_path_as_is())?.is_bare());
+        Ok(())
+    }
+}
+
 mod submodules {
     use std::path::Path;
 
@@ -156,17 +184,23 @@ mod with_overrides {
             .set("GIT_AUTHOR_DATE", default_date)
             .set("EMAIL", "user email")
             .set("GITOXIDE_PACK_CACHE_MEMORY", "0")
-            .set("GITOXIDE_OBJECT_CACHE_MEMORY", "5m");
+            .set("GITOXIDE_OBJECT_CACHE_MEMORY", "5m")
+            .set("GIT_SSL_CAINFO", "./env.pem")
+            .set("GIT_SSL_VERSION", "tlsv1.3");
         let mut opts = git::open::Options::isolated()
-            .config_overrides([
-                "http.userAgent=agent-from-api",
-                "http.lowSpeedLimit=2",
-                "http.lowSpeedTime=2",
-            ])
             .cli_overrides([
                 "http.userAgent=agent-from-cli",
                 "http.lowSpeedLimit=3",
                 "http.lowSpeedTime=3",
+                "http.sslCAInfo=./cli.pem",
+                "http.sslVersion=sslv3",
+            ])
+            .config_overrides([
+                "http.userAgent=agent-from-api",
+                "http.lowSpeedLimit=2",
+                "http.lowSpeedTime=2",
+                "http.sslCAInfo=./api.pem",
+                "http.sslVersion=tlsv1",
             ]);
         opts.permissions.env.git_prefix = Permission::Allow;
         opts.permissions.env.http_transport = Permission::Allow;
@@ -238,6 +272,24 @@ mod with_overrides {
             [
                 cow_bstr("no-proxy"), // on windows, environment variables are case-insensitive
                 cow_bstr(if cfg!(windows) { "no-proxy" } else { "no-proxy-lower" })
+            ]
+        );
+        assert_eq!(
+            config.strings_by_key("http.sslCAInfo").expect("at least one value"),
+            [
+                cow_bstr("./CA.pem"),
+                cow_bstr("./cli.pem"),
+                cow_bstr("./api.pem"),
+                cow_bstr("./env.pem")
+            ]
+        );
+        assert_eq!(
+            config.strings_by_key("http.sslVersion").expect("at least one value"),
+            [
+                cow_bstr("sslv2"),
+                cow_bstr("sslv3"),
+                cow_bstr("tlsv1"),
+                cow_bstr("tlsv1.3")
             ]
         );
         for (key, expected) in [

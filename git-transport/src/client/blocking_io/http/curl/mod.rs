@@ -6,15 +6,31 @@ use std::{
 use git_features::io;
 
 use crate::client::blocking_io::http;
+use crate::client::http::traits::PostBodyDataKind;
 
 mod remote;
 
+/// Options to configure the `curl` HTTP handler.
+#[derive(Default)]
+pub struct Options {
+    /// If `true` and runtime configuration is possible for `curl` backends, certificates revocation will be checked.
+    ///
+    /// This only works on windows apparently. Ignored if `None`.
+    pub schannel_check_revoke: Option<bool>,
+}
+
+/// The error returned by the 'remote' helper, a purely internal construct to perform http requests.
+///
+/// It can be used for downcasting errors, which are boxed to hide the actual implementation.
 #[derive(Debug, thiserror::Error)]
+#[allow(missing_docs)]
 pub enum Error {
     #[error(transparent)]
     Curl(#[from] curl::Error),
     #[error(transparent)]
     Redirect(#[from] http::redirect::Error),
+    #[error("Could not finish reading all data to post to the remote")]
+    ReadPostBody(#[from] std::io::Error),
     #[error(transparent)]
     Authenticate(#[from] git_credentials::protocol::Error),
 }
@@ -28,7 +44,7 @@ impl crate::IsSpuriousError for Error {
     }
 }
 
-pub fn curl_is_spurious(err: &curl::Error) -> bool {
+pub(crate) fn curl_is_spurious(err: &curl::Error) -> bool {
     err.is_couldnt_connect()
         || err.is_couldnt_resolve_proxy()
         || err.is_couldnt_resolve_host()
@@ -41,6 +57,7 @@ pub fn curl_is_spurious(err: &curl::Error) -> bool {
         || err.is_partial_file()
 }
 
+/// A utility to abstract interactions with curl handles.
 pub struct Curl {
     req: SyncSender<remote::Request>,
     res: Receiver<remote::Response>,
@@ -69,7 +86,7 @@ impl Curl {
         url: &str,
         base_url: &str,
         headers: impl IntoIterator<Item = impl AsRef<str>>,
-        upload: bool,
+        upload_body_kind: Option<PostBodyDataKind>,
     ) -> Result<http::PostResponse<io::pipe::Reader, io::pipe::Reader, io::pipe::Writer>, http::Error> {
         let mut list = curl::easy::List::new();
         for header in headers {
@@ -81,7 +98,7 @@ impl Curl {
                 url: url.to_owned(),
                 base_url: base_url.to_owned(),
                 headers: list,
-                upload,
+                upload_body_kind,
                 config: self.config.clone(),
             })
             .is_err()
@@ -128,7 +145,7 @@ impl http::Http for Curl {
         base_url: &str,
         headers: impl IntoIterator<Item = impl AsRef<str>>,
     ) -> Result<http::GetResponse<Self::Headers, Self::ResponseBody>, http::Error> {
-        self.make_request(url, base_url, headers, false).map(Into::into)
+        self.make_request(url, base_url, headers, None).map(Into::into)
     }
 
     fn post(
@@ -136,8 +153,9 @@ impl http::Http for Curl {
         url: &str,
         base_url: &str,
         headers: impl IntoIterator<Item = impl AsRef<str>>,
+        body: PostBodyDataKind,
     ) -> Result<http::PostResponse<Self::Headers, Self::ResponseBody, Self::PostBody>, http::Error> {
-        self.make_request(url, base_url, headers, true)
+        self.make_request(url, base_url, headers, Some(body))
     }
 
     fn configure(

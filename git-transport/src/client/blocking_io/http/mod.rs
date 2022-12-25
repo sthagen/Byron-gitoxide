@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::{
     any::Any,
     borrow::Cow,
@@ -10,6 +11,7 @@ use git_packetline::PacketLineRef;
 pub use traits::{Error, GetResponse, Http, PostResponse};
 
 use crate::client::blocking_io::bufread_ext::ReadlineBufRead;
+use crate::client::http::options::{HttpVersion, SslVersionRangeInclusive};
 use crate::{
     client::{self, capabilities, Capabilities, ExtendedBufRead, HandleProgress, MessageKind, RequestWriter},
     Protocol, Service,
@@ -19,7 +21,8 @@ use crate::{
 compile_error!("Cannot set both 'http-client-reqwest' and 'http-client-curl' features as they are mutually exclusive");
 
 #[cfg(feature = "http-client-curl")]
-mod curl;
+///
+pub mod curl;
 
 /// The experimental `reqwest` backend.
 ///
@@ -28,11 +31,14 @@ mod curl;
 #[cfg(feature = "http-client-reqwest")]
 pub mod reqwest;
 
-///
 mod traits;
 
 ///
 pub mod options {
+    /// A function to authenticate a URL.
+    pub type AuthenticateFn =
+        dyn FnMut(git_credentials::helper::Action) -> git_credentials::protocol::Result + Send + Sync;
+
     /// Possible settings for the `http.followRedirects` configuration option.
     #[derive(Debug, Copy, Clone, PartialEq, Eq)]
     pub enum FollowRedirects {
@@ -70,12 +76,54 @@ pub mod options {
             ProxyAuthMethod::AnyAuth
         }
     }
+
+    /// Available SSL version numbers.
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Ord, PartialOrd)]
+    #[allow(missing_docs)]
+    pub enum SslVersion {
+        /// The implementation default, which is unknown to this layer of abstraction.
+        Default,
+        TlsV1,
+        SslV2,
+        SslV3,
+        TlsV1_0,
+        TlsV1_1,
+        TlsV1_2,
+        TlsV1_3,
+    }
+
+    /// Available HTTP version numbers.
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Ord, PartialOrd)]
+    #[allow(missing_docs)]
+    pub enum HttpVersion {
+        /// Equivalent to HTTP/1.1
+        V1_1,
+        /// Equivalent to HTTP/2
+        V2,
+    }
+
+    /// The desired range of acceptable SSL versions, or the single version to allow if both are set to the same value.
+    #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+    pub struct SslVersionRangeInclusive {
+        /// The smallest allowed ssl version to use.
+        pub min: SslVersion,
+        /// The highest allowed ssl version to use.
+        pub max: SslVersion,
+    }
+
+    impl SslVersionRangeInclusive {
+        /// Return `min` and `max` fields in the right order so `min` is smaller or equal to `max`.
+        pub fn min_max(&self) -> (SslVersion, SslVersion) {
+            if self.min > self.max {
+                (self.max, self.min)
+            } else {
+                (self.min, self.max)
+            }
+        }
+    }
 }
 
-/// A function to authenticate a URL.
-pub type AuthenticateFn = dyn FnMut(git_credentials::helper::Action) -> git_credentials::protocol::Result + Send + Sync;
-
-/// Options to configure curl requests.
+/// Options to configure http requests.
 // TODO: testing most of these fields requires a lot of effort, unless special flags to introspect ongoing requests are added.
 #[derive(Default, Clone)]
 pub struct Options {
@@ -110,7 +158,10 @@ pub struct Options {
     pub proxy_auth_method: options::ProxyAuthMethod,
     /// If authentication is needed for the proxy as its URL contains a username, this method must be set to provide a password
     /// for it before making the request, and to store it if the connection succeeds.
-    pub proxy_authenticate: Option<(git_credentials::helper::Action, Arc<std::sync::Mutex<AuthenticateFn>>)>,
+    pub proxy_authenticate: Option<(
+        git_credentials::helper::Action,
+        Arc<std::sync::Mutex<options::AuthenticateFn>>,
+    )>,
     /// The `HTTP` `USER_AGENT` string presented to an `HTTP` server, notably not the user agent present to the `git` server.
     ///
     /// If not overridden, it defaults to the user agent provided by `curl`, which is a deviation from how `git` handles this.
@@ -128,6 +179,12 @@ pub struct Options {
     pub connect_timeout: Option<std::time::Duration>,
     /// If enabled, emit additional information about connections and possibly the data received or written.
     pub verbose: bool,
+    /// If set, use this path to point to a file with CA certificates to verify peers.
+    pub ssl_ca_info: Option<PathBuf>,
+    /// The SSL version or version range to use, or `None` to let the TLS backend determine which versions are acceptable.
+    pub ssl_version: Option<SslVersionRangeInclusive>,
+    /// The HTTP version to enforce. If unset, it is implementation defined.
+    pub http_version: Option<HttpVersion>,
     /// Backend specific options, if available.
     pub backend: Option<Arc<Mutex<dyn Any + Send + Sync + 'static>>>,
 }
@@ -144,7 +201,6 @@ pub struct Transport<H: Http> {
     url: String,
     user_agent_header: &'static str,
     desired_version: Protocol,
-    supported_versions: [Protocol; 1],
     actual_version: Protocol,
     http: H,
     service: Option<Service>,
@@ -153,14 +209,14 @@ pub struct Transport<H: Http> {
 }
 
 impl<H: Http> Transport<H> {
-    /// Create a new instance with `http` as implementation to communicate to `url` using the given `desired_version` of the `git` protocol.
+    /// Create a new instance with `http` as implementation to communicate to `url` using the given `desired_version`.
+    /// Note that we will always fallback to other versions as supported by the server.
     pub fn new_http(http: H, url: &str, desired_version: Protocol) -> Self {
         Transport {
             url: url.to_owned(),
             user_agent_header: concat!("User-Agent: git/oxide-", env!("CARGO_PKG_VERSION")),
             desired_version,
-            actual_version: desired_version,
-            supported_versions: [desired_version],
+            actual_version: Default::default(),
             service: None,
             http,
             line_provider: None,
@@ -256,9 +312,12 @@ impl<H: Http> client::TransportWithoutIO for Transport<H> {
             headers,
             body,
             post_body,
-        } = self
-            .http
-            .post(&url, &self.url, static_headers.iter().chain(&dynamic_headers))?;
+        } = self.http.post(
+            &url,
+            &self.url,
+            static_headers.iter().chain(&dynamic_headers),
+            write_mode.into(),
+        )?;
         let line_provider = self
             .line_provider
             .as_mut()
@@ -278,10 +337,6 @@ impl<H: Http> client::TransportWithoutIO for Transport<H> {
 
     fn to_url(&self) -> Cow<'_, BStr> {
         Cow::Borrowed(self.url.as_str().into())
-    }
-
-    fn supported_protocol_versions(&self) -> &[Protocol] {
-        &self.supported_versions
     }
 
     fn connection_persists_across_multiple_requests(&self) -> bool {
@@ -449,71 +504,4 @@ pub fn connect(url: &str, desired_version: Protocol) -> Transport<Impl> {
 
 ///
 #[cfg(feature = "http-client-curl")]
-pub mod redirect {
-    /// The error provided when redirection went beyond what we deem acceptable.
-    #[derive(Debug, thiserror::Error)]
-    #[error("Redirect url {redirect_url:?} could not be reconciled with original url {expected_url} as they don't share the same suffix")]
-    pub struct Error {
-        redirect_url: String,
-        expected_url: String,
-    }
-
-    pub(crate) fn base_url(redirect_url: &str, base_url: &str, url: String) -> Result<String, Error> {
-        let tail = url
-            .strip_prefix(base_url)
-            .expect("BUG: caller assures `base_url` is subset of `url`");
-        redirect_url
-            .strip_suffix(tail)
-            .ok_or_else(|| Error {
-                redirect_url: redirect_url.into(),
-                expected_url: url,
-            })
-            .map(ToOwned::to_owned)
-    }
-
-    pub(crate) fn swap_tails(effective_base_url: Option<&str>, base_url: &str, mut url: String) -> String {
-        match effective_base_url {
-            Some(effective_base) => {
-                url.replace_range(..base_url.len(), effective_base);
-                url
-            }
-            None => url,
-        }
-    }
-
-    #[cfg(test)]
-    mod tests {
-        use super::*;
-
-        #[test]
-        fn base_url_complete() {
-            assert_eq!(
-                base_url(
-                    "https://redirected.org/b/info/refs?hi",
-                    "https://original/a",
-                    "https://original/a/info/refs?hi".into()
-                )
-                .unwrap(),
-                "https://redirected.org/b"
-            );
-        }
-
-        #[test]
-        fn swap_tails_complete() {
-            assert_eq!(
-                swap_tails(None, "not interesting", "used".into()),
-                "used",
-                "without effective base url, it passes url, no redirect happened yet"
-            );
-            assert_eq!(
-                swap_tails(
-                    Some("https://redirected.org/b"),
-                    "https://original/a",
-                    "https://original/a/info/refs?something".into()
-                ),
-                "https://redirected.org/b/info/refs?something",
-                "the tail stays the same if redirection happened"
-            )
-        }
-    }
-}
+pub mod redirect;
