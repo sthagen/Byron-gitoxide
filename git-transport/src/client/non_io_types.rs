@@ -37,6 +37,16 @@ pub enum MessageKind {
 
 #[cfg(any(feature = "blocking-client", feature = "async-client"))]
 pub(crate) mod connect {
+    /// Options for connecting to a remote.
+    #[derive(Debug, Default, Clone)]
+    pub struct Options {
+        /// Use `version` to set the desired protocol version to use when connecting, but note that the server may downgrade it.
+        pub version: crate::Protocol,
+        #[cfg(feature = "blocking-client")]
+        /// Options to use if the scheme of the URL is `ssh`.
+        pub ssh: crate::client::ssh::connect::Options,
+    }
+
     /// The error used in [`connect()`][crate::connect()].
     #[derive(Debug, thiserror::Error)]
     #[allow(missing_docs)]
@@ -83,15 +93,22 @@ pub(crate) mod connect {
 
 mod error {
     use bstr::BString;
+    use std::ffi::OsString;
 
     use crate::client::capabilities;
     #[cfg(feature = "http-client")]
     use crate::client::http;
+    #[cfg(feature = "blocking-client")]
+    use crate::client::ssh;
 
     #[cfg(feature = "http-client")]
     type HttpError = http::Error;
+    #[cfg(feature = "blocking-client")]
+    type SshInvocationError = ssh::invocation::Error;
     #[cfg(not(feature = "http-client"))]
     type HttpError = std::convert::Infallible;
+    #[cfg(not(feature = "blocking-client"))]
+    type SshInvocationError = std::convert::Infallible;
 
     /// The error used in most methods of the [`client`][crate::client] module
     #[derive(thiserror::Error, Debug)]
@@ -119,8 +136,12 @@ mod error {
         AuthenticationRefused(&'static str),
         #[error("The protocol version indicated by {:?} is unsupported", {0})]
         UnsupportedProtocolVersion(BString),
+        #[error("Failed to invoke program {command:?}")]
+        InvokeProgram { source: std::io::Error, command: OsString },
         #[error(transparent)]
         Http(#[from] HttpError),
+        #[error(transparent)]
+        SshInvocation(SshInvocationError),
     }
 
     impl crate::IsSpuriousError for Error {

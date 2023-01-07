@@ -5,6 +5,106 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.31.0 (2022-12-30)
+
+<csr-id-9fabfc50007603f9c1f7e70b5bb79a39726b12af/>
+<csr-id-91720798889ee7eb26da03a9e732caedda83b3e3/>
+
+### New Features
+
+ - <csr-id-d48b9a7ae2d51676c7549377bcb0b9d3baa83681/> fetching `ssh` urls can ask for a different username.
+   If authentication fails, the user will be queried for a different username
+   to try authentication via ssh mechanisms again.
+ - <csr-id-61d89f586a0ad913fc2f502520282520a5e1fd15/> collect ssh-specific options to control how the ssh program is invoked.
+   These are passed through when creating the ssh transport.
+
+### Other
+
+ - <csr-id-9fabfc50007603f9c1f7e70b5bb79a39726b12af/> explain how it's possible to deal with the first commit when comparing trees
+   The reason the other tree isn't an option is that it's a special case that can more easily be handled
+   with an `.unwrap_or_else(|| repo.empty_tree())` (or similar) for those who need it.
+   
+   Making the empty tree explicit also helps to deal with diffs from the empty tree (which can't be `Option<Tree>`)
+   to the first tree of the first commit.
+
+### Chore (BREAKING)
+
+ - <csr-id-91720798889ee7eb26da03a9e732caedda83b3e3/> upgrade to prodash v23
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 9 commits contributed to the release over the course of 1 calendar day.
+ - 4 days passed between releases.
+ - 4 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 1 unique issue was worked on: [#676](https://github.com/Byron/gitoxide/issues/676)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#676](https://github.com/Byron/gitoxide/issues/676)**
+    - explain how it's possible to deal with the first commit when comparing trees ([`9fabfc5`](https://github.com/Byron/gitoxide/commit/9fabfc50007603f9c1f7e70b5bb79a39726b12af))
+ * **Uncategorized**
+    - prepare changelogs prior to release ([`30d8ca1`](https://github.com/Byron/gitoxide/commit/30d8ca19284049dcfbb0de2698cafae1d1a16b0c))
+    - adapt to changes in `git-worktree` ([`5a97bb5`](https://github.com/Byron/gitoxide/commit/5a97bb5365573895500f0adeb73c482b797051c4))
+    - make fmt ([`511ed00`](https://github.com/Byron/gitoxide/commit/511ed0000397a5b268530c8f5362e7d25b7c1594))
+    - Merge branch 'adjustments-for-cargo' ([`f8c562a`](https://github.com/Byron/gitoxide/commit/f8c562a559e6dc3377583cc7200585dad7c3d481))
+    - fetching `ssh` urls can ask for a different username. ([`d48b9a7`](https://github.com/Byron/gitoxide/commit/d48b9a7ae2d51676c7549377bcb0b9d3baa83681))
+    - upgrade to prodash v23 ([`9172079`](https://github.com/Byron/gitoxide/commit/91720798889ee7eb26da03a9e732caedda83b3e3))
+    - adapt to changes in git-repository and git-transport ([`d336368`](https://github.com/Byron/gitoxide/commit/d336368ea2b6e5918b709220522cf1509ef30be2))
+    - collect ssh-specific options to control how the ssh program is invoked. ([`61d89f5`](https://github.com/Byron/gitoxide/commit/61d89f586a0ad913fc2f502520282520a5e1fd15))
+</details>
+
+## 0.30.2 (2022-12-26)
+
+<csr-id-114f184855b6177aa1f0dbf6e6589f23deb5ffe6/>
+
+### New Features
+
+ - <csr-id-38ae61a805bd8cca5df8d1c1dcf3a8a0f9c85f5a/> make more HTTP options available
+   - `http.schannelCheckRevoke`
+
+### Other
+
+ - <csr-id-114f184855b6177aa1f0dbf6e6589f23deb5ffe6/> provide a repository clone example
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 9 commits contributed to the release over the course of 2 calendar days.
+ - 4 days passed between releases.
+ - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Thanks Clippy
+
+<csr-read-only-do-not-edit/>
+
+[Clippy](https://github.com/rust-lang/rust-clippy) helped 1 time to make code idiomatic. 
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release git-repository v0.30.2 ([`25e0189`](https://github.com/Byron/gitoxide/commit/25e018936efbf9ffabfb1d403e1c44e2b4e7b0cb))
+    - maybe fix clone example declaration to allow publish ([`05a4085`](https://github.com/Byron/gitoxide/commit/05a4085594cb291c2c3186d4bdf8528af80b515a))
+    - Release git-features v0.25.1, git-url v0.12.2, git-odb v0.38.1, git-transport v0.24.2, git-repository v0.30.2 ([`bb0a07b`](https://github.com/Byron/gitoxide/commit/bb0a07b5edd5f980989d1a92e74df7f183febe87))
+    - thanks clippy ([`1c891d1`](https://github.com/Byron/gitoxide/commit/1c891d1f638a046a16e7f91ba8f792d3a26869a0))
+    - Merge branch 'adjustments-for-cargo' ([`d821fc5`](https://github.com/Byron/gitoxide/commit/d821fc5b4ef4ba606f2b6bb68b66f7260a0205dc))
+    - make more HTTP options available ([`38ae61a`](https://github.com/Byron/gitoxide/commit/38ae61a805bd8cca5df8d1c1dcf3a8a0f9c85f5a))
+    - Merge branch 'fix/ssh-clone' ([`3678a6a`](https://github.com/Byron/gitoxide/commit/3678a6abab6f59ff7008ccfe02bb8d61da47e166))
+    - refactor ([`668118c`](https://github.com/Byron/gitoxide/commit/668118c1a5fd47cb1d55eac77306cce3482ee71e))
+    - provide a repository clone example ([`114f184`](https://github.com/Byron/gitoxide/commit/114f184855b6177aa1f0dbf6e6589f23deb5ffe6))
+</details>
+
 ## 0.30.1 (2022-12-22)
 
 ### New Features
@@ -20,7 +120,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 6 commits contributed to the release over the course of 1 calendar day.
+ - 7 commits contributed to the release over the course of 1 calendar day.
  - 2 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 1 unique issue was worked on: [#668](https://github.com/Byron/gitoxide/issues/668)
@@ -34,6 +134,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#668](https://github.com/Byron/gitoxide/issues/668)**
     - update docs ([`f620f87`](https://github.com/Byron/gitoxide/commit/f620f87f3722f75396b1ff990fd7fe754f4a1558))
  * **Uncategorized**
+    - Release git-url v0.12.1, git-transport v0.24.1, git-protocol v0.25.1, git-repository v0.30.1, git-commitgraph v0.12.0, gitoxide-core v0.22.0, gitoxide v0.20.0 ([`08ec3a9`](https://github.com/Byron/gitoxide/commit/08ec3a93d77a1018439a5c41c23729ffed27c5a5))
     - prepare changelogs prior to release ([`68ce15d`](https://github.com/Byron/gitoxide/commit/68ce15d07b50cfacdac0d1e42fe7f5e6330ba523))
     - Merge branch 'adjustments-for-cargo' ([`5afa7f5`](https://github.com/Byron/gitoxide/commit/5afa7f51342deaf0938e7fb2ebe6a578e83ab645))
     - `open::Options::open_path_as_is()` allows to avoid 'smart opening' to try the path verbatim. ([`ca84c87`](https://github.com/Byron/gitoxide/commit/ca84c87734804cbfc65e311b89ff6ccfc236149c))

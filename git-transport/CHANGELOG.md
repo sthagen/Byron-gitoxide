@@ -5,6 +5,129 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.25.1 (2022-12-31)
+
+### Bug Fixes
+
+ - <csr-id-ec2f2e31a714334bc0942eab08d306d4e0952933/> file:// command invocation won't spill stderr output.
+   This usually doesn't add any benefit to the user as we might see
+   events like the git process' failure to flush to a closed channel
+   even though this is entirely handled by the Rust side of things.
+   
+   I can imagine that one day this might become a configurable to help
+   with debugging to help making better-behaved clients, but maybe it
+   won't ever matter once the default file:// transport is built-in and
+   native.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - file:// command invocation won't spill stderr output. ([`ec2f2e3`](https://github.com/Byron/gitoxide/commit/ec2f2e31a714334bc0942eab08d306d4e0952933))
+</details>
+
+## 0.25.0 (2022-12-30)
+
+### Bug Fixes
+
+ - <csr-id-fed38c90df546c4bfc57ef66c92b4c9312c90586/> improve error message for when an invoked transport program can't be found.
+ - <csr-id-f0997bfab2ba66fb12b0c9d4d673faeabda9687c/> assure processing thread is up before continuing.
+   That way one may hope that we never leave stderr output unprocessed.
+ - <csr-id-923278b4f245c31245a83f5f4d6e3b7dce8134e2/> port selections for SSH urls are now respected for protocol V1 as well.
+ - <csr-id-0ff127c62c2cc47b93ef4af108a382c62af1d3fb/> propery adjust `host` argument for `ssh` program to include a user name.
+   Otherwise it would not use a user at all which then defaults to the currently logged
+   in user, something that typically won't work with servers that demand `git`.
+
+### New Features (BREAKING)
+
+ - <csr-id-6fa27642aa57613cae82ae680f02923dad25d474/> ptions for `client::connect()` and support for more than one ssh variant, including permission-denied detection.
+   Options can be passed down to `client::ssh::connect()` to further configure it
+   similar to what git itself offers. That way, it's possible to use different ssh commands
+   and support all of gits configuration options.
+   
+   Support for multiple ssh variants was added to use them (and their flags) correctly.
+   
+   Detection of permission-denied errors due to invalid credentials was added so re-authentication
+   in upper layers can be implemented.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 10 commits contributed to the release over the course of 4 calendar days.
+ - 4 days passed between releases.
+ - 5 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release git-features v0.26.0, git-actor v0.16.0, git-attributes v0.8.0, git-object v0.25.0, git-ref v0.22.0, git-config v0.14.0, git-command v0.2.1, git-url v0.13.0, git-credentials v0.9.0, git-diff v0.25.0, git-discover v0.11.0, git-traverse v0.21.0, git-index v0.11.0, git-mailmap v0.8.0, git-pack v0.29.0, git-odb v0.39.0, git-transport v0.25.0, git-protocol v0.26.0, git-revision v0.9.0, git-refspec v0.6.0, git-worktree v0.11.0, git-repository v0.31.0, safety bump 24 crates ([`5ac9fbe`](https://github.com/Byron/gitoxide/commit/5ac9fbe265a5b61c533a2a6b3abfed2bdf7f89ad))
+    - prepare changelogs prior to release ([`30d8ca1`](https://github.com/Byron/gitoxide/commit/30d8ca19284049dcfbb0de2698cafae1d1a16b0c))
+    - improve error message for when an invoked transport program can't be found. ([`fed38c9`](https://github.com/Byron/gitoxide/commit/fed38c90df546c4bfc57ef66c92b4c9312c90586))
+    - assure processing thread is up before continuing. ([`f0997bf`](https://github.com/Byron/gitoxide/commit/f0997bfab2ba66fb12b0c9d4d673faeabda9687c))
+    - parse additional ssh messaegs into io-errors. ([`c60c89d`](https://github.com/Byron/gitoxide/commit/c60c89dcede9590f55246495a159a614426402d7))
+    - make fmt ([`511ed00`](https://github.com/Byron/gitoxide/commit/511ed0000397a5b268530c8f5362e7d25b7c1594))
+    - Merge branch 'adjustments-for-cargo' ([`f8c562a`](https://github.com/Byron/gitoxide/commit/f8c562a559e6dc3377583cc7200585dad7c3d481))
+    - ptions for `client::connect()` and support for more than one ssh variant, including permission-denied detection. ([`6fa2764`](https://github.com/Byron/gitoxide/commit/6fa27642aa57613cae82ae680f02923dad25d474))
+    - port selections for SSH urls are now respected for protocol V1 as well. ([`923278b`](https://github.com/Byron/gitoxide/commit/923278b4f245c31245a83f5f4d6e3b7dce8134e2))
+    - propery adjust `host` argument for `ssh` program to include a user name. ([`0ff127c`](https://github.com/Byron/gitoxide/commit/0ff127c62c2cc47b93ef4af108a382c62af1d3fb))
+</details>
+
+## 0.24.2 (2022-12-26)
+
+### New Features
+
+ - <csr-id-d59d362f12bf617656bae80596120c8bf823b090/> add and implement various new http options for the `curl` backend.
+   - `schannel_check_revoke` as `curl`-backend specific configuration.
+
+### Bug Fixes
+
+ - <csr-id-c62e5c7d415351aefafeb75f0ab926c7c45c6ede/> fixes SSH clone from scp-like/relatives URLs
+   - Removes git-upload-pack extra parameters (rejected by both github and gitlab)
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 6 commits contributed to the release over the course of 2 calendar days.
+ - 3 days passed between releases.
+ - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release git-features v0.25.1, git-url v0.12.2, git-odb v0.38.1, git-transport v0.24.2, git-repository v0.30.2 ([`bb0a07b`](https://github.com/Byron/gitoxide/commit/bb0a07b5edd5f980989d1a92e74df7f183febe87))
+    - Merge branch 'adjustments-for-cargo' ([`d821fc5`](https://github.com/Byron/gitoxide/commit/d821fc5b4ef4ba606f2b6bb68b66f7260a0205dc))
+    - add and implement various new http options for the `curl` backend. ([`d59d362`](https://github.com/Byron/gitoxide/commit/d59d362f12bf617656bae80596120c8bf823b090))
+    - Merge branch 'fix/ssh-clone' ([`3678a6a`](https://github.com/Byron/gitoxide/commit/3678a6abab6f59ff7008ccfe02bb8d61da47e166))
+    - refactor ([`24070a3`](https://github.com/Byron/gitoxide/commit/24070a3b970554d5d4815e87bcbfb6fb5524a006))
+    - fixes SSH clone from scp-like/relatives URLs ([`c62e5c7`](https://github.com/Byron/gitoxide/commit/c62e5c7d415351aefafeb75f0ab926c7c45c6ede))
+</details>
+
+<csr-unknown>
+Removes the double user inclusion in URLProperly handles relative paths in URL reconstruction on connect()<csr-unknown/>
+
 ## 0.24.1 (2022-12-22)
 
 A maintenance release without user-facing changes.
@@ -13,7 +136,7 @@ A maintenance release without user-facing changes.
 
 <csr-read-only-do-not-edit/>
 
- - 2 commits contributed to the release.
+ - 3 commits contributed to the release.
  - 2 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -25,6 +148,7 @@ A maintenance release without user-facing changes.
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release git-url v0.12.1, git-transport v0.24.1, git-protocol v0.25.1, git-repository v0.30.1, git-commitgraph v0.12.0, gitoxide-core v0.22.0, gitoxide v0.20.0 ([`08ec3a9`](https://github.com/Byron/gitoxide/commit/08ec3a93d77a1018439a5c41c23729ffed27c5a5))
     - prepare changelogs prior to release ([`68ce15d`](https://github.com/Byron/gitoxide/commit/68ce15d07b50cfacdac0d1e42fe7f5e6330ba523))
     - Merge branch 'adjustments-for-cargo' ([`5afa7f5`](https://github.com/Byron/gitoxide/commit/5afa7f51342deaf0938e7fb2ebe6a578e83ab645))
 </details>

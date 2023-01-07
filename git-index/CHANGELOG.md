@@ -5,6 +5,89 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.12.0 (2023-01-06)
+
+### New Features
+
+ - <csr-id-1e3341a77c089e6d80c271fca46b774b01b01386/> `entry::Time` can convert from and to system time.
+ - <csr-id-654bd8f62d5546b0f57e82d1be8211431685c7ce/> add `State::sort_entries()` and `State::dangerously_push_entry()`.
+   Both methods work in tandem as one breaks invariants, but allows to quickly
+   add entries, while the other restores them.
+ - <csr-id-aa1b6ee1edeaebae1237184c635f69fdbb23ffee/> add `State::entry_mut_by_path_and_stage()`
+ - <csr-id-3ebe2d490b2dbdcb6fe0115b06f205f1c4008fff/> `State::write_to()` respects the `REMOVED` flag.
+   That way, one can mark entries for removal and these will be pruned
+   at write time. This is preferable over performing removals expensively
+   in memory.
+ - <csr-id-ec365866c746247b7d5d47b88d51d9cc255724fb/> expose `git_hash` as `hash` in the root of the crate.
+   This makes it easier to use the crate standalone as plumbing as instantiation
+   requires access to `git_hash`.
+ - <csr-id-5cc3a15a8085a67701fc1f2d3ba0e55f71d0a4c0/> add `File::at_or_default(...)` to easily open or create an empty in-memory index.
+   This is a common operation in new repositories.
+ - <csr-id-0b40951f0fb9ee354a83751264ed89d0608111f8/> add `State::new()` to create a new empty in-memory index.
+ - <csr-id-a7183e28513fa1e1a1a784b759677f0e4b4db5f4/> add `File::set_path()` to allow setting the location of an index file on disk.
+   This is useful to change the location of an index after reading it (from another
+   location, similar to copy-on-write).
+
+### Changed (BREAKING)
+
+ - <csr-id-3753ad58a8303fbf325b07757b2b97c34253bca4/> remove `File::into_state()` in favor of `From<File> for State`.
+   That way it's less discoverable, but more idiomatic, and we don't want to
+   get into the habit of providing multiple names of the exact same
+   functionality.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 11 commits contributed to the release.
+ - 7 days passed between releases.
+ - 9 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - prepare changelogs prior to release ([`d679f5b`](https://github.com/Byron/gitoxide/commit/d679f5b6f018633e858d3ebbdaf1cd5098bbc5e7))
+    - Merge branch 'various-improvements' ([`9eee8fe`](https://github.com/Byron/gitoxide/commit/9eee8fe1bed116b7a5a4f552982fa49da83ee92c))
+    - `entry::Time` can convert from and to system time. ([`1e3341a`](https://github.com/Byron/gitoxide/commit/1e3341a77c089e6d80c271fca46b774b01b01386))
+    - add `State::sort_entries()` and `State::dangerously_push_entry()`. ([`654bd8f`](https://github.com/Byron/gitoxide/commit/654bd8f62d5546b0f57e82d1be8211431685c7ce))
+    - add `State::entry_mut_by_path_and_stage()` ([`aa1b6ee`](https://github.com/Byron/gitoxide/commit/aa1b6ee1edeaebae1237184c635f69fdbb23ffee))
+    - `State::write_to()` respects the `REMOVED` flag. ([`3ebe2d4`](https://github.com/Byron/gitoxide/commit/3ebe2d490b2dbdcb6fe0115b06f205f1c4008fff))
+    - expose `git_hash` as `hash` in the root of the crate. ([`ec36586`](https://github.com/Byron/gitoxide/commit/ec365866c746247b7d5d47b88d51d9cc255724fb))
+    - add `File::at_or_default(...)` to easily open or create an empty in-memory index. ([`5cc3a15`](https://github.com/Byron/gitoxide/commit/5cc3a15a8085a67701fc1f2d3ba0e55f71d0a4c0))
+    - add `State::new()` to create a new empty in-memory index. ([`0b40951`](https://github.com/Byron/gitoxide/commit/0b40951f0fb9ee354a83751264ed89d0608111f8))
+    - remove `File::into_state()` in favor of `From<File> for State`. ([`3753ad5`](https://github.com/Byron/gitoxide/commit/3753ad58a8303fbf325b07757b2b97c34253bca4))
+    - add `File::set_path()` to allow setting the location of an index file on disk. ([`a7183e2`](https://github.com/Byron/gitoxide/commit/a7183e28513fa1e1a1a784b759677f0e4b4db5f4))
+</details>
+
+## 0.11.0 (2022-12-30)
+
+A maintenance release without user-facing changes.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 2 commits contributed to the release.
+ - 11 days passed between releases.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release git-features v0.26.0, git-actor v0.16.0, git-attributes v0.8.0, git-object v0.25.0, git-ref v0.22.0, git-config v0.14.0, git-command v0.2.1, git-url v0.13.0, git-credentials v0.9.0, git-diff v0.25.0, git-discover v0.11.0, git-traverse v0.21.0, git-index v0.11.0, git-mailmap v0.8.0, git-pack v0.29.0, git-odb v0.39.0, git-transport v0.25.0, git-protocol v0.26.0, git-revision v0.9.0, git-refspec v0.6.0, git-worktree v0.11.0, git-repository v0.31.0, safety bump 24 crates ([`5ac9fbe`](https://github.com/Byron/gitoxide/commit/5ac9fbe265a5b61c533a2a6b3abfed2bdf7f89ad))
+    - prepare changelogs prior to release ([`30d8ca1`](https://github.com/Byron/gitoxide/commit/30d8ca19284049dcfbb0de2698cafae1d1a16b0c))
+</details>
+
 ## 0.10.0 (2022-12-19)
 
 A maintenance release without user-facing changes.
@@ -13,7 +96,7 @@ A maintenance release without user-facing changes.
 
 <csr-read-only-do-not-edit/>
 
- - 7 commits contributed to the release over the course of 19 calendar days.
+ - 8 commits contributed to the release over the course of 19 calendar days.
  - 22 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -25,6 +108,7 @@ A maintenance release without user-facing changes.
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release git-date v0.3.1, git-features v0.25.0, git-actor v0.15.0, git-glob v0.5.1, git-path v0.7.0, git-attributes v0.7.0, git-config-value v0.10.0, git-lock v3.0.1, git-validate v0.7.1, git-object v0.24.0, git-ref v0.21.0, git-sec v0.6.0, git-config v0.13.0, git-prompt v0.3.0, git-url v0.12.0, git-credentials v0.8.0, git-diff v0.24.0, git-discover v0.10.0, git-traverse v0.20.0, git-index v0.10.0, git-mailmap v0.7.0, git-pack v0.28.0, git-odb v0.38.0, git-packetline v0.14.1, git-transport v0.24.0, git-protocol v0.25.0, git-revision v0.8.0, git-refspec v0.5.0, git-worktree v0.10.0, git-repository v0.30.0, safety bump 26 crates ([`e6b9906`](https://github.com/Byron/gitoxide/commit/e6b9906c486b11057936da16ed6e0ec450a0fb83))
     - prepare chnagelogs prior to git-repository release ([`7114bbb`](https://github.com/Byron/gitoxide/commit/7114bbb6732aa8571d4ab74f28ed3e26e9fbe4d0))
     - Merge branch 'adjustments-for-cargo' ([`083909b`](https://github.com/Byron/gitoxide/commit/083909bc7eb902eeee2002034fdb6ed88280dc5c))
     - adjust to changes in `git-testtools` ([`4eb842c`](https://github.com/Byron/gitoxide/commit/4eb842c7150b980e1c2637217e1f9657a671cea7))

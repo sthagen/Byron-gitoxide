@@ -14,12 +14,12 @@ pub enum Error {
 pub(crate) mod function {
     use std::{convert::TryInto, str::FromStr, time::SystemTime};
 
-    use time::{Date, OffsetDateTime};
+    use time::{format_description::well_known, Date, OffsetDateTime};
 
     use crate::{
         parse::{relative, Error},
         time::{
-            format::{DEFAULT, ISO8601, ISO8601_STRICT, RFC2822, SHORT},
+            format::{DEFAULT, GITOXIDE, ISO8601, ISO8601_STRICT, SHORT},
             Sign,
         },
         Time,
@@ -35,11 +35,13 @@ pub(crate) mod function {
         Ok(if let Ok(val) = Date::parse(input, SHORT) {
             let val = val.with_hms(0, 0, 0).expect("date is in range").assume_utc();
             Time::new(val.unix_timestamp().try_into()?, val.offset().whole_seconds())
-        } else if let Ok(val) = OffsetDateTime::parse(input, RFC2822) {
+        } else if let Ok(val) = OffsetDateTime::parse(input, &well_known::Rfc2822) {
             Time::new(val.unix_timestamp().try_into()?, val.offset().whole_seconds())
         } else if let Ok(val) = OffsetDateTime::parse(input, ISO8601) {
             Time::new(val.unix_timestamp().try_into()?, val.offset().whole_seconds())
         } else if let Ok(val) = OffsetDateTime::parse(input, ISO8601_STRICT) {
+            Time::new(val.unix_timestamp().try_into()?, val.offset().whole_seconds())
+        } else if let Ok(val) = OffsetDateTime::parse(input, GITOXIDE) {
             Time::new(val.unix_timestamp().try_into()?, val.offset().whole_seconds())
         } else if let Ok(val) = OffsetDateTime::parse(input, DEFAULT) {
             Time::new(val.unix_timestamp().try_into()?, val.offset().whole_seconds())
@@ -69,10 +71,14 @@ pub(crate) mod function {
         let mut split = input.split_whitespace();
         let seconds_since_unix_epoch: u32 = split.next()?.parse().ok()?;
         let offset = split.next()?;
-        if offset.len() != 5 {
+        if offset.len() != 5 || split.next().is_some() {
             return None;
         }
-        let sign = if &offset[..1] == "-" { Sign::Minus } else { Sign::Plus };
+        let sign = match &offset[..1] {
+            "-" => Some(Sign::Minus),
+            "+" => Some(Sign::Plus),
+            _ => None,
+        }?;
         let hours: i32 = offset[1..3].parse().ok()?;
         let minutes: i32 = offset[3..5].parse().ok()?;
         let mut offset_in_seconds = hours * 3600 + minutes * 60;
