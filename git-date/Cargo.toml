@@ -1,12 +1,13 @@
 [package]
 name = "git-date"
-version = "0.4.0"
+version = "0.4.1"
 repository = "https://github.com/Byron/gitoxide"
 license = "MIT/Apache-2.0"
 description = "A WIP crate of the gitoxide project parsing dates the way git does"
 authors = ["Sebastian Thiel <sebastian.thiel@icloud.com>"]
 edition = "2021"
 include = ["src/**/*", "CHANGELOG.md"]
+rust-version = "1.64"
 
 [lib]
 doctest = false

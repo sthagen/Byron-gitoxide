@@ -5,6 +5,121 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.33.0 (2023-01-10)
+
+<csr-id-dd7f3bf19cce0d214924fa86aeb4c5823f5bcc02/>
+
+### Chore (BREAKING)
+
+ - <csr-id-dd7f3bf19cce0d214924fa86aeb4c5823f5bcc02/> upgrade MSRV to v1.64 (possible due to `windows` upgrade)
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 6 commits contributed to the release.
+ - 1 day passed between releases.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Thanks Clippy
+
+<csr-read-only-do-not-edit/>
+
+[Clippy](https://github.com/rust-lang/rust-clippy) helped 2 times to make code idiomatic. 
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - prepare changelogs prior to release ([`93bef97`](https://github.com/Byron/gitoxide/commit/93bef97b3c0c75d4bf7119fdd787516e1efc77bf))
+    - Merge branch 'patch-1' ([`b93f0c4`](https://github.com/Byron/gitoxide/commit/b93f0c49fc677b6c19aea332cbfc1445ce475375))
+    - thanks clippy ([`b34c9fe`](https://github.com/Byron/gitoxide/commit/b34c9fe58223862712eacc1cb7353e497a4b9778))
+    - thanks clippy ([`9e04685`](https://github.com/Byron/gitoxide/commit/9e04685dd3f109bfb27663f9dc7c04102e660bf2))
+    - upgrade MSRV to v1.64 (possible due to `windows` upgrade) ([`dd7f3bf`](https://github.com/Byron/gitoxide/commit/dd7f3bf19cce0d214924fa86aeb4c5823f5bcc02))
+    - uprgade serial_test to 0.10 ([`8623b5a`](https://github.com/Byron/gitoxide/commit/8623b5a36f3e82cd694f7772798e36656cbfcd0a))
+</details>
+
+## 0.32.0 (2023-01-09)
+
+<csr-id-80dcb406c5f588122531da115398094de3c3af79/>
+
+### Bug Fixes
+
+ - <csr-id-a05b1c4d82bc6c7758989a3bbe326ea610903820/> default author and committer time
+   When needing to fallback to a default author or committer signature, the
+   time from GIT_AUTHOR_DATE should only be used for the author and
+   GIT_COMMITTER_DATE should only be used for the committer and not
+   intermixed. This change enforces that constraint.
+ - <csr-id-ec7bf71b60f8c1e7529d610557c0305d624c1253/> signature name and email resolution
+   The name and email for the author and/or committer may come from different
+   config files. For example, user.name may be set in the global config and
+   user.email may come from the repository local config.
+   
+   This case was broken due to Personas.from_config_and_env() only looking in
+   the last config section containing, for example, a "user" section. Thus if
+   the user.name and user.email are split across multiple sections (i.e.
+   originating from separate config files), the fallback name and email
+   ("gitoxide" and "gitoxide@localhost") would be used.
+   
+   The solution is to use git_config::File::string() to lookup the name and
+   email separately. The string() method correctly resolves the value by
+   looking through all sections from all files in the correct order.
+
+### Other
+
+ - <csr-id-80dcb406c5f588122531da115398094de3c3af79/> name and email from different config sections
+   The user.name, user.email, author.name, author.email, committer.name, and
+   committer.email configuration may come from different sections from
+   different config files. This new test exercises a couple of scenarios that
+   are currently broken.
+
+### Reverted (BREAKING)
+
+ - <csr-id-87abb51596bd0a5a6b552a5de98a920d6c797e3c/> `commiter_or_default()`, `author_or_default()` and `user_default()`.
+   This means that all methods that previously succeeded by adding a default
+   will now fail.
+   
+   This is preferable over 'doing something' and also admits that gits
+   guesswork that tries to find user information by querying the system
+   is nothing we want to repeat.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 15 commits contributed to the release over the course of 9 calendar days.
+ - 9 days passed between releases.
+ - 4 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release git-ref v0.23.0, git-config v0.15.0, git-command v0.2.2, git-diff v0.26.0, git-discover v0.12.0, git-mailmap v0.9.0, git-pack v0.30.0, git-odb v0.40.0, git-transport v0.25.2, git-protocol v0.26.1, git-revision v0.10.0, git-refspec v0.7.0, git-worktree v0.12.0, git-repository v0.32.0 ([`ffb5b6a`](https://github.com/Byron/gitoxide/commit/ffb5b6a21cb415315db6fd5294940c7c6deb4538))
+    - Merge branch 'signature-resolution' ([`3036497`](https://github.com/Byron/gitoxide/commit/303649735f3f2094048527fff9b47e9012d75e02))
+    - fix tests ([`d6c62bd`](https://github.com/Byron/gitoxide/commit/d6c62bdef92b3f2918d330a30d2c0cc966021b9f))
+    - prepare changelogs prior to release ([`4381a03`](https://github.com/Byron/gitoxide/commit/4381a03a34c305f31713cce234c2afbf8ac60f01))
+    - Merge branch 'signature-resolution' ([`0f7edc1`](https://github.com/Byron/gitoxide/commit/0f7edc1ec87774917c8683dfea2c4989d0762648))
+    - `commiter_or_default()`, `author_or_default()` and `user_default()`. ([`87abb51`](https://github.com/Byron/gitoxide/commit/87abb51596bd0a5a6b552a5de98a920d6c797e3c))
+    - default author and committer time ([`a05b1c4`](https://github.com/Byron/gitoxide/commit/a05b1c4d82bc6c7758989a3bbe326ea610903820))
+    - add explainers for asserts in test cases ([`53dd252`](https://github.com/Byron/gitoxide/commit/53dd2522dc31d0318f0385776ca014a3be271b5e))
+    - Release git-index v0.12.1 ([`8aa5c1d`](https://github.com/Byron/gitoxide/commit/8aa5c1db9e342cc49dfa588d5b4b9f893067dbf7))
+    - Merge branch 'signature-resolution' ([`df3ebfc`](https://github.com/Byron/gitoxide/commit/df3ebfc72eb791c562db7b4df25a0b73c8046d54))
+    - refactor ([`59262dd`](https://github.com/Byron/gitoxide/commit/59262ddc0a9bf8765dfe24193199bf6ffee39389))
+    - Release git-date v0.4.0, git-actor v0.17.0, git-object v0.26.0, git-traverse v0.22.0, git-index v0.12.0, safety bump 15 crates ([`0e3d0a5`](https://github.com/Byron/gitoxide/commit/0e3d0a56d7e6a60c6578138f2690b4fa54a2072d))
+    - signature name and email resolution ([`ec7bf71`](https://github.com/Byron/gitoxide/commit/ec7bf71b60f8c1e7529d610557c0305d624c1253))
+    - name and email from different config sections ([`80dcb40`](https://github.com/Byron/gitoxide/commit/80dcb406c5f588122531da115398094de3c3af79))
+    - Release git-transport v0.25.1 ([`e0b12fe`](https://github.com/Byron/gitoxide/commit/e0b12fe64b50a1b614111924b55ce02f1c39ac00))
+</details>
+
 ## 0.31.0 (2022-12-30)
 
 <csr-id-9fabfc50007603f9c1f7e70b5bb79a39726b12af/>
@@ -35,7 +150,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 9 commits contributed to the release over the course of 1 calendar day.
+ - 10 commits contributed to the release over the course of 1 calendar day.
  - 4 days passed between releases.
  - 4 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 1 unique issue was worked on: [#676](https://github.com/Byron/gitoxide/issues/676)
@@ -49,6 +164,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#676](https://github.com/Byron/gitoxide/issues/676)**
     - explain how it's possible to deal with the first commit when comparing trees ([`9fabfc5`](https://github.com/Byron/gitoxide/commit/9fabfc50007603f9c1f7e70b5bb79a39726b12af))
  * **Uncategorized**
+    - Release git-features v0.26.0, git-actor v0.16.0, git-attributes v0.8.0, git-object v0.25.0, git-ref v0.22.0, git-config v0.14.0, git-command v0.2.1, git-url v0.13.0, git-credentials v0.9.0, git-diff v0.25.0, git-discover v0.11.0, git-traverse v0.21.0, git-index v0.11.0, git-mailmap v0.8.0, git-pack v0.29.0, git-odb v0.39.0, git-transport v0.25.0, git-protocol v0.26.0, git-revision v0.9.0, git-refspec v0.6.0, git-worktree v0.11.0, git-repository v0.31.0, safety bump 24 crates ([`5ac9fbe`](https://github.com/Byron/gitoxide/commit/5ac9fbe265a5b61c533a2a6b3abfed2bdf7f89ad))
     - prepare changelogs prior to release ([`30d8ca1`](https://github.com/Byron/gitoxide/commit/30d8ca19284049dcfbb0de2698cafae1d1a16b0c))
     - adapt to changes in `git-worktree` ([`5a97bb5`](https://github.com/Byron/gitoxide/commit/5a97bb5365573895500f0adeb73c482b797051c4))
     - make fmt ([`511ed00`](https://github.com/Byron/gitoxide/commit/511ed0000397a5b268530c8f5362e7d25b7c1594))
