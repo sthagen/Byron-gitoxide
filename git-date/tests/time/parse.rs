@@ -134,9 +134,11 @@ mod relative {
     }
 
     #[test]
-    #[should_panic] // TODO: fix
-    fn large_offsets_can_panic_elsewhere() {
-        git_date::parse("9999999999 weeks ago", Some(std::time::UNIX_EPOCH)).ok();
+    fn large_offsets_do_not_panic() {
+        assert!(matches!(
+            git_date::parse("9999999999 weeks ago", Some(std::time::UNIX_EPOCH)),
+            Err(git_date::parse::Error::RelativeTimeConversion)
+        ));
     }
 
     #[test]
@@ -159,5 +161,15 @@ mod relative {
             expected,
             "relative times differ"
         );
+    }
+}
+
+/// Various cases the fuzzer found
+mod fuzz {
+    #[test]
+    fn invalid_but_does_not_cause_panic() {
+        for input in ["7	-𬞋", "5 ڜ-09", "-4 week ago Z"] {
+            let _ = git_date::parse(input, Some(std::time::UNIX_EPOCH)).unwrap_err();
+        }
     }
 }

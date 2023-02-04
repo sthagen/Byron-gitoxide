@@ -3,6 +3,8 @@
 pub enum Error {
     #[error("Cannot represent times before UNIX epoch at timestamp {timestamp}")]
     TooEarly { timestamp: i64 },
+    #[error("Could not convert a duration into a date")]
+    RelativeTimeConversion,
     #[error("Date string can not be parsed")]
     InvalidDateString,
     #[error("Dates past 2038 can not be represented.")]
@@ -74,13 +76,13 @@ pub(crate) mod function {
         if offset.len() != 5 || split.next().is_some() {
             return None;
         }
-        let sign = match &offset[..1] {
+        let sign = match offset.get(..1)? {
             "-" => Some(Sign::Minus),
             "+" => Some(Sign::Plus),
             _ => None,
         }?;
-        let hours: i32 = offset[1..3].parse().ok()?;
-        let minutes: i32 = offset[3..5].parse().ok()?;
+        let hours: i32 = offset.get(1..3)?.parse().ok()?;
+        let minutes: i32 = offset.get(3..5)?.parse().ok()?;
         let mut offset_in_seconds = hours * 3600 + minutes * 60;
         if sign == Sign::Minus {
             offset_in_seconds *= -1;
@@ -113,11 +115,14 @@ mod relative {
 
     pub(crate) fn parse(input: &str, now: Option<SystemTime>) -> Option<Result<OffsetDateTime, Error>> {
         parse_inner(input).map(|offset| {
-            let offset = std::time::Duration::from_secs(offset.whole_seconds().try_into().expect("positive value"));
-            now.ok_or(Error::MissingCurrentTime).map(|now| {
-                now.checked_sub(offset)
-                    .expect("BUG: values can't be large enough to cause underflow")
-                    .into()
+            let offset = std::time::Duration::from_secs(offset.whole_seconds().try_into()?);
+            now.ok_or(Error::MissingCurrentTime).and_then(|now| {
+                std::panic::catch_unwind(|| {
+                    now.checked_sub(offset)
+                        .expect("BUG: values can't be large enough to cause underflow")
+                        .into()
+                })
+                .map_err(|_| Error::RelativeTimeConversion)
             })
         })
     }

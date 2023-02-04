@@ -126,6 +126,13 @@ on your needs, for _Linux_, _MacOS_ and _Windows_.
 
 [releases]: https://github.com/Byron/gitoxide/releases
 
+### Download from Arch-Repository
+
+For Arch Linux you can download `gitoxide` from `community` repository:
+```
+pacman -S gitoxide
+```
+
 ### From Source via Cargo
 
 `cargo` is the Rust package manager which can easily be obtained through [rustup]. With it, you can build your own binary
