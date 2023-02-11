@@ -7,9 +7,11 @@ pub const NO_PARENT_IDS: [git_hash::ObjectId; 0] = [];
 #[derive(Debug, thiserror::Error)]
 #[allow(missing_docs)]
 pub enum Error {
+    #[error(transparent)]
+    ParseTime(#[from] crate::config::time::Error),
     #[error("Committer identity is not configured")]
     CommitterMissing,
-    #[error("Author identity is not conifgured")]
+    #[error("Author identity is not configured")]
     AuthorMissing,
     #[error(transparent)]
     ReferenceNameValidation(#[from] git_ref::name::Error),

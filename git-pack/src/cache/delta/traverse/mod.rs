@@ -91,7 +91,7 @@ where
     ///   be unknown as it's not part of the index file.
     /// * `new_thread_state() -> State` is a function to create state to be used in each thread, invoked once per thread.
     /// * `inspect_object(node_data: &mut T, progress: Progress, context: Context<ThreadLocal State>) -> Result<(), CustomError>` is a function
-    ///   running for each thread receiving fully decoded objects along with contextual information, which either succceeds with `Ok(())`
+    ///   running for each thread receiving fully decoded objects along with contextual information, which either succeeds with `Ok(())`
     ///   or returns a `CustomError`.
     ///   Note that `node_data` can be modified to allow storing maintaining computation results on a per-object basis.
     ///
@@ -143,7 +143,7 @@ where
                     (
                         Vec::<u8>::with_capacity(4096),
                         lock(&object_progress)
-                            .add_child_with_id(format!("thread {}", thread_index), git_features::progress::UNKNOWN),
+                            .add_child_with_id(format!("thread {thread_index}"), git_features::progress::UNKNOWN),
                         new_thread_state(),
                         resolve.clone(),
                         inspect_object.clone(),

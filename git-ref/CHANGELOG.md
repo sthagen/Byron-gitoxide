@@ -5,6 +5,57 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.24.0 (2023-02-09)
+
+### Documentation
+
+ - <csr-id-39ed9eda62b7718d5109135e5ad406fb1fe2978c/> fix typos
+
+### Bug Fixes (BREAKING)
+
+ - <csr-id-65c5589a419b2856c1576d838d4444554d7a582b/> commiting the revlog transaction is now optional.
+   This also means that providing no committer despite one being needed is will cause
+   the transaction to fail entirely with an error.
+   
+   Doing this allows users who disable the reflog not to have to deal with committer configuration
+   at all.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 11 commits contributed to the release over the course of 28 calendar days.
+ - 30 days passed between releases.
+ - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 1 unique issue was worked on: [#691](https://github.com/Byron/gitoxide/issues/691)
+
+### Thanks Clippy
+
+<csr-read-only-do-not-edit/>
+
+[Clippy](https://github.com/rust-lang/rust-clippy) helped 1 time to make code idiomatic. 
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#691](https://github.com/Byron/gitoxide/issues/691)**
+    - set `rust-version` to 1.64 ([`55066ce`](https://github.com/Byron/gitoxide/commit/55066ce5fd71209abb5d84da2998b903504584bb))
+ * **Uncategorized**
+    - prepare changelogs prior to release ([`7c846d2`](https://github.com/Byron/gitoxide/commit/7c846d2102dc767366771925212712ef8cc9bf07))
+    - Merge branch 'Lioness100/main' ([`1e544e8`](https://github.com/Byron/gitoxide/commit/1e544e82455bf9ecb5e3c2146280eaf7ecd81f16))
+    - revert obtai -> obtained ([`cd84c1a`](https://github.com/Byron/gitoxide/commit/cd84c1a63b0447dc8f32ed4abf7c0b1c1bb75f6e))
+    - fix typos ([`39ed9ed`](https://github.com/Byron/gitoxide/commit/39ed9eda62b7718d5109135e5ad406fb1fe2978c))
+    - thanks clippy ([`bac57dd`](https://github.com/Byron/gitoxide/commit/bac57dd05ea2d5a4ee45ef9350fa3f2e19474bc0))
+    - make fmt ([`e22080e`](https://github.com/Byron/gitoxide/commit/e22080e4a29d0bad15a99d565a5e3e304a8743ec))
+    - Merge branch 'adjustments-for-cargo' ([`7bba270`](https://github.com/Byron/gitoxide/commit/7bba2709488b7eb999b8136dbab03af977241678))
+    - Assure single-threaded git-ref tests may run. ([`17c0776`](https://github.com/Byron/gitoxide/commit/17c077683ebe2cd6b5717d28c8cda29b93286ac7))
+    - Break cyclical dev dependencies ([`1fea18f`](https://github.com/Byron/gitoxide/commit/1fea18f5f8b4189a23dc4fa3f041a672f6fbcfb3))
+    - commiting the revlog transaction is now optional. ([`65c5589`](https://github.com/Byron/gitoxide/commit/65c5589a419b2856c1576d838d4444554d7a582b))
+</details>
+
 ## 0.23.1 (2023-01-10)
 
 A maintenance release without user-facing changes.
@@ -13,7 +64,7 @@ A maintenance release without user-facing changes.
 
 <csr-read-only-do-not-edit/>
 
- - 3 commits contributed to the release.
+ - 4 commits contributed to the release.
  - 1 day passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -31,6 +82,7 @@ A maintenance release without user-facing changes.
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release git-date v0.4.1, git-features v0.26.1, git-glob v0.5.2, git-attributes v0.8.1, git-tempfile v3.0.1, git-ref v0.23.1, git-sec v0.6.1, git-config v0.15.1, git-prompt v0.3.1, git-url v0.13.1, git-discover v0.12.1, git-index v0.12.2, git-mailmap v0.9.1, git-pack v0.30.1, git-odb v0.40.1, git-transport v0.25.3, git-protocol v0.26.2, git-revision v0.10.1, git-refspec v0.7.1, git-worktree v0.12.1, git-repository v0.33.0 ([`5b5b380`](https://github.com/Byron/gitoxide/commit/5b5b3809faa71c658db38b40dfc410224d08a367))
     - prepare changelogs prior to release ([`93bef97`](https://github.com/Byron/gitoxide/commit/93bef97b3c0c75d4bf7119fdd787516e1efc77bf))
     - Merge branch 'patch-1' ([`b93f0c4`](https://github.com/Byron/gitoxide/commit/b93f0c49fc677b6c19aea332cbfc1445ce475375))
     - thanks clippy ([`9e04685`](https://github.com/Byron/gitoxide/commit/9e04685dd3f109bfb27663f9dc7c04102e660bf2))
@@ -93,7 +145,7 @@ A maintenance release without user-facing changes.
 
 <csr-read-only-do-not-edit/>
 
- - 11 commits contributed to the release over the course of 27 calendar days.
+ - 12 commits contributed to the release over the course of 27 calendar days.
  - 27 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -113,6 +165,7 @@ A maintenance release without user-facing changes.
  * **Uncategorized**
     - Release git-date v0.3.1, git-features v0.25.0, git-actor v0.15.0, git-glob v0.5.1, git-path v0.7.0, git-attributes v0.7.0, git-config-value v0.10.0, git-lock v3.0.1, git-validate v0.7.1, git-object v0.24.0, git-ref v0.21.0, git-sec v0.6.0, git-config v0.13.0, git-prompt v0.3.0, git-url v0.12.0, git-credentials v0.8.0, git-diff v0.24.0, git-discover v0.10.0, git-traverse v0.20.0, git-index v0.10.0, git-mailmap v0.7.0, git-pack v0.28.0, git-odb v0.38.0, git-packetline v0.14.1, git-transport v0.24.0, git-protocol v0.25.0, git-revision v0.8.0, git-refspec v0.5.0, git-worktree v0.10.0, git-repository v0.30.0, safety bump 26 crates ([`e6b9906`](https://github.com/Byron/gitoxide/commit/e6b9906c486b11057936da16ed6e0ec450a0fb83))
     - prepare chnagelogs prior to git-repository release ([`7114bbb`](https://github.com/Byron/gitoxide/commit/7114bbb6732aa8571d4ab74f28ed3e26e9fbe4d0))
+    - Merge branch 'main' into read-split-index ([`c57bdde`](https://github.com/Byron/gitoxide/commit/c57bdde6de37eca9672ea715962bbd02aa3eb055))
     - Merge branch 'adjustments-for-cargo' ([`083909b`](https://github.com/Byron/gitoxide/commit/083909bc7eb902eeee2002034fdb6ed88280dc5c))
     - thanks clippy ([`f1160fb`](https://github.com/Byron/gitoxide/commit/f1160fb42acf59b37cbeda546a7079af3c9bc050))
     - adapt to changes in `git-features::fs`. ([`35f7d59`](https://github.com/Byron/gitoxide/commit/35f7d5960210738d88d35aef9c1ed3480681c481))
@@ -179,7 +232,7 @@ A maintenance release without user-facing changes.
    they have been created or updated as they were included in the set of
    refs that was assumed to be part of packed-refs, which isn't the case
    for symbolic refs.
- - <csr-id-9f848506f5a42abc954612ea375f845e3b23ae5a/> case-insentively conflicting references can be created even on case-insensitie filesystems*.
+ - <csr-id-9f848506f5a42abc954612ea375f845e3b23ae5a/> case-insensitively conflicting references can be created even on case-insensitive filesystems*.
    The asterisk indicates that this only works if packed-refs are present
    and these references are written straight to packed references without
    ever trying to handle the otherwise conflicting loose reference files.
@@ -1416,7 +1469,7 @@ as `git-traverse` is signalling a breaking change.
 * Remove `file::Reference` in favor of `Reference`
 * Move `file::log::Line` to `log::Line`
 * `TargetRef::Symbolic(&BStr)` -> `TargetRef::Symbolic(FullNameRef)`
-* replace `Transaction::namespacce()` with `file::Store::namespace`
+* replace `Transaction::namespace()` with `file::Store::namespace`
  
 
 ### Commit Statistics

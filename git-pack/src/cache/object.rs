@@ -1,7 +1,7 @@
 //! # Note
 //!
 //! This module is a bit 'misplaced' if spelled out like 'git_pack::cache::object::*' but is best placed here for code re-use and
-//! general usefulnes.
+//! general usefulness.
 use crate::cache;
 
 #[cfg(feature = "object-cache-dynamic")]
@@ -49,7 +49,7 @@ mod memory {
                         .with_scale(CustomScale),
                 ),
                 free_list: Vec::new(),
-                debug: git_features::cache::Debug::new(format!("MemoryCappedObjectHashmap({}B)", memory_cap_in_bytes)),
+                debug: git_features::cache::Debug::new(format!("MemoryCappedObjectHashmap({memory_cap_in_bytes}B)")),
             }
         }
     }

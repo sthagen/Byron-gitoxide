@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.26.3 (2023-02-09)
+
+### Documentation
+
+ - <csr-id-39ed9eda62b7718d5109135e5ad406fb1fe2978c/> fix typos
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 6 commits contributed to the release over the course of 28 calendar days.
+ - 30 days passed between releases.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 1 unique issue was worked on: [#691](https://github.com/Byron/gitoxide/issues/691)
+
+### Thanks Clippy
+
+<csr-read-only-do-not-edit/>
+
+[Clippy](https://github.com/rust-lang/rust-clippy) helped 1 time to make code idiomatic. 
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#691](https://github.com/Byron/gitoxide/issues/691)**
+    - set `rust-version` to 1.64 ([`55066ce`](https://github.com/Byron/gitoxide/commit/55066ce5fd71209abb5d84da2998b903504584bb))
+ * **Uncategorized**
+    - prepare changelogs prior to release ([`7c846d2`](https://github.com/Byron/gitoxide/commit/7c846d2102dc767366771925212712ef8cc9bf07))
+    - Merge branch 'Lioness100/main' ([`1e544e8`](https://github.com/Byron/gitoxide/commit/1e544e82455bf9ecb5e3c2146280eaf7ecd81f16))
+    - fix typos ([`39ed9ed`](https://github.com/Byron/gitoxide/commit/39ed9eda62b7718d5109135e5ad406fb1fe2978c))
+    - thanks clippy ([`bac57dd`](https://github.com/Byron/gitoxide/commit/bac57dd05ea2d5a4ee45ef9350fa3f2e19474bc0))
+    - Break cyclical dev dependencies ([`1fea18f`](https://github.com/Byron/gitoxide/commit/1fea18f5f8b4189a23dc4fa3f041a672f6fbcfb3))
+</details>
+
 ## 0.26.2 (2023-01-10)
 
 A maintenance release without user-facing changes.
@@ -13,7 +50,7 @@ A maintenance release without user-facing changes.
 
 <csr-read-only-do-not-edit/>
 
- - 3 commits contributed to the release.
+ - 4 commits contributed to the release.
  - 1 day passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -31,6 +68,7 @@ A maintenance release without user-facing changes.
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release git-date v0.4.1, git-features v0.26.1, git-glob v0.5.2, git-attributes v0.8.1, git-tempfile v3.0.1, git-ref v0.23.1, git-sec v0.6.1, git-config v0.15.1, git-prompt v0.3.1, git-url v0.13.1, git-discover v0.12.1, git-index v0.12.2, git-mailmap v0.9.1, git-pack v0.30.1, git-odb v0.40.1, git-transport v0.25.3, git-protocol v0.26.2, git-revision v0.10.1, git-refspec v0.7.1, git-worktree v0.12.1, git-repository v0.33.0 ([`5b5b380`](https://github.com/Byron/gitoxide/commit/5b5b3809faa71c658db38b40dfc410224d08a367))
     - prepare changelogs prior to release ([`93bef97`](https://github.com/Byron/gitoxide/commit/93bef97b3c0c75d4bf7119fdd787516e1efc77bf))
     - Merge branch 'patch-1' ([`b93f0c4`](https://github.com/Byron/gitoxide/commit/b93f0c49fc677b6c19aea332cbfc1445ce475375))
     - thanks clippy ([`b34c9fe`](https://github.com/Byron/gitoxide/commit/b34c9fe58223862712eacc1cb7353e497a4b9778))
@@ -65,7 +103,7 @@ A maintenance release without user-facing changes.
 
 ### New Features
 
- - <csr-id-4b8abb0e8a5326662f36b88f04681bdd0eaa8079/> display the underlying permission denied error as source when failng handshake due to authentication.
+ - <csr-id-4b8abb0e8a5326662f36b88f04681bdd0eaa8079/> display the underlying permission denied error as source when failing handshake due to authentication.
 
 ### Commit Statistics
 
@@ -120,7 +158,7 @@ A maintenance release without user-facing changes.
  - <csr-id-5a50d9599f820237866928df6d24a196a9b86fe3/> `fetch::Arguments::use_include_tag()` allows to signal `include-tag`.
    One can also check for its availability using `fetch::Arguments::can_use_include_tag()`.
    
-   Further there was a bugfix that assues V1 capabilities are correctly interpreted to support
+   Further there was a bugfix that assumes V1 capabilities are correctly interpreted to support
    include-tag.
  - <csr-id-1c0a6c0edaca4063129c3b06638629b7af17a64c/> due to more specific errors one can differentiate if remote authentication failed repeatedly.
  - <csr-id-2363bcbd3207d1d16f2f95fbd20a7d7715b92240/> some errors support `is_spurious()` to tell if retrying is possible.
@@ -142,12 +180,12 @@ A maintenance release without user-facing changes.
    Performance wise I think it doesn't matter, but it will cause
    more memory to be used. If this ever becomes a problem,
    for example during pushes where we are stuck with V1, we can consider
-   implementing our own streaming appreach that works with packet lines
+   implementing our own streaming approach that works with packet lines
    instead - they are just not exposed here even though they could.
  - <csr-id-5f2276b63129163096be3cb229864fc589348da8/> don't enforce V2 as protocol, but smoothly downgrade like git does.
    For backward compatibility the shared handshake implementation allows the
    transport to control which protocol versions it wants to support
-   to allow optiomizing for one special case, namely to prevent it to
+   to allow optimizing for one special case, namely to prevent it to
    read all V1 refs on old servers but abort instead, closing the connection
    without delay.
    
@@ -159,7 +197,7 @@ A maintenance release without user-facing changes.
 
 <csr-read-only-do-not-edit/>
 
- - 24 commits contributed to the release over the course of 27 calendar days.
+ - 25 commits contributed to the release over the course of 27 calendar days.
  - 27 days passed between releases.
  - 7 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 1 unique issue was worked on: [#639](https://github.com/Byron/gitoxide/issues/639)
@@ -176,6 +214,7 @@ A maintenance release without user-facing changes.
     - Release git-date v0.3.1, git-features v0.25.0, git-actor v0.15.0, git-glob v0.5.1, git-path v0.7.0, git-attributes v0.7.0, git-config-value v0.10.0, git-lock v3.0.1, git-validate v0.7.1, git-object v0.24.0, git-ref v0.21.0, git-sec v0.6.0, git-config v0.13.0, git-prompt v0.3.0, git-url v0.12.0, git-credentials v0.8.0, git-diff v0.24.0, git-discover v0.10.0, git-traverse v0.20.0, git-index v0.10.0, git-mailmap v0.7.0, git-pack v0.28.0, git-odb v0.38.0, git-packetline v0.14.1, git-transport v0.24.0, git-protocol v0.25.0, git-revision v0.8.0, git-refspec v0.5.0, git-worktree v0.10.0, git-repository v0.30.0, safety bump 26 crates ([`e6b9906`](https://github.com/Byron/gitoxide/commit/e6b9906c486b11057936da16ed6e0ec450a0fb83))
     - prepare chnagelogs prior to git-repository release ([`7114bbb`](https://github.com/Byron/gitoxide/commit/7114bbb6732aa8571d4ab74f28ed3e26e9fbe4d0))
     - don't enforce V2 as protocol, but smoothly downgrade like git does. ([`5f2276b`](https://github.com/Byron/gitoxide/commit/5f2276b63129163096be3cb229864fc589348da8))
+    - Merge branch 'main' into read-split-index ([`c57bdde`](https://github.com/Byron/gitoxide/commit/c57bdde6de37eca9672ea715962bbd02aa3eb055))
     - Merge branch 'adjustments-for-cargo' ([`083909b`](https://github.com/Byron/gitoxide/commit/083909bc7eb902eeee2002034fdb6ed88280dc5c))
     - `fetch::Arguments::use_include_tag()` allows to signal `include-tag`. ([`5a50d95`](https://github.com/Byron/gitoxide/commit/5a50d9599f820237866928df6d24a196a9b86fe3))
     - don't pass 'include-tag' as argument by default. ([`a872782`](https://github.com/Byron/gitoxide/commit/a8727824a4c38b27d6ad7c73ccaf7a45839c0aa9))
@@ -253,7 +292,7 @@ A maintenance release without user-facing changes.
    which is specific to the transport at hand.
  - <csr-id-35f7b4df164c130fb50fcffcf5de99816c2ca872/> move `fetch::Command` into the crate root.
    This represents much better on how it is actually used, which is for
-   validation of any Command invoked through the protocol independenty.
+   validation of any Command invoked through the protocol independently.
  - <csr-id-a03f8f6cce34618883e8448dd1c31b41c54d9448/> move `fetch::agent|indicate_end_of_interaction` to crate root
    These are generally useful in all interactions, including push.
  - <csr-id-a3bcf82ae50defa4439862943008647d03d09792/> `handshake(…)` is now generalized to support `git-receive-pack` as well.
@@ -542,7 +581,7 @@ Maintenance release without user-facing changes.
 
 ### New Features
 
- - <csr-id-5ba9e1d20a8d523571a153f9f4e3e1a5285335b5/> provide a function to gracefully shut donw a fetch transport
+ - <csr-id-5ba9e1d20a8d523571a153f9f4e3e1a5285335b5/> provide a function to gracefully shut down a fetch transport
  - <csr-id-b1c40b0364ef092cd52d03b34f491b254816b18d/> use docsrs feature in code to show what is feature-gated automatically on docs.rs
  - <csr-id-517677147f1c17304c62cf97a1dd09f232ebf5db/> pass --cfg docsrs when compiling for https://docs.rs
  - <csr-id-d6b4878d9832a0279e0dd19c1ca520a282289e69/> re-export maybe_async
@@ -585,7 +624,7 @@ A maintenance release without user facing changes.
 
  - <csr-id-e91c301342d44cff35ebe12fba4ec10afb4a1922/> replace `quick-error` with `this-error`
  - <csr-id-12589cc6f08e4d7aabae30bcdadaa0c2b4850229/> adapt to changes in `git-url` and use `BString` to represent URLs.
-   They can contain paths, which is why `String` can't repsent a URL
+   They can contain paths, which is why `String` can't represent a URL
    losslessly.
    
    For HTTP urls these are ultimately UTF-8 strings though.

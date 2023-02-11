@@ -20,9 +20,7 @@ mod write_object {
 mod write_blob {
     use std::io::{Seek, SeekFrom};
 
-    use crate::util::hex_to_id;
-
-    use crate::repository::object::empty_bare_repo;
+    use crate::{repository::object::empty_bare_repo, util::hex_to_id};
 
     #[test]
     fn from_slice() -> crate::Result {
@@ -127,7 +125,7 @@ mod tag {
             "v1.0.0",
             current_head_id,
             git_object::Kind::Commit,
-            Some(repo.committer().expect("present")),
+            Some(repo.committer().expect("present")?),
             message,
             git_ref::transaction::PreviousValue::MustNotExist,
         )?;
@@ -140,7 +138,7 @@ mod tag {
         assert_eq!(tag.target_kind, git_object::Kind::Commit);
         assert_eq!(
             tag.tagger.as_ref().expect("tagger").actor(),
-            repo.committer().expect("present").actor()
+            repo.committer().expect("present")?.actor()
         );
         assert_eq!(tag.message, message);
         Ok(())
@@ -184,11 +182,10 @@ mod commit_as {
 }
 
 mod commit {
-    use crate::util::hex_to_id;
     use git_repository as git;
     use git_testtools::tempfile;
 
-    use crate::{freeze_time, restricted_and_git};
+    use crate::{freeze_time, restricted_and_git, util::hex_to_id};
 
     #[test]
     fn parent_in_initial_commit_causes_failure() -> crate::Result {

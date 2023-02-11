@@ -5,6 +5,58 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.40.2 (2023-02-09)
+
+### Documentation
+
+ - <csr-id-39ed9eda62b7718d5109135e5ad406fb1fe2978c/> fix typos
+
+### New Features
+
+ - <csr-id-d792ea543246632bf1ca8d0e1d239bbe7f07e219/> use enumerations to advertise progress ids publicly.
+   Previously these were an implementation detail which also means they
+   couldn't be relied upon.
+   
+   Thanks to an intermediate enumeration, they become part of the public API
+   and their actual value is not exposed.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 11 commits contributed to the release over the course of 28 calendar days.
+ - 30 days passed between releases.
+ - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 2 unique issues were worked on: [#691](https://github.com/Byron/gitoxide/issues/691), [#724](https://github.com/Byron/gitoxide/issues/724)
+
+### Thanks Clippy
+
+<csr-read-only-do-not-edit/>
+
+[Clippy](https://github.com/rust-lang/rust-clippy) helped 1 time to make code idiomatic. 
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#691](https://github.com/Byron/gitoxide/issues/691)**
+    - set `rust-version` to 1.64 ([`55066ce`](https://github.com/Byron/gitoxide/commit/55066ce5fd71209abb5d84da2998b903504584bb))
+ * **[#724](https://github.com/Byron/gitoxide/issues/724)**
+    - fix typo proper ([`ffc99b8`](https://github.com/Byron/gitoxide/commit/ffc99b8edaacdb20c940624549acb4a4ee7f8c66))
+ * **Uncategorized**
+    - prepare changelogs prior to release ([`7c846d2`](https://github.com/Byron/gitoxide/commit/7c846d2102dc767366771925212712ef8cc9bf07))
+    - Merge branch 'Lioness100/main' ([`1e544e8`](https://github.com/Byron/gitoxide/commit/1e544e82455bf9ecb5e3c2146280eaf7ecd81f16))
+    - undo typo-fix which reversed the meaning of the word. ([`eb232ff`](https://github.com/Byron/gitoxide/commit/eb232ffa7c6c939eb8286e07eed295d585afbe37))
+    - fix typos ([`39ed9ed`](https://github.com/Byron/gitoxide/commit/39ed9eda62b7718d5109135e5ad406fb1fe2978c))
+    - thanks clippy ([`bac57dd`](https://github.com/Byron/gitoxide/commit/bac57dd05ea2d5a4ee45ef9350fa3f2e19474bc0))
+    - make fmt ([`e22080e`](https://github.com/Byron/gitoxide/commit/e22080e4a29d0bad15a99d565a5e3e304a8743ec))
+    - Merge branch 'adjustments-for-cargo' ([`7bba270`](https://github.com/Byron/gitoxide/commit/7bba2709488b7eb999b8136dbab03af977241678))
+    - Break cyclical dev dependencies ([`1fea18f`](https://github.com/Byron/gitoxide/commit/1fea18f5f8b4189a23dc4fa3f041a672f6fbcfb3))
+    - use enumerations to advertise progress ids publicly. ([`d792ea5`](https://github.com/Byron/gitoxide/commit/d792ea543246632bf1ca8d0e1d239bbe7f07e219))
+</details>
+
 ## 0.40.1 (2023-01-10)
 
 A maintenance release without user-facing changes.
@@ -13,7 +65,7 @@ A maintenance release without user-facing changes.
 
 <csr-read-only-do-not-edit/>
 
- - 3 commits contributed to the release.
+ - 4 commits contributed to the release.
  - 1 day passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -31,6 +83,7 @@ A maintenance release without user-facing changes.
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release git-date v0.4.1, git-features v0.26.1, git-glob v0.5.2, git-attributes v0.8.1, git-tempfile v3.0.1, git-ref v0.23.1, git-sec v0.6.1, git-config v0.15.1, git-prompt v0.3.1, git-url v0.13.1, git-discover v0.12.1, git-index v0.12.2, git-mailmap v0.9.1, git-pack v0.30.1, git-odb v0.40.1, git-transport v0.25.3, git-protocol v0.26.2, git-revision v0.10.1, git-refspec v0.7.1, git-worktree v0.12.1, git-repository v0.33.0 ([`5b5b380`](https://github.com/Byron/gitoxide/commit/5b5b3809faa71c658db38b40dfc410224d08a367))
     - prepare changelogs prior to release ([`93bef97`](https://github.com/Byron/gitoxide/commit/93bef97b3c0c75d4bf7119fdd787516e1efc77bf))
     - Merge branch 'patch-1' ([`b93f0c4`](https://github.com/Byron/gitoxide/commit/b93f0c49fc677b6c19aea332cbfc1445ce475375))
     - thanks clippy ([`9e04685`](https://github.com/Byron/gitoxide/commit/9e04685dd3f109bfb27663f9dc7c04102e660bf2))
@@ -145,7 +198,7 @@ A maintenance release without user-facing changes.
 
 <csr-read-only-do-not-edit/>
 
- - 21 commits contributed to the release over the course of 27 calendar days.
+ - 22 commits contributed to the release over the course of 27 calendar days.
  - 27 days passed between releases.
  - 4 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -173,6 +226,7 @@ A maintenance release without user-facing changes.
     - add `Store::try_header()` for obtaining object information quickly. ([`d9d05b0`](https://github.com/Byron/gitoxide/commit/d9d05b0db6b4453e7385117d466bf7c2e8de81fa))
     - adapt to changes in `git-pack` ([`b1724ef`](https://github.com/Byron/gitoxide/commit/b1724efab49f6e656531e540b68315822ddafd22))
     - add `loose::Store::try_header()` to obtain loose object information without content. ([`7f19bd7`](https://github.com/Byron/gitoxide/commit/7f19bd7e63d78e3151e43d5094ae9d35cbe34f46))
+    - Merge branch 'main' into read-split-index ([`c57bdde`](https://github.com/Byron/gitoxide/commit/c57bdde6de37eca9672ea715962bbd02aa3eb055))
     - Merge branch 'adjustments-for-cargo' ([`083909b`](https://github.com/Byron/gitoxide/commit/083909bc7eb902eeee2002034fdb6ed88280dc5c))
     - thanks clippy ([`f1160fb`](https://github.com/Byron/gitoxide/commit/f1160fb42acf59b37cbeda546a7079af3c9bc050))
     - adapt to changes in `git-features::fs`. ([`35f7d59`](https://github.com/Byron/gitoxide/commit/35f7d5960210738d88d35aef9c1ed3480681c481))
@@ -215,7 +269,7 @@ A maintenance release without user-facing changes.
    possible to avoid multiple calls to `std::env::current_dir()`.
    
    Furthermore, the usage of `current_dir()` is made explicit when
-   instantiating a store to allow it to be resued.
+   instantiating a store to allow it to be reused.
 
 ### Commit Statistics
 
@@ -503,7 +557,7 @@ This is a maintenance release with no functional changes.
 
 ### New Features (BREAKING)
 
- - <csr-id-95210cb2ba85f75148b4ef48ccea9d9f8a0a0114/> Provide optional `candidates` for ambigious entries during `lookup_prefix()`
+ - <csr-id-95210cb2ba85f75148b4ef48ccea9d9f8a0a0114/> Provide optional `candidates` for ambiguous entries during `lookup_prefix()`
    The candidate entries are all entries matching a given prefix.
  - <csr-id-92d8be1101a7e76e70cd90db6a943b9e31e20802/> `loose::Db` and `Store` can return all candidate objects for a single prefix
    This is the first step towards auto-disambiguating objects in rev-parse.
@@ -790,7 +844,7 @@ A maintenance release without user-facing changes.
    method.
    
    This allows for more reuse of `Options` structs and generally makes
-   clearer how these optinos are used.
+   clearer how these options are used.
  - <csr-id-2ef9a8424af51310db8c1e6df31dde9953ed3d21/> Change accessors named `hash_kind()` to `object_hash()` for consistency
  - <csr-id-49998cce419a27f3928ec4ac39da5e3b500e5cb2/> consistently use `object_hash` instead of `hash_kind`
  - <csr-id-67c42fbf5f88f8dc42a9ebd7c6276d57ba1d4624/> remove `Write::*(…, hash_kind)`

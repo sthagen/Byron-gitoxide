@@ -44,41 +44,12 @@
 //!
 //! # Cargo-features
 //!
-//! To make using  _sub-crates_ easier these are re-exported into the root of this crate. Note that these may change their major version
-//! even if this crate doesn't, hence breaking downstream.
+//! To make using  _sub-crates_ easier these are re-exported into the root of this crate. Here we list how to access nested plumbing
+//! crates which are otherwise harder to discover:
 //!
-//! `git_repository::`
-//! * [`attrs`]
-//! * [`hash`]
-//! * [`url`]
-//! * [`actor`]
-//! * [`bstr`]
-//! * [`date`]
-//! * [`mod@discover`]
-//! * [`features`]
-//! * [`index`]
-//! * [`glob`]
-//! * [`path`]
-//! * [`credentials`]
-//! * [`prompt`]
-//! * [`sec`]
-//! * [`worktree`]
-//! * [`mailmap`]
-//! * [`objs`]
+//! **`git_repository::`**
 //! * [`odb`]
 //!   * [`pack`][odb::pack]
-//! * [`refs`]
-//! * [`revision`]
-//! * [`interrupt`]
-//! * [`tempfile`]
-//! * [`lock`]
-//! * [`traverse`]
-//! * [`diff`]
-//! * [`parallel`]
-//! * [`refspec`]
-//! * [`Progress`]
-//! * [`progress`]
-//! * [`interrupt`]
 //! * [`protocol`]
 //!   * [`transport`][protocol::transport]
 //!     * [`packetline`][protocol::transport::packetline]
@@ -99,7 +70,6 @@ pub use git_actor as actor;
 pub use git_attributes as attrs;
 pub use git_credentials as credentials;
 pub use git_date as date;
-pub use git_diff as diff;
 pub use git_features as features;
 use git_features::threading::OwnShared;
 pub use git_features::{parallel, progress::Progress, threading};
@@ -168,17 +138,40 @@ pub mod progress {
     pub use prodash::tree;
 }
 
+///
+pub mod diff {
+    pub use git_diff::*;
+    ///
+    pub mod rename {
+        /// Determine how to do rename tracking.
+        #[derive(Debug, Copy, Clone, Eq, PartialEq)]
+        pub enum Tracking {
+            /// Do not track renames at all, the fastest option.
+            Disabled,
+            /// Track renames.
+            Renames,
+            /// Track renames and copies.
+            ///
+            /// This is the most expensive option.
+            RenamesAndCopies,
+        }
+    }
+}
+
 /// See [ThreadSafeRepository::discover()], but returns a [`Repository`] instead.
+#[allow(clippy::result_large_err)]
 pub fn discover(directory: impl AsRef<std::path::Path>) -> Result<Repository, discover::Error> {
     ThreadSafeRepository::discover(directory).map(Into::into)
 }
 
 /// See [ThreadSafeRepository::init()], but returns a [`Repository`] instead.
+#[allow(clippy::result_large_err)]
 pub fn init(directory: impl AsRef<std::path::Path>) -> Result<Repository, init::Error> {
     ThreadSafeRepository::init(directory, create::Kind::WithWorktree, create::Options::default()).map(Into::into)
 }
 
 /// See [ThreadSafeRepository::init()], but returns a [`Repository`] instead.
+#[allow(clippy::result_large_err)]
 pub fn init_bare(directory: impl AsRef<std::path::Path>) -> Result<Repository, init::Error> {
     ThreadSafeRepository::init(directory, create::Kind::Bare, create::Options::default()).map(Into::into)
 }
@@ -232,11 +225,13 @@ fn open_opts_with_git_binary_config() -> open::Options {
 }
 
 /// See [ThreadSafeRepository::open()], but returns a [`Repository`] instead.
+#[allow(clippy::result_large_err)]
 pub fn open(directory: impl Into<std::path::PathBuf>) -> Result<Repository, open::Error> {
     ThreadSafeRepository::open(directory).map(Into::into)
 }
 
 /// See [ThreadSafeRepository::open_opts()], but returns a [`Repository`] instead.
+#[allow(clippy::result_large_err)]
 pub fn open_opts(directory: impl Into<std::path::PathBuf>, options: open::Options) -> Result<Repository, open::Error> {
     ThreadSafeRepository::open_opts(directory, options).map(Into::into)
 }

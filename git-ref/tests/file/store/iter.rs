@@ -2,8 +2,10 @@ use std::convert::TryInto;
 
 use git_object::bstr::ByteSlice;
 
-use crate::file::{store, store_at, store_with_packed_refs};
-use crate::util::hex_to_id;
+use crate::{
+    file::{store, store_at, store_with_packed_refs},
+    util::hex_to_id,
+};
 
 mod with_namespace {
     use git_object::bstr::{BString, ByteSlice};
@@ -300,7 +302,7 @@ fn loose_iter_with_broken_refs() -> crate::Result {
             "tags/t1"
         ]
         .into_iter()
-        .map(|p| format!("refs/{}", p))
+        .map(|p| format!("refs/{p}"))
         .collect::<Vec<_>>(),
         "all paths are as expected"
     );

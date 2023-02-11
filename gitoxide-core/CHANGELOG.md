@@ -5,6 +5,69 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.23.0 (2023-02-09)
+
+### Documentation
+
+ - <csr-id-39ed9eda62b7718d5109135e5ad406fb1fe2978c/> fix typos
+
+### New Features
+
+ - <csr-id-b702c298ac439a990f8d0c5aecc22deeb10dccea/> performance improvements for line statistics in `ein t hours`
+ - <csr-id-b81f650b476354c5bd030aa03b9a723d9d7a0970/> `gix clone <url>` is now permitted without specifying a destination directory.
+   Note that the implementation doesn't take into account potential redirects and renames
+   as it's implemented only with the first URL it sees (not the redirected ones).
+
+### Bug Fixes
+
+ - <csr-id-35963421e36b563a2a2890819b508e27eb5a7c85/> `ein t hours` now correctly counts removed lines when a file changes from blob to non-blob
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 21 commits contributed to the release over the course of 45 calendar days.
+ - 49 days passed between releases.
+ - 4 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 1 unique issue was worked on: [#683](https://github.com/Byron/gitoxide/issues/683)
+
+### Thanks Clippy
+
+<csr-read-only-do-not-edit/>
+
+[Clippy](https://github.com/rust-lang/rust-clippy) helped 1 time to make code idiomatic. 
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#683](https://github.com/Byron/gitoxide/issues/683)**
+    - `gix clone <url>` is now permitted without specifying a destination directory. ([`b81f650`](https://github.com/Byron/gitoxide/commit/b81f650b476354c5bd030aa03b9a723d9d7a0970))
+ * **Uncategorized**
+    - Release git-date v0.4.2, git-hash v0.10.2, git-features v0.26.2, git-actor v0.17.1, git-glob v0.5.3, git-path v0.7.1, git-quote v0.4.1, git-attributes v0.8.2, git-config-value v0.10.1, git-tempfile v3.0.2, git-lock v3.0.2, git-validate v0.7.2, git-object v0.26.1, git-ref v0.24.0, git-sec v0.6.2, git-config v0.16.0, git-command v0.2.3, git-prompt v0.3.2, git-url v0.13.2, git-credentials v0.9.1, git-diff v0.26.1, git-discover v0.13.0, git-hashtable v0.1.1, git-bitmap v0.2.1, git-traverse v0.22.1, git-index v0.12.3, git-mailmap v0.9.2, git-chunk v0.4.1, git-pack v0.30.2, git-odb v0.40.2, git-packetline v0.14.2, git-transport v0.25.4, git-protocol v0.26.3, git-revision v0.10.2, git-refspec v0.7.2, git-worktree v0.12.2, git-repository v0.34.0, safety bump 3 crates ([`c196d20`](https://github.com/Byron/gitoxide/commit/c196d206d57a310b1ce974a1cf0e7e6d6db5c4d6))
+    - Merge branch 'Lioness100/main' ([`1e544e8`](https://github.com/Byron/gitoxide/commit/1e544e82455bf9ecb5e3c2146280eaf7ecd81f16))
+    - fix typos ([`39ed9ed`](https://github.com/Byron/gitoxide/commit/39ed9eda62b7718d5109135e5ad406fb1fe2978c))
+    - Merge branch 'main' into break_cycel2 ([`e67307a`](https://github.com/Byron/gitoxide/commit/e67307aa9b1b81957abe0d5bae4c0e1008b1c1d7))
+    - performance improvements for line statistics in `ein t hours` ([`b702c29`](https://github.com/Byron/gitoxide/commit/b702c298ac439a990f8d0c5aecc22deeb10dccea))
+    - `ein t hours` now correctly counts removed lines when a file changes from blob to non-blob ([`3596342`](https://github.com/Byron/gitoxide/commit/35963421e36b563a2a2890819b508e27eb5a7c85))
+    - adjust to changes in `gitoxide` for clap upgrade to 4.1 ([`3c4e0b4`](https://github.com/Byron/gitoxide/commit/3c4e0b4997e86aa85d303da188f5eb55905bc1f2))
+    - Release git-date v0.4.1, git-features v0.26.1, git-glob v0.5.2, git-attributes v0.8.1, git-tempfile v3.0.1, git-ref v0.23.1, git-sec v0.6.1, git-config v0.15.1, git-prompt v0.3.1, git-url v0.13.1, git-discover v0.12.1, git-index v0.12.2, git-mailmap v0.9.1, git-pack v0.30.1, git-odb v0.40.1, git-transport v0.25.3, git-protocol v0.26.2, git-revision v0.10.1, git-refspec v0.7.1, git-worktree v0.12.1, git-repository v0.33.0 ([`5b5b380`](https://github.com/Byron/gitoxide/commit/5b5b3809faa71c658db38b40dfc410224d08a367))
+    - Merge branch 'patch-1' ([`b93f0c4`](https://github.com/Byron/gitoxide/commit/b93f0c49fc677b6c19aea332cbfc1445ce475375))
+    - thanks clippy ([`9e04685`](https://github.com/Byron/gitoxide/commit/9e04685dd3f109bfb27663f9dc7c04102e660bf2))
+    - Release git-ref v0.23.0, git-config v0.15.0, git-command v0.2.2, git-diff v0.26.0, git-discover v0.12.0, git-mailmap v0.9.0, git-pack v0.30.0, git-odb v0.40.0, git-transport v0.25.2, git-protocol v0.26.1, git-revision v0.10.0, git-refspec v0.7.0, git-worktree v0.12.0, git-repository v0.32.0 ([`ffb5b6a`](https://github.com/Byron/gitoxide/commit/ffb5b6a21cb415315db6fd5294940c7c6deb4538))
+    - Release git-date v0.4.0, git-actor v0.17.0, git-object v0.26.0, git-traverse v0.22.0, git-index v0.12.0, safety bump 15 crates ([`0e3d0a5`](https://github.com/Byron/gitoxide/commit/0e3d0a56d7e6a60c6578138f2690b4fa54a2072d))
+    - Merge branch 'gix-clone-improvements' ([`76c99f3`](https://github.com/Byron/gitoxide/commit/76c99f3005f1b0031921b536f5d268715e41f3c8))
+    - Release git-transport v0.25.1 ([`e0b12fe`](https://github.com/Byron/gitoxide/commit/e0b12fe64b50a1b614111924b55ce02f1c39ac00))
+    - Release git-features v0.26.0, git-actor v0.16.0, git-attributes v0.8.0, git-object v0.25.0, git-ref v0.22.0, git-config v0.14.0, git-command v0.2.1, git-url v0.13.0, git-credentials v0.9.0, git-diff v0.25.0, git-discover v0.11.0, git-traverse v0.21.0, git-index v0.11.0, git-mailmap v0.8.0, git-pack v0.29.0, git-odb v0.39.0, git-transport v0.25.0, git-protocol v0.26.0, git-revision v0.9.0, git-refspec v0.6.0, git-worktree v0.11.0, git-repository v0.31.0, safety bump 24 crates ([`5ac9fbe`](https://github.com/Byron/gitoxide/commit/5ac9fbe265a5b61c533a2a6b3abfed2bdf7f89ad))
+    - make fmt ([`511ed00`](https://github.com/Byron/gitoxide/commit/511ed0000397a5b268530c8f5362e7d25b7c1594))
+    - Merge branch 'adjustments-for-cargo' ([`f8c562a`](https://github.com/Byron/gitoxide/commit/f8c562a559e6dc3377583cc7200585dad7c3d481))
+    - refactor ([`d1f9388`](https://github.com/Byron/gitoxide/commit/d1f9388b698caa9a73f88d52608b78cfedb5145c))
+    - adapt to changes in git-repository and git-transport ([`d336368`](https://github.com/Byron/gitoxide/commit/d336368ea2b6e5918b709220522cf1509ef30be2))
+    - Release git-features v0.25.1, git-url v0.12.2, git-odb v0.38.1, git-transport v0.24.2, git-repository v0.30.2 ([`bb0a07b`](https://github.com/Byron/gitoxide/commit/bb0a07b5edd5f980989d1a92e74df7f183febe87))
+</details>
+
 ## 0.22.0 (2022-12-22)
 
 ### New Features
@@ -22,7 +85,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 16 commits contributed to the release over the course of 30 calendar days.
+ - 18 commits contributed to the release over the course of 30 calendar days.
  - 30 days passed between releases.
  - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -34,11 +97,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release git-url v0.12.1, git-transport v0.24.1, git-protocol v0.25.1, git-repository v0.30.1, git-commitgraph v0.12.0, gitoxide-core v0.22.0, gitoxide v0.20.0 ([`08ec3a9`](https://github.com/Byron/gitoxide/commit/08ec3a93d77a1018439a5c41c23729ffed27c5a5))
     - prepare changelogs prior to release ([`68ce15d`](https://github.com/Byron/gitoxide/commit/68ce15d07b50cfacdac0d1e42fe7f5e6330ba523))
     - Release git-date v0.3.1, git-features v0.25.0, git-actor v0.15.0, git-glob v0.5.1, git-path v0.7.0, git-attributes v0.7.0, git-config-value v0.10.0, git-lock v3.0.1, git-validate v0.7.1, git-object v0.24.0, git-ref v0.21.0, git-sec v0.6.0, git-config v0.13.0, git-prompt v0.3.0, git-url v0.12.0, git-credentials v0.8.0, git-diff v0.24.0, git-discover v0.10.0, git-traverse v0.20.0, git-index v0.10.0, git-mailmap v0.7.0, git-pack v0.28.0, git-odb v0.38.0, git-packetline v0.14.1, git-transport v0.24.0, git-protocol v0.25.0, git-revision v0.8.0, git-refspec v0.5.0, git-worktree v0.10.0, git-repository v0.30.0, safety bump 26 crates ([`e6b9906`](https://github.com/Byron/gitoxide/commit/e6b9906c486b11057936da16ed6e0ec450a0fb83))
     - Merge branch 'read-header' ([`3d01252`](https://github.com/Byron/gitoxide/commit/3d0125271ec7bd606734bd74757a7e31a18c7ce5))
     - `gix odb stats` to calculate statistics on the object database. ([`8c9c243`](https://github.com/Byron/gitoxide/commit/8c9c243fc574dc17b92a8e2025fbd8efdf2833da))
     - adapt to changes in `git-pack` ([`b1724ef`](https://github.com/Byron/gitoxide/commit/b1724efab49f6e656531e540b68315822ddafd22))
+    - Merge branch 'main' into read-split-index ([`c57bdde`](https://github.com/Byron/gitoxide/commit/c57bdde6de37eca9672ea715962bbd02aa3eb055))
     - Merge branch 'adjustments-for-cargo' ([`083909b`](https://github.com/Byron/gitoxide/commit/083909bc7eb902eeee2002034fdb6ed88280dc5c))
     - `gix clone --no-tags` support. ([`e2b8c5d`](https://github.com/Byron/gitoxide/commit/e2b8c5dce7185b5fa194b90f32e642e5c9d1227f))
     - upgade jwalk for good measure ([`4ba2235`](https://github.com/Byron/gitoxide/commit/4ba22358026bd4b2f4c129e6504af208166daf0d))
@@ -413,7 +478,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed (BREAKING)
 
  - <csr-id-dda995790c260131048484a11e66185b9c841311/> remove `gix free remote ref-list` in favor of `gix remote refs`
-   The functinality is the same, but the latter is built on top of a
+   The functionality is the same, but the latter is built on top of a
    repository which is slightly less flexible, but preferable over
    maintaining a non-repo version.
 
@@ -470,7 +535,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    That way it won't clash with the higher-level constructs on top of it
    which use the same names.
  - <csr-id-12589cc6f08e4d7aabae30bcdadaa0c2b4850229/> adapt to changes in `git-url` and use `BString` to represent URLs.
-   They can contain paths, which is why `String` can't repsent a URL
+   They can contain paths, which is why `String` can't represent a URL
    losslessly.
    
    For HTTP urls these are ultimately UTF-8 strings though.
@@ -774,7 +839,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    When converting a remote URL to a destination directory name,
    keep extension strings if they are not equal to "git". For example,
  - <csr-id-6d3f52dc13d7243a6bce6dab89a985114a75d94b/> Avoid the dashmap being cloned for each thread
-   Intead, share it by reference, it's sync after all.
+   Instead, share it by reference, it's sync after all.
    
    This issue was introduced when switching to a `Send + Clone` model,
    instead of `Send + Sync`, to allow thread-local caches in database
@@ -805,7 +870,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    The packed refs buffer is shared across clones and it's recommended
    to clone one `file::Store` instance per thread, each of which can
    use its own namespace.
- - <csr-id-e7526b2a7b51cbac4018e1ab3b623a85987fadc2/> parallel utilities now use `Send + Clone` insted of `Send + Sync`
+ - <csr-id-e7526b2a7b51cbac4018e1ab3b623a85987fadc2/> parallel utilities now use `Send + Clone` instead of `Send + Sync`
    This helps to assure that thread-local computations always work with the
    kind of types we provide. The ones that are carrying out actions are
    notably not `Sync` anymore.

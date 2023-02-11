@@ -9,7 +9,7 @@ use crate::{ObjectId, SIZE_OF_SHA1_DIGEST};
 /// In case we wish to support multiple hashes with the same length we cannot discriminate
 /// using the slice length anymore. To make that work, we will use the high bits of the
 /// internal `bytes` slice length (a fat pointer, pointing to data and its length in bytes)
-/// to encode additinoal information. Before accessing or returning the bytes, a new adjusted
+/// to encode additional information. Before accessing or returning the bytes, a new adjusted
 /// slice will be constructed, while the high bits will be used to help resolving the
 /// hash `[`kind()`][oid::kind()]`.
 /// We expect to have quite a few bits available for such 'conflict resolution' as most hashes aren't longer
@@ -180,7 +180,7 @@ impl<'a> From<&'a [u8; SIZE_OF_SHA1_DIGEST]> for &'a oid {
 impl fmt::Display for &oid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for b in self.as_bytes() {
-            write!(f, "{:02x}", b)?;
+            write!(f, "{b:02x}")?;
         }
         Ok(())
     }

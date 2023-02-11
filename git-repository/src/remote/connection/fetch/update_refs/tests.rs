@@ -10,9 +10,9 @@ fn hex_to_id(hex: &str) -> git_hash::ObjectId {
 mod update {
     use std::convert::TryInto;
 
-    use super::hex_to_id;
     use git_testtools::Result;
 
+    use super::hex_to_id;
     use crate as git;
 
     fn base_repo_path() -> String {
@@ -43,12 +43,11 @@ mod update {
     }
     use git_ref::{transaction::Change, TargetRef};
 
-    use crate::remote::fetch::refs::tests::restricted;
     use crate::{
         bstr::BString,
         remote::{
             fetch,
-            fetch::{Mapping, RefLogMessage, Source, SpecIndex},
+            fetch::{refs::tests::restricted, Mapping, RefLogMessage, Source, SpecIndex},
         },
     };
 
@@ -161,9 +160,8 @@ mod update {
                     Change::Update { log, new, .. } => {
                         assert_eq!(
                             log.message,
-                            format!("action: {}", reflog_message),
-                            "{}: reflog messages are specific and we emulate git word for word",
-                            spec
+                            format!("action: {reflog_message}"),
+                            "{spec}: reflog messages are specific and we emulate git word for word"
                         );
                         let remote_ref = repo
                             .find_reference(specs[0].to_ref().source().expect("always present"))
@@ -196,7 +194,7 @@ mod update {
             ("wt-c-locked", "wt-c-locked"),
             ("wt-deleted", "wt-deleted"),
         ] {
-            let spec = format!("refs/heads/main:refs/heads/{}", branch);
+            let spec = format!("refs/heads/main:refs/heads/{branch}");
             let (mappings, specs) = mapping_from_spec(&spec, &repo);
             let out = fetch::refs::update(
                 &repo,
@@ -217,7 +215,7 @@ mod update {
                     },
                     edit_index: None,
                 }],
-                "{}: checked-out checks are done before checking if a change would actually be required (here it isn't)", spec
+                "{spec}: checked-out checks are done before checking if a change would actually be required (here it isn't)"
             );
             assert_eq!(out.edits.len(), 0);
         }

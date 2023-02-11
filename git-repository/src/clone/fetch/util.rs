@@ -12,6 +12,7 @@ use crate::{
     Repository,
 };
 
+#[allow(clippy::result_large_err)]
 pub fn write_remote_to_local_config_file(
     remote: &mut crate::Remote<'_>,
     remote_name: BString,
@@ -131,7 +132,11 @@ pub fn update_head(
                     git_lock::acquire::Fail::Immediately,
                 )
                 .map_err(crate::reference::edit::Error::from)?
-                .commit(repo.committer().ok_or(Error::ReflogCommitterMissing)?)
+                .commit(
+                    repo.committer()
+                        .transpose()
+                        .map_err(|err| Error::HeadUpdate(crate::reference::edit::Error::ParseCommitterTime(err)))?,
+                )
                 .map_err(crate::reference::edit::Error::from)?;
 
             if let Some(head_peeled_id) = head_peeled_id {

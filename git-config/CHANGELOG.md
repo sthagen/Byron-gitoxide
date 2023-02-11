@@ -5,6 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.16.0 (2023-02-09)
+
+### Documentation
+
+ - <csr-id-39ed9eda62b7718d5109135e5ad406fb1fe2978c/> fix typos
+
+### New Features (BREAKING)
+
+ - <csr-id-2faad43d11283ff06381c51d2466307cfb8736ff/> transfer knowledge about configuration and its usage into the type system.
+   That way it's possible to use configuration overrides, even though ultimately being strings,
+   in a type-safe manner and leverage code-completion while at it.
+   
+   In that process, we also change `Repository::(committer|Author)()` to return
+   `Option<Result<...>>` to be able to account for date parse errors.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 9 commits contributed to the release over the course of 28 calendar days.
+ - 30 days passed between releases.
+ - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 1 unique issue was worked on: [#691](https://github.com/Byron/gitoxide/issues/691)
+
+### Thanks Clippy
+
+<csr-read-only-do-not-edit/>
+
+[Clippy](https://github.com/rust-lang/rust-clippy) helped 1 time to make code idiomatic. 
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#691](https://github.com/Byron/gitoxide/issues/691)**
+    - set `rust-version` to 1.64 ([`55066ce`](https://github.com/Byron/gitoxide/commit/55066ce5fd71209abb5d84da2998b903504584bb))
+ * **Uncategorized**
+    - prepare changelogs prior to release ([`7c846d2`](https://github.com/Byron/gitoxide/commit/7c846d2102dc767366771925212712ef8cc9bf07))
+    - Merge branch 'Lioness100/main' ([`1e544e8`](https://github.com/Byron/gitoxide/commit/1e544e82455bf9ecb5e3c2146280eaf7ecd81f16))
+    - fix typos ([`39ed9ed`](https://github.com/Byron/gitoxide/commit/39ed9eda62b7718d5109135e5ad406fb1fe2978c))
+    - upgrade serial-test to 1.0 ([`9ab3e25`](https://github.com/Byron/gitoxide/commit/9ab3e25e4c1ff6d504a79521cfa9453a7e7e7465))
+    - thanks clippy ([`bac57dd`](https://github.com/Byron/gitoxide/commit/bac57dd05ea2d5a4ee45ef9350fa3f2e19474bc0))
+    - Merge branch 'adjustments-for-cargo' ([`7bba270`](https://github.com/Byron/gitoxide/commit/7bba2709488b7eb999b8136dbab03af977241678))
+    - transfer knowledge about configuration and its usage into the type system. ([`2faad43`](https://github.com/Byron/gitoxide/commit/2faad43d11283ff06381c51d2466307cfb8736ff))
+    - Break cyclical dev dependencies ([`1fea18f`](https://github.com/Byron/gitoxide/commit/1fea18f5f8b4189a23dc4fa3f041a672f6fbcfb3))
+</details>
+
 ## 0.15.1 (2023-01-10)
 
 A maintenance release without user-facing changes.
@@ -13,7 +62,7 @@ A maintenance release without user-facing changes.
 
 <csr-read-only-do-not-edit/>
 
- - 6 commits contributed to the release.
+ - 7 commits contributed to the release.
  - 1 day passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -31,6 +80,7 @@ A maintenance release without user-facing changes.
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release git-date v0.4.1, git-features v0.26.1, git-glob v0.5.2, git-attributes v0.8.1, git-tempfile v3.0.1, git-ref v0.23.1, git-sec v0.6.1, git-config v0.15.1, git-prompt v0.3.1, git-url v0.13.1, git-discover v0.12.1, git-index v0.12.2, git-mailmap v0.9.1, git-pack v0.30.1, git-odb v0.40.1, git-transport v0.25.3, git-protocol v0.26.2, git-revision v0.10.1, git-refspec v0.7.1, git-worktree v0.12.1, git-repository v0.33.0 ([`5b5b380`](https://github.com/Byron/gitoxide/commit/5b5b3809faa71c658db38b40dfc410224d08a367))
     - prepare changelogs prior to release ([`93bef97`](https://github.com/Byron/gitoxide/commit/93bef97b3c0c75d4bf7119fdd787516e1efc77bf))
     - Merge branch 'patch-1' ([`b93f0c4`](https://github.com/Byron/gitoxide/commit/b93f0c49fc677b6c19aea332cbfc1445ce475375))
     - fix underflow ([`4fc214a`](https://github.com/Byron/gitoxide/commit/4fc214a02f8b83f5f5bcefcead0a1ee22c4f8088))
@@ -103,7 +153,7 @@ A maintenance release without user-facing changes.
    going to happen even when looking at the configuration via
    `gix config`.
    
-   The implementation has to be careful though about assureing there
+   The implementation has to be careful though about assuring there
    is no more specific configuration key, like `http.<URL>.proxy` that
    would override the one from the environment, which always has
    the final word.
@@ -135,7 +185,7 @@ A maintenance release without user-facing changes.
 
 <csr-read-only-do-not-edit/>
 
- - 14 commits contributed to the release over the course of 27 calendar days.
+ - 15 commits contributed to the release over the course of 27 calendar days.
  - 27 days passed between releases.
  - 5 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -155,6 +205,7 @@ A maintenance release without user-facing changes.
  * **Uncategorized**
     - Release git-date v0.3.1, git-features v0.25.0, git-actor v0.15.0, git-glob v0.5.1, git-path v0.7.0, git-attributes v0.7.0, git-config-value v0.10.0, git-lock v3.0.1, git-validate v0.7.1, git-object v0.24.0, git-ref v0.21.0, git-sec v0.6.0, git-config v0.13.0, git-prompt v0.3.0, git-url v0.12.0, git-credentials v0.8.0, git-diff v0.24.0, git-discover v0.10.0, git-traverse v0.20.0, git-index v0.10.0, git-mailmap v0.7.0, git-pack v0.28.0, git-odb v0.38.0, git-packetline v0.14.1, git-transport v0.24.0, git-protocol v0.25.0, git-revision v0.8.0, git-refspec v0.5.0, git-worktree v0.10.0, git-repository v0.30.0, safety bump 26 crates ([`e6b9906`](https://github.com/Byron/gitoxide/commit/e6b9906c486b11057936da16ed6e0ec450a0fb83))
     - prepare chnagelogs prior to git-repository release ([`7114bbb`](https://github.com/Byron/gitoxide/commit/7114bbb6732aa8571d4ab74f28ed3e26e9fbe4d0))
+    - Merge branch 'main' into read-split-index ([`c57bdde`](https://github.com/Byron/gitoxide/commit/c57bdde6de37eca9672ea715962bbd02aa3eb055))
     - Merge branch 'adjustments-for-cargo' ([`083909b`](https://github.com/Byron/gitoxide/commit/083909bc7eb902eeee2002034fdb6ed88280dc5c))
     - adjust to changes in `git-testtools` ([`4eb842c`](https://github.com/Byron/gitoxide/commit/4eb842c7150b980e1c2637217e1f9657a671cea7))
     - make fmt ([`747008d`](https://github.com/Byron/gitoxide/commit/747008d9d370844574dda94e5bec1648c4deb57e))
@@ -255,7 +306,7 @@ A maintenance release without user-facing changes.
    false.
  - <csr-id-7d92c61abc2c54f4a64c35b37bcd1843a8d1da9c/> `file::SectionMut::push()` now properly creates empty values.
    Previously, when calling `.push("key", None)`, the resulting internal
-   state would be slighly wrong causing certain invariants and expectations
+   state would be slightly wrong causing certain invariants and expectations
    to be unfulfilled even though it might have looked OK to most users.
    
    Now it will uphold the invariant for empty values, those without an
@@ -450,7 +501,7 @@ Maintenance release without user-facing changes.
 ### New Features
 
  - <csr-id-9937d0e00df3a523484c7ae2850be2712a1a4c9a/> `File::set_raw_value_filter()` to set values only in sections passing a filter.
- - <csr-id-17455c9d93ad38bfee2560f5a4e60324dee3b4e5/> `File::section_mut_or_create_new_filter()` to allow chosing which sections to add values to.
+ - <csr-id-17455c9d93ad38bfee2560f5a4e60324dee3b4e5/> `File::section_mut_or_create_new_filter()` to allow choosing which sections to add values to.
  - <csr-id-5902f54b93101a6290fcf89f9f13fdbea3678e00/> `File::section_mut_or_create_new(…)` to obtain an existing or new section for mutation.
  - <csr-id-b1c40b0364ef092cd52d03b34f491b254816b18d/> use docsrs feature in code to show what is feature-gated automatically on docs.rs
  - <csr-id-517677147f1c17304c62cf97a1dd09f232ebf5db/> pass --cfg docsrs when compiling for https://docs.rs
@@ -612,7 +663,7 @@ A maintenance release without user facing changes.
    all keys have the same indentation as the first key in the section.
    
    If there is no key, then the default whitespace will be double-tabs
-   like what's commmon in git.
+   like what's common in git.
  - <csr-id-db1f34dfb855058ac08e97d4715876b5db712f61/> `File::from_str()` implementation, to support `let config: File = "[core]".parse()?`
  - <csr-id-9157717c2fb143b5decbdf60d18cc2bd99dde775/> whitespace in mutable sections can be finely controlled, and is derived from existing sections
  - <csr-id-ae3895c7882e0a543a44693faee5f760b49b54d7/> `parse::Header::new(…)` with sub-section name validation
@@ -634,7 +685,7 @@ A maintenance release without user facing changes.
    
    Now the newline style is detected and used according to what's present,
    or in the lack of content, defaults to what's correct for the platform.
- - <csr-id-0d07ef1aa4a9e238c20249d4ae2ed19e6740308a/> validate incoming conifguration keys when interpreting envirnoment variables.
+ - <csr-id-0d07ef1aa4a9e238c20249d4ae2ed19e6740308a/> validate incoming configuration keys when interpreting environment variables.
  - <csr-id-6b901843cb18b3d31f8b0b84bb9ebbae279aff19/> `Boolean` can use numbers to indicate true or false, drops support for `one` and `zero`.
  - <csr-id-94dde44e8dd1a0b8d4e11f2627a3f6b345a15989/> `file::MutableSection::remove()` now actually removes keys _and_ values.
  - <csr-id-048b92531eb877a5a128e702504891bf1e31becf/> `file::MutableMultiValue` escapes input values and maintains key separator specific whitespace.
@@ -686,7 +737,7 @@ A maintenance release without user facing changes.
    Now `File` can be serialized in a streaming fashion and without the
    possibility for UTF8 conversion issues.
    
-   Note that `Display` is still imlpemented with the usual caveats.
+   Note that `Display` is still implemented with the usual caveats.
  - <csr-id-0e392f81e99c8c0ff29f41b9b86afd57cd99c245/> remove `Integer::to_bstring()` as well as some `TryFrom` impls.
    Note that it can still display itself like before via
    `std::fmt::Display`.
@@ -760,11 +811,11 @@ A maintenance release without user facing changes.
    removed section, not just the body, which yields more information
    than before including section metadata.
  - <csr-id-cfd974f46d2cbb99e7784a05f5e358fed0d4bcab/> section names are now validated.
- - <csr-id-6ba2f8060768978ad7204e162fb2253ca8843879/> filtering supportort for `parse::Events`.
+ - <csr-id-6ba2f8060768978ad7204e162fb2253ca8843879/> filtering support for `parse::Events`.
    That way it's possible to construct Files which are not destined to be
    written back as they only keep events necessary for value access,
    greatly reducing allocations.
- - <csr-id-311d4b447daf8d4364670382a20901468748d34d/> change mostily internal uses of [u8] to BString/BStr
+ - <csr-id-311d4b447daf8d4364670382a20901468748d34d/> change mostly internal uses of [u8] to BString/BStr
  - <csr-id-edd226719cd04a480274cb7d983b6d5d8bfdbb13/> Path-interpolation makes `home-dir` configurable.
    That way the caller has full control over how the environment is used,
    which also allows more fine-grained control over which config files
@@ -782,7 +833,7 @@ A maintenance release without user facing changes.
    either.
    
    More tests were added as well.
-   This is breaking as lifetime changes can cause distruptions, and
+   This is breaking as lifetime changes can cause disruptions, and
    `values?_as()` was removed as well as it's somewhat duplicate
    to higher-level APIs and it wasn't tested at all.
  - <csr-id-c9933c0b0f51d21dc8244b2acc33d7dc8a33f6ce/> Remove `git-config` test utilities from `git-path`.
@@ -1280,7 +1331,7 @@ A maintenance release without user facing changes.
 
  - <csr-id-7c75eac149c6ecb99c3dd7355d76d8d3e8b59cd0/> `GitConfig::path()` for direct access to paths.
    Very similar to `string()`, but as path, whose query can never fail.
- - <csr-id-031bd2f401199a05d6465c0260ceed3cc849c7ac/> add suppport for android
+ - <csr-id-031bd2f401199a05d6465c0260ceed3cc849c7ac/> add support for android
    Do not interpolate `~user/` on Android (Termux).
    There is no meaning of it. It is single user system.
  - <csr-id-dc3dc3b41b5de3ec17429769747bf99bb2bdd03d/> support for `try_value()`, `boolean()` and `string()` access`.

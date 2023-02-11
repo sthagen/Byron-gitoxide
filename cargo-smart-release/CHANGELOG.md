@@ -5,6 +5,96 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.15.0 (2023-02-09)
+
+### Chore
+
+ - <csr-id-63969671df60b4e07e2d7d671c657639d055b0b8/> upgrade to clap 4.1
+
+### Documentation
+
+ - <csr-id-39ed9eda62b7718d5109135e5ad406fb1fe2978c/> fix typos
+
+### Bug Fixes
+
+ - <csr-id-dc580414cbc7593c3ccf257f1f62d7323a3a3424/> handle worktree members which are also used as dependencies from crates.io.
+   Previously there would be an assertion error if worktree members
+   are not used only by path, but also by dependency to crates.io.
+ - <csr-id-1ce3190000f6211ce31468c7603d491bb5b90293/> Disable tag.gpgSign in test scripts
+   This is done for the same reason that commit.gpgsign is disabled for test
+   scripts. It prevents test failures if the user has tag.gpgsign enabled in
+   their global git config when invoking tests.
+
+### New Features (BREAKING)
+
+ - <csr-id-3d8fa8fef9800b1576beab8a5bc39b821157a5ed/> upgrade edition to 2021 in most crates.
+   MSRV for this is 1.56, and we are now at 1.60 so should be compatible.
+   This isn't more than a patch release as it should break nobody
+   who is adhering to the MSRV, but let's be careful and mark it
+   breaking.
+   
+   Note that `git-features` and `git-pack` are still on edition 2018
+   as they make use of a workaround to support (safe) mutable access
+   to non-overlapping entries in a slice which doesn't work anymore
+   in edition 2021.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 32 commits contributed to the release over the course of 92 calendar days.
+ - 94 days passed between releases.
+ - 5 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 1 unique issue was worked on: [#711](https://github.com/Byron/gitoxide/issues/711)
+
+### Thanks Clippy
+
+<csr-read-only-do-not-edit/>
+
+[Clippy](https://github.com/rust-lang/rust-clippy) helped 1 time to make code idiomatic. 
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#711](https://github.com/Byron/gitoxide/issues/711)**
+    - assure we get the latest version of the `time` crate ([`cb31cd1`](https://github.com/Byron/gitoxide/commit/cb31cd16bc4a6e749c298cfbc7e0dad05b11b96c))
+ * **Uncategorized**
+    - handle worktree members which are also used as dependencies from crates.io. ([`dc58041`](https://github.com/Byron/gitoxide/commit/dc580414cbc7593c3ccf257f1f62d7323a3a3424))
+    - Release git-date v0.4.2, git-hash v0.10.2, git-features v0.26.2, git-actor v0.17.1, git-glob v0.5.3, git-path v0.7.1, git-quote v0.4.1, git-attributes v0.8.2, git-config-value v0.10.1, git-tempfile v3.0.2, git-lock v3.0.2, git-validate v0.7.2, git-object v0.26.1, git-ref v0.24.0, git-sec v0.6.2, git-config v0.16.0, git-command v0.2.3, git-prompt v0.3.2, git-url v0.13.2, git-credentials v0.9.1, git-diff v0.26.1, git-discover v0.13.0, git-hashtable v0.1.1, git-bitmap v0.2.1, git-traverse v0.22.1, git-index v0.12.3, git-mailmap v0.9.2, git-chunk v0.4.1, git-pack v0.30.2, git-odb v0.40.2, git-packetline v0.14.2, git-transport v0.25.4, git-protocol v0.26.3, git-revision v0.10.2, git-refspec v0.7.2, git-worktree v0.12.2, git-repository v0.34.0, safety bump 3 crates ([`c196d20`](https://github.com/Byron/gitoxide/commit/c196d206d57a310b1ce974a1cf0e7e6d6db5c4d6))
+    - Merge branch 'Lioness100/main' ([`1e544e8`](https://github.com/Byron/gitoxide/commit/1e544e82455bf9ecb5e3c2146280eaf7ecd81f16))
+    - fix typos ([`39ed9ed`](https://github.com/Byron/gitoxide/commit/39ed9eda62b7718d5109135e5ad406fb1fe2978c))
+    - upgrade toml-edit and `cargo-toml` ([`a41ce60`](https://github.com/Byron/gitoxide/commit/a41ce6023a1f7ff8c4e167e44a3763ea953ea5db))
+    - Break cyclical dev dependencies ([`1fea18f`](https://github.com/Byron/gitoxide/commit/1fea18f5f8b4189a23dc4fa3f041a672f6fbcfb3))
+    - upgrade to clap 4.1 ([`6396967`](https://github.com/Byron/gitoxide/commit/63969671df60b4e07e2d7d671c657639d055b0b8))
+    - Release git-date v0.4.1, git-features v0.26.1, git-glob v0.5.2, git-attributes v0.8.1, git-tempfile v3.0.1, git-ref v0.23.1, git-sec v0.6.1, git-config v0.15.1, git-prompt v0.3.1, git-url v0.13.1, git-discover v0.12.1, git-index v0.12.2, git-mailmap v0.9.1, git-pack v0.30.1, git-odb v0.40.1, git-transport v0.25.3, git-protocol v0.26.2, git-revision v0.10.1, git-refspec v0.7.1, git-worktree v0.12.1, git-repository v0.33.0 ([`5b5b380`](https://github.com/Byron/gitoxide/commit/5b5b3809faa71c658db38b40dfc410224d08a367))
+    - Merge branch 'patch-1' ([`b93f0c4`](https://github.com/Byron/gitoxide/commit/b93f0c49fc677b6c19aea332cbfc1445ce475375))
+    - thanks clippy ([`b34c9fe`](https://github.com/Byron/gitoxide/commit/b34c9fe58223862712eacc1cb7353e497a4b9778))
+    - upgrade env_logger ([`803d8e1`](https://github.com/Byron/gitoxide/commit/803d8e14b43a869db42f6345197e7e872c54679e))
+    - upgrade toml_edit ([`4d632d0`](https://github.com/Byron/gitoxide/commit/4d632d0b3b10a3f87c12c42fa21579da5c19dec2))
+    - upgrade `cargo_toml` ([`6504e93`](https://github.com/Byron/gitoxide/commit/6504e933dd4c82bfd3252e40e4ce30ee97d67563))
+    - Release git-date v0.4.0, git-actor v0.17.0, git-object v0.26.0, git-traverse v0.22.0, git-index v0.12.0, safety bump 15 crates ([`0e3d0a5`](https://github.com/Byron/gitoxide/commit/0e3d0a56d7e6a60c6578138f2690b4fa54a2072d))
+    - Release git-features v0.26.0, git-actor v0.16.0, git-attributes v0.8.0, git-object v0.25.0, git-ref v0.22.0, git-config v0.14.0, git-command v0.2.1, git-url v0.13.0, git-credentials v0.9.0, git-diff v0.25.0, git-discover v0.11.0, git-traverse v0.21.0, git-index v0.11.0, git-mailmap v0.8.0, git-pack v0.29.0, git-odb v0.39.0, git-transport v0.25.0, git-protocol v0.26.0, git-revision v0.9.0, git-refspec v0.6.0, git-worktree v0.11.0, git-repository v0.31.0, safety bump 24 crates ([`5ac9fbe`](https://github.com/Byron/gitoxide/commit/5ac9fbe265a5b61c533a2a6b3abfed2bdf7f89ad))
+    - Release git-features v0.25.1, git-url v0.12.2, git-odb v0.38.1, git-transport v0.24.2, git-repository v0.30.2 ([`bb0a07b`](https://github.com/Byron/gitoxide/commit/bb0a07b5edd5f980989d1a92e74df7f183febe87))
+    - Release git-url v0.12.1, git-transport v0.24.1, git-protocol v0.25.1, git-repository v0.30.1, git-commitgraph v0.12.0, gitoxide-core v0.22.0, gitoxide v0.20.0 ([`08ec3a9`](https://github.com/Byron/gitoxide/commit/08ec3a93d77a1018439a5c41c23729ffed27c5a5))
+    - Merge branch 'fix/relative-scplike-urls' ([`b688592`](https://github.com/Byron/gitoxide/commit/b68859254a02b93e7ea90f4881323357cfd080a4))
+    - Adapt to changes in `git-url` ([`2a7576c`](https://github.com/Byron/gitoxide/commit/2a7576c3a34351df47ac057588c605675ad591eb))
+    - Release git-date v0.3.1, git-features v0.25.0, git-actor v0.15.0, git-glob v0.5.1, git-path v0.7.0, git-attributes v0.7.0, git-config-value v0.10.0, git-lock v3.0.1, git-validate v0.7.1, git-object v0.24.0, git-ref v0.21.0, git-sec v0.6.0, git-config v0.13.0, git-prompt v0.3.0, git-url v0.12.0, git-credentials v0.8.0, git-diff v0.24.0, git-discover v0.10.0, git-traverse v0.20.0, git-index v0.10.0, git-mailmap v0.7.0, git-pack v0.28.0, git-odb v0.38.0, git-packetline v0.14.1, git-transport v0.24.0, git-protocol v0.25.0, git-revision v0.8.0, git-refspec v0.5.0, git-worktree v0.10.0, git-repository v0.30.0, safety bump 26 crates ([`e6b9906`](https://github.com/Byron/gitoxide/commit/e6b9906c486b11057936da16ed6e0ec450a0fb83))
+    - adapt to changes in `git-repository` ([`c4f68bf`](https://github.com/Byron/gitoxide/commit/c4f68bf775b854625d901fe0bfcbdd38f656d408))
+    - adapt to changes in `git-config` ([`1c2e755`](https://github.com/Byron/gitoxide/commit/1c2e755e517b0f9fe8671187f5c30076ce43a3c9))
+    - Merge branch 'main' into http-config ([`bcd9654`](https://github.com/Byron/gitoxide/commit/bcd9654e56169799eb706646da6ee1f4ef2021a9))
+    - Release git-hash v0.10.0, git-features v0.24.0, git-date v0.3.0, git-actor v0.14.0, git-glob v0.5.0, git-path v0.6.0, git-quote v0.4.0, git-attributes v0.6.0, git-config-value v0.9.0, git-tempfile v3.0.0, git-lock v3.0.0, git-validate v0.7.0, git-object v0.23.0, git-ref v0.20.0, git-sec v0.5.0, git-config v0.12.0, git-command v0.2.0, git-prompt v0.2.0, git-url v0.11.0, git-credentials v0.7.0, git-diff v0.23.0, git-discover v0.9.0, git-bitmap v0.2.0, git-traverse v0.19.0, git-index v0.9.0, git-mailmap v0.6.0, git-chunk v0.4.0, git-pack v0.27.0, git-odb v0.37.0, git-packetline v0.14.0, git-transport v0.23.0, git-protocol v0.24.0, git-revision v0.7.0, git-refspec v0.4.0, git-worktree v0.9.0, git-repository v0.29.0, git-commitgraph v0.11.0, gitoxide-core v0.21.0, gitoxide v0.19.0, safety bump 28 crates ([`b2c301e`](https://github.com/Byron/gitoxide/commit/b2c301ef131ffe1871314e19f387cf10a8d2ac16))
+    - Merge branch 'jpgrayson/main' ([`b242853`](https://github.com/Byron/gitoxide/commit/b242853abd790e5234b2f18b4aaeddb8f6f4d36f))
+    - Disable tag.gpgSign in test scripts ([`1ce3190`](https://github.com/Byron/gitoxide/commit/1ce3190000f6211ce31468c7603d491bb5b90293))
+    - Merge branch 'version2021' ([`0e4462d`](https://github.com/Byron/gitoxide/commit/0e4462df7a5166fe85c23a779462cdca8ee013e8))
+    - upgrade edition to 2021 in most crates. ([`3d8fa8f`](https://github.com/Byron/gitoxide/commit/3d8fa8fef9800b1576beab8a5bc39b821157a5ed))
+    - Release git-glob v0.4.2, git-config-value v0.8.2, git-lock v2.2.0, git-ref v0.19.0, git-config v0.11.0, git-discover v0.8.0, git-index v0.8.0, git-transport v0.22.0, git-protocol v0.23.0, git-worktree v0.8.0, git-repository v0.28.0, gitoxide-core v0.20.0, gitoxide v0.18.0, safety bump 9 crates ([`0c253b1`](https://github.com/Byron/gitoxide/commit/0c253b15143dcedfe4c66d64ab1ea6e097030651))
+    - Merge branch 'main' into http-config ([`7c5b37d`](https://github.com/Byron/gitoxide/commit/7c5b37d28e98f59a6847368a0d0166d2dbb4acc1))
+    - Release git-diff v0.22.0, git-index v0.7.1, git-pack v0.26.0, git-odb v0.36.0, git-transport v0.21.2, git-repository v0.27.0, safety bump 6 crates ([`f0cab31`](https://github.com/Byron/gitoxide/commit/f0cab317bb0c2799fa80d16f3ae1b89d6aee4284))
+</details>
+
 ## 0.14.0 (2022-11-06)
 
 ### Bug Fixes
@@ -15,7 +105,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 6 commits contributed to the release over the course of 27 calendar days.
+ - 7 commits contributed to the release over the course of 27 calendar days.
  - 27 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 1 unique issue was worked on: [#560](https://github.com/Byron/gitoxide/issues/560)
@@ -35,6 +125,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#560](https://github.com/Byron/gitoxide/issues/560)**
     - `where -> were` typo fix. ([`0eca94d`](https://github.com/Byron/gitoxide/commit/0eca94d84bd82f2083b41acdb316edce54365f11))
  * **Uncategorized**
+    - Release cargo-smart-release v0.14.0 ([`a1c68da`](https://github.com/Byron/gitoxide/commit/a1c68da4b0fa080a383cbbfa50fd54e8bb45330c))
     - Release git-features v0.23.1, git-glob v0.4.1, git-config-value v0.8.1, git-tempfile v2.0.6, git-object v0.22.1, git-ref v0.18.0, git-sec v0.4.2, git-config v0.10.0, git-prompt v0.1.1, git-url v0.10.1, git-credentials v0.6.1, git-diff v0.21.0, git-discover v0.7.0, git-index v0.7.0, git-pack v0.25.0, git-odb v0.35.0, git-transport v0.21.1, git-protocol v0.22.0, git-refspec v0.3.1, git-worktree v0.7.0, git-repository v0.26.0, git-commitgraph v0.10.0, gitoxide-core v0.19.0, gitoxide v0.17.0, safety bump 9 crates ([`d071583`](https://github.com/Byron/gitoxide/commit/d071583c5576fdf5f7717765ffed5681792aa81f))
     - Merge branch 'main' into write-sparse-index (upgrade to Rust 1.65) ([`5406630`](https://github.com/Byron/gitoxide/commit/5406630466145990b5adbdadb59151036993060d))
     - thanks clippy ([`04cfa63`](https://github.com/Byron/gitoxide/commit/04cfa635a65ae34ad6d22391f2febd2ca7eabca9))
@@ -50,7 +141,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    Previously it was possible see a crate was changed, but didn't receive a
    version bump which would in turn halt the release process.
    
-   The issue was an algorithm inabuility to find changes in the commitgraph
+   The issue was an algorithm inability to find changes in the commitgraph
    because it would not look at the correct tree, causing trees to be
    missed entirely. This in turn caused it to not see changes that were
    present and the mismatch in question.
@@ -328,7 +419,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Bug Fixes
 
  - <csr-id-fcaa6353297fd1d4cb30ca3a873f76efb62e45e1/> Don't assume crates are non-breaking just because they are in the user selection.
-   Crates shownig up 'early' in our list could cause the entire
+   Crates showing up 'early' in our list could cause the entire
    breakage-propagation to fail which led the crate to be ignored entirely
    even when their dependees changed their version. This led to
    inconsistent version requirements which would abort any cargo call.
@@ -483,7 +574,7 @@ A quality-of-life release which should make publishing of inter-dependent crates
 ### New Features (BREAKING)
 
  - <csr-id-15e60b2d80e4452a316d14f938583b23fb9e17e6/> upgrade to crates-index 0.18
-   It now assumes that the crates-index must exist, which migth not always
+   It now assumes that the crates-index must exist, which might not always
    be the case and rightfully so. Now we wrap it to get back to the
    original behavior.
 
@@ -556,7 +647,7 @@ A quality-of-life release which should make publishing of inter-dependent crates
 ### Bug Fixes
 
  - <csr-id-f4421d83d022a56e47f534a8c676bcb9cb3d230d/> don't mistake prefixed tags for versions
-   Previously we would be too generious when accepting version tags, now
+   Previously we would be too generous when accepting version tags, now
    we accept the prefixes 'v' and 'vers' and no prefix at all.
  - <csr-id-6eae7f1119e2a7928286f233fc397b92274bb0ab/> don't panic if there is a version requirement without version
  - <csr-id-b12b76c93db43044d6976ae218c11a8f3f3cd81d/> don't claim missing user edits if there are some
@@ -594,7 +685,7 @@ A quality-of-life release which should make publishing of inter-dependent crates
 
 ### Other
 
- - <csr-id-82075e8a101adb2fda0c11e6567e2148d2e66b8f/> try to auto-udpate crates index with lifetime crazyness
+ - <csr-id-82075e8a101adb2fda0c11e6567e2148d2e66b8f/> try to auto-update crates index with lifetime craziness
    Even though it could work, it's too complicated.
 
 ### New Features
@@ -927,7 +1018,7 @@ and make future improvements easier.
    
    This assures we don't get broken automatically in future.
    Previously that wasn't possible as the dependency of `clap`,
-   `clap-derive` was also using a beta verion and wasn't constrained,
+   `clap-derive` was also using a beta version and wasn't constrained,
    hence it would be updated and cause breaking changes with pinned
    versions of consumers of `clap`.
  - <csr-id-fb6b909e49d8428e53da6e2ce3c2f878025e00f7/> ! breaking changes cause intermediate (otherwise skipped) crates to be published.
@@ -1159,7 +1250,7 @@ And there is another one showing `cargo smart-release` releasing `gitoxide 0.9.0
  - <csr-id-9b78c344ee287c4c2908ccbe64bd64c2c9648459/> improved safety bump log message
  - <csr-id-b1a39046056bf4a862cebe69f44f3ea1e53a2069/> commit message reveals safety bumps
  - <csr-id-ecf38b8c013e46a33aa0b2c1b4e9cf547c8393c4/> released crates only receive minor bumps…
-   …which signals a change while allowing decendents to pin themselves to
+   …which signals a change while allowing dependents to pin themselves to
    patch updates only.
    
    This would be users of "unstable" git-repository features for example.

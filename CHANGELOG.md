@@ -5,6 +5,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.21.0 (2023-02-09)
+
+### Chore
+
+ - <csr-id-1d9a5e925890883e9e712db14ac82411ad2fdfc3/> upgrade to clap 4.1
+
+### New Features
+
+ - <csr-id-b81f650b476354c5bd030aa03b9a723d9d7a0970/> `gix clone <url>` is now permitted without specifying a destination directory.
+   Note that the implementation doesn't take into account potential redirects and renames
+   as it's implemented only with the first URL it sees (not the redirected ones).
+ - <csr-id-38ae61a805bd8cca5df8d1c1dcf3a8a0f9c85f5a/> make more HTTP options available
+   - `http.schannelCheckRevoke`
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 15 commits contributed to the release over the course of 47 calendar days.
+ - 49 days passed between releases.
+ - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 1 unique issue was worked on: [#683](https://github.com/Byron/gitoxide/issues/683)
+
+### Thanks Clippy
+
+<csr-read-only-do-not-edit/>
+
+[Clippy](https://github.com/rust-lang/rust-clippy) helped 2 times to make code idiomatic. 
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#683](https://github.com/Byron/gitoxide/issues/683)**
+    - `gix clone <url>` is now permitted without specifying a destination directory. ([`b81f650`](https://github.com/Byron/gitoxide/commit/b81f650b476354c5bd030aa03b9a723d9d7a0970))
+ * **Uncategorized**
+    - make fmt ([`e22080e`](https://github.com/Byron/gitoxide/commit/e22080e4a29d0bad15a99d565a5e3e304a8743ec))
+    - Merge branch 'adjustments-for-cargo' ([`7bba270`](https://github.com/Byron/gitoxide/commit/7bba2709488b7eb999b8136dbab03af977241678))
+    - `gix progress` now usees the configuration tree as basis for data. ([`ea76bf5`](https://github.com/Byron/gitoxide/commit/ea76bf5ba1b06bcf94bcadf5129ce265c90144d3))
+    - thanks clippy ([`f7b8794`](https://github.com/Byron/gitoxide/commit/f7b879448258a058b8607916da0ddf13b83896d9))
+    - upgrade to clap 4.1 ([`1d9a5e9`](https://github.com/Byron/gitoxide/commit/1d9a5e925890883e9e712db14ac82411ad2fdfc3))
+    - Merge branch 'patch-1' ([`b93f0c4`](https://github.com/Byron/gitoxide/commit/b93f0c49fc677b6c19aea332cbfc1445ce475375))
+    - thanks clippy ([`9e04685`](https://github.com/Byron/gitoxide/commit/9e04685dd3f109bfb27663f9dc7c04102e660bf2))
+    - upgrade `tabled` ([`7aed326`](https://github.com/Byron/gitoxide/commit/7aed326e706b13ae88f98880de055201b2a869cc))
+    - Merge branch 'gix-clone-improvements' ([`76c99f3`](https://github.com/Byron/gitoxide/commit/76c99f3005f1b0031921b536f5d268715e41f3c8))
+    - Merge branch 'adjustments-for-cargo' ([`f8c562a`](https://github.com/Byron/gitoxide/commit/f8c562a559e6dc3377583cc7200585dad7c3d481))
+    - adapt to changes in git-repository and git-transport ([`d336368`](https://github.com/Byron/gitoxide/commit/d336368ea2b6e5918b709220522cf1509ef30be2))
+    - update planned usage of `ssh` related configuration variables. ([`3f91088`](https://github.com/Byron/gitoxide/commit/3f910880fdf691b59460eea272772c7aff284716))
+    - Merge branch 'adjustments-for-cargo' ([`d821fc5`](https://github.com/Byron/gitoxide/commit/d821fc5b4ef4ba606f2b6bb68b66f7260a0205dc))
+    - make more HTTP options available ([`38ae61a`](https://github.com/Byron/gitoxide/commit/38ae61a805bd8cca5df8d1c1dcf3a8a0f9c85f5a))
+</details>
+
 ## 0.20.0 (2022-12-22)
 
 This release also fixes compatibility issues that formerly prevented to fetch or clone form `https://googlesource.com`.
@@ -53,7 +107,7 @@ This release also fixes compatibility issues that formerly prevented to fetch or
 
 <csr-read-only-do-not-edit/>
 
- - 21 commits contributed to the release over the course of 30 calendar days.
+ - 22 commits contributed to the release over the course of 30 calendar days.
  - 30 days passed between releases.
  - 7 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -68,6 +122,7 @@ This release also fixes compatibility issues that formerly prevented to fetch or
     - fix label for `ein t estimate-hours` command ([`4c93de1`](https://github.com/Byron/gitoxide/commit/4c93de113898c6ff6ae1da3ea38d646626c86205))
     - Merge branch 'read-header' ([`3d01252`](https://github.com/Byron/gitoxide/commit/3d0125271ec7bd606734bd74757a7e31a18c7ce5))
     - `gix odb stats` to calculate statistics on the object database. ([`8c9c243`](https://github.com/Byron/gitoxide/commit/8c9c243fc574dc17b92a8e2025fbd8efdf2833da))
+    - Merge branch 'main' into read-split-index ([`c57bdde`](https://github.com/Byron/gitoxide/commit/c57bdde6de37eca9672ea715962bbd02aa3eb055))
     - Merge branch 'adjustments-for-cargo' ([`083909b`](https://github.com/Byron/gitoxide/commit/083909bc7eb902eeee2002034fdb6ed88280dc5c))
     - `gix clone --no-tags` support. ([`e2b8c5d`](https://github.com/Byron/gitoxide/commit/e2b8c5dce7185b5fa194b90f32e642e5c9d1227f))
     - update `gix progress` to inform about `remote.<name>.tagOpt` ([`3ebb340`](https://github.com/Byron/gitoxide/commit/3ebb3405f265fbd78a89c01bd30c3ad34036ef84))
@@ -355,7 +410,7 @@ It's also an attempt to trigger CI to build binary releases.
 ### Changed (BREAKING)
 
  - <csr-id-dda995790c260131048484a11e66185b9c841311/> remove `gix free remote ref-list` in favor of `gix remote refs`
-   The functinality is the same, but the latter is built on top of a
+   The functionality is the same, but the latter is built on top of a
    repository which is slightly less flexible, but preferable over
    maintaining a non-repo version.
 
@@ -606,7 +661,7 @@ which usually are `Clone` too as they are passed by immutable reference (which i
    some speedups might be desirable, one might not want to commit all cores
    to this amount of waste.
  - <csr-id-25da30f3652bd72c157e84439dd6e3957471fa08/> in-manifest and in-bin documentation of feature toggles
-   Unfortunately, these don't show up on docs.rs due to it being a abinary
+   Unfortunately, these don't show up on docs.rs due to it being a binary
    only crate. One could consider throwing in a lib just for good measure.
 
 ### Commit Statistics

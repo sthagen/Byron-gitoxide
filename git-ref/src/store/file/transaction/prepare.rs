@@ -65,7 +65,7 @@ impl<'s, 'p> Transaction<'s, 'p> {
                     )
                     .map_err(|err| Error::LockAcquire {
                         source: err,
-                        full_name: "borrowchk won't allow change.name()".into(),
+                        full_name: "borrowcheck won't allow change.name()".into(),
                     })?
                     .into()
                 };
@@ -115,7 +115,7 @@ impl<'s, 'p> Transaction<'s, 'p> {
                     )
                     .map_err(|err| Error::LockAcquire {
                         source: err,
-                        full_name: "borrowchk won't allow change.name() and this will be corrected by caller".into(),
+                        full_name: "borrowcheck won't allow change.name() and this will be corrected by caller".into(),
                     })
                 };
                 let mut lock = (!has_global_lock).then(obtain_lock).transpose()?;
@@ -183,7 +183,7 @@ impl<'s, 'p> Transaction<'s, 'p> {
                     let mut lock = lock.take().map(Ok).unwrap_or_else(obtain_lock)?;
 
                     lock.with_mut(|file| match new {
-                        Target::Peeled(oid) => write!(file, "{}", oid),
+                        Target::Peeled(oid) => write!(file, "{oid}"),
                         Target::Symbolic(name) => write!(file, "ref: {}", name.0),
                     })?;
                     Some(lock.close()?)

@@ -38,7 +38,7 @@ fn store_and_reject() {
         let outcome = git_credentials::helper::invoke(&mut script_helper("last-pass"), &action).unwrap();
         assert!(
             outcome.is_none(),
-            "store and erase have no outcome, they just shouln't fail"
+            "store and erase have no outcome, they just shouldn't fail"
         );
     }
 }
@@ -126,7 +126,7 @@ mod program {
 
 pub fn script_helper(name: &str) -> Program {
     let mut script = git_path::to_unix_separators_on_windows(git_path::into_bstr(
-        git_path::realpath(fixture_path(format!("{}.sh", name))).unwrap(),
+        git_path::realpath(fixture_path(format!("{name}.sh"))).unwrap(),
     ))
     .into_owned();
     script.insert_str(0, "sh ");

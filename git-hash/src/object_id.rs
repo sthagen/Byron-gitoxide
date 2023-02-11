@@ -17,9 +17,9 @@ pub enum ObjectId {
 }
 
 // False positive: https://github.com/rust-lang/rust-clippy/issues/2627
-// ingoring some fields while hashing is perfectly valid and just leads to
+// ignoring some fields while hashing is perfectly valid and just leads to
 // increased HashCollisions. One Sha1 being a prefix of another Sha256 is
-// extremly unlikely to begin with so it doesn't matter.
+// extremely unlikely to begin with so it doesn't matter.
 // This implementation matches the `Hash` implementation for `oid`
 // and allows the usage of custom Hashers that only copy a truncated ShaHash
 #[allow(clippy::derive_hash_xor_eq)]
@@ -157,7 +157,7 @@ impl std::fmt::Debug for ObjectId {
             ObjectId::Sha1(_hash) => f.write_str("Sha1(")?,
         }
         for b in self.as_bytes() {
-            write!(f, "{:02x}", b)?;
+            write!(f, "{b:02x}")?;
         }
         f.write_str(")")
     }
@@ -173,7 +173,7 @@ impl From<&[u8]> for ObjectId {
     fn from(v: &[u8]) -> Self {
         match v.len() {
             20 => Self::Sha1(v.try_into().expect("prior length validation")),
-            other => panic!("BUG: unsupported hash len: {}", other),
+            other => panic!("BUG: unsupported hash len: {other}"),
         }
     }
 }

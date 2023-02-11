@@ -5,6 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.30.2 (2023-02-09)
+
+### Documentation
+
+ - <csr-id-39ed9eda62b7718d5109135e5ad406fb1fe2978c/> fix typos
+
+### New Features
+
+ - <csr-id-d792ea543246632bf1ca8d0e1d239bbe7f07e219/> use enumerations to advertise progress ids publicly.
+   Previously these were an implementation detail which also means they
+   couldn't be relied upon.
+   
+   Thanks to an intermediate enumeration, they become part of the public API
+   and their actual value is not exposed.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 9 commits contributed to the release over the course of 28 calendar days.
+ - 30 days passed between releases.
+ - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 1 unique issue was worked on: [#691](https://github.com/Byron/gitoxide/issues/691)
+
+### Thanks Clippy
+
+<csr-read-only-do-not-edit/>
+
+[Clippy](https://github.com/rust-lang/rust-clippy) helped 1 time to make code idiomatic. 
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#691](https://github.com/Byron/gitoxide/issues/691)**
+    - set `rust-version` to 1.64 ([`55066ce`](https://github.com/Byron/gitoxide/commit/55066ce5fd71209abb5d84da2998b903504584bb))
+ * **Uncategorized**
+    - prepare changelogs prior to release ([`7c846d2`](https://github.com/Byron/gitoxide/commit/7c846d2102dc767366771925212712ef8cc9bf07))
+    - Merge branch 'Lioness100/main' ([`1e544e8`](https://github.com/Byron/gitoxide/commit/1e544e82455bf9ecb5e3c2146280eaf7ecd81f16))
+    - fix typos ([`39ed9ed`](https://github.com/Byron/gitoxide/commit/39ed9eda62b7718d5109135e5ad406fb1fe2978c))
+    - thanks clippy ([`bac57dd`](https://github.com/Byron/gitoxide/commit/bac57dd05ea2d5a4ee45ef9350fa3f2e19474bc0))
+    - make fmt ([`e22080e`](https://github.com/Byron/gitoxide/commit/e22080e4a29d0bad15a99d565a5e3e304a8743ec))
+    - Merge branch 'adjustments-for-cargo' ([`7bba270`](https://github.com/Byron/gitoxide/commit/7bba2709488b7eb999b8136dbab03af977241678))
+    - Break cyclical dev dependencies ([`1fea18f`](https://github.com/Byron/gitoxide/commit/1fea18f5f8b4189a23dc4fa3f041a672f6fbcfb3))
+    - use enumerations to advertise progress ids publicly. ([`d792ea5`](https://github.com/Byron/gitoxide/commit/d792ea543246632bf1ca8d0e1d239bbe7f07e219))
+</details>
+
 ## 0.30.1 (2023-01-10)
 
 A maintenance release without user-facing changes.
@@ -13,7 +62,7 @@ A maintenance release without user-facing changes.
 
 <csr-read-only-do-not-edit/>
 
- - 3 commits contributed to the release.
+ - 4 commits contributed to the release.
  - 1 day passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -31,6 +80,7 @@ A maintenance release without user-facing changes.
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release git-date v0.4.1, git-features v0.26.1, git-glob v0.5.2, git-attributes v0.8.1, git-tempfile v3.0.1, git-ref v0.23.1, git-sec v0.6.1, git-config v0.15.1, git-prompt v0.3.1, git-url v0.13.1, git-discover v0.12.1, git-index v0.12.2, git-mailmap v0.9.1, git-pack v0.30.1, git-odb v0.40.1, git-transport v0.25.3, git-protocol v0.26.2, git-revision v0.10.1, git-refspec v0.7.1, git-worktree v0.12.1, git-repository v0.33.0 ([`5b5b380`](https://github.com/Byron/gitoxide/commit/5b5b3809faa71c658db38b40dfc410224d08a367))
     - prepare changelogs prior to release ([`93bef97`](https://github.com/Byron/gitoxide/commit/93bef97b3c0c75d4bf7119fdd787516e1efc77bf))
     - Merge branch 'patch-1' ([`b93f0c4`](https://github.com/Byron/gitoxide/commit/b93f0c49fc677b6c19aea332cbfc1445ce475375))
     - thanks clippy ([`9e04685`](https://github.com/Byron/gitoxide/commit/9e04685dd3f109bfb27663f9dc7c04102e660bf2))
@@ -103,7 +153,7 @@ A maintenance release without user-facing changes.
 
 <csr-read-only-do-not-edit/>
 
- - 21 commits contributed to the release over the course of 27 calendar days.
+ - 22 commits contributed to the release over the course of 27 calendar days.
  - 27 days passed between releases.
  - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -129,6 +179,7 @@ A maintenance release without user-facing changes.
     - tweaks to immprove header decode performance ([`04df898`](https://github.com/Byron/gitoxide/commit/04df89835395d43e92ce3f0fee922f1799687aa4))
     - move `data::ResolveBase` into `data::decode_entry::`; unify `decode_entry|decode_header::Error` into `decode::Error`. ([`37f3a67`](https://github.com/Byron/gitoxide/commit/37f3a675d7fa931f5d3f38e91df74ec0b517422b))
     - add `data::File::resolve_header()` to obtain object information without decompressing it. ([`a85dcdd`](https://github.com/Byron/gitoxide/commit/a85dcddba29a453bbea87ac865b8aedc97f41aed))
+    - Merge branch 'main' into read-split-index ([`c57bdde`](https://github.com/Byron/gitoxide/commit/c57bdde6de37eca9672ea715962bbd02aa3eb055))
     - Merge branch 'adjustments-for-cargo' ([`083909b`](https://github.com/Byron/gitoxide/commit/083909bc7eb902eeee2002034fdb6ed88280dc5c))
     - thanks clippy ([`f1160fb`](https://github.com/Byron/gitoxide/commit/f1160fb42acf59b37cbeda546a7079af3c9bc050))
     - adjust to changes in `git-testtools` ([`4eb842c`](https://github.com/Byron/gitoxide/commit/4eb842c7150b980e1c2637217e1f9657a671cea7))
@@ -199,7 +250,7 @@ A maintenance release without user-facing changes.
 ### New Features
 
  - <csr-id-450257eb596465352fb363a5c8c514f544e7f9ac/> `Bundle::write…` also produces a `.keep` file
-   These files are placed before moving the coresponding pack and index
+   These files are placed before moving the corresponding pack and index
    files into place to prevent them from being picked up for collection
    while their refs are still being placed.
    
@@ -249,7 +300,7 @@ A maintenance release without user-facing changes.
 
  - <csr-id-6836cb148cbadf919bdac2e0e77bdec34caa9307/> more efficient distribution of tasks to threads during pack resolution.
    This clearly is a peak-performance optimization as it will now
-   efficiently distribut tree-root nodes to threads one at a time by
+   efficiently distribute tree-root nodes to threads one at a time by
    means of shared memory, which is accessed mutably yet safely.
    
    This change can also further reduce peak memory usage as it will not
@@ -261,7 +312,7 @@ A maintenance release without user-facing changes.
  - <csr-id-ec58bef84d620360dc52e34e173ace1310f74c85/> reduce memory usage for pack resolution by 18%…
    …compared to where it started out before.
    
-   This is the result of using u32 intead of usize where possible,
+   This is the result of using u32 instead of usize where possible,
    leveraging the object limit of u32 in packs.
    
    This change makes the biggest difference by not keeping the decompressed
@@ -504,7 +555,7 @@ This is a maintenance release with no functional changes.
 
 ### New Features (BREAKING)
 
- - <csr-id-95210cb2ba85f75148b4ef48ccea9d9f8a0a0114/> Provide optional `candidates` for ambigious entries during `lookup_prefix()`
+ - <csr-id-95210cb2ba85f75148b4ef48ccea9d9f8a0a0114/> Provide optional `candidates` for ambiguous entries during `lookup_prefix()`
    The candidate entries are all entries matching a given prefix.
 
 ### Commit Statistics
@@ -826,7 +877,7 @@ A maintenance release without user-facing changes.
  - <csr-id-b80dec2323b81fb2172df76c7d897a4b5e6bdfea/> zero-objects check for index and multi-index integrity validation
  - <csr-id-56fc99fb9c1cab61abd03c10e1b4af0d6e491bbf/> support for fan-checking in index and multi-index integrity verification
  - <csr-id-28e3ea8612112f6a04cfaff591565eca5a1ffba2/> introduce type for entry indices within an index or multi-index
-   That way it's a littl emore descriptive than a bare u32.
+   That way it's a little more descriptive than a bare u32.
  - <csr-id-58c2edb76755ab71e10eef4cd9a51533825c291f/> git_pack::Find::try_find_cached(…, pack_cache)
    With this method it's easier to bypass local caches and control
    the cache oneself entirely.
@@ -845,7 +896,7 @@ A maintenance release without user-facing changes.
    the largest offset being last, even though by all means that's not the
    case.
  - <csr-id-6d3f52dc13d7243a6bce6dab89a985114a75d94b/> Avoid the dashmap being cloned for each thread
-   Intead, share it by reference, it's sync after all.
+   Instead, share it by reference, it's sync after all.
    
    This issue was introduced when switching to a `Send + Clone` model,
    instead of `Send + Sync`, to allow thread-local caches in database
@@ -861,7 +912,7 @@ A maintenance release without user-facing changes.
    method.
    
    This allows for more reuse of `Options` structs and generally makes
-   clearer how these optinos are used.
+   clearer how these options are used.
  - <csr-id-2cf7727228e1d8094ffd2eec6746006348c39eab/> `index::File::traverse()` now returns an `Outcome` struct instead of tuple of 3 fields
  - <csr-id-bf04644ab75ed1969507f957dc8d4868790d462d/> remove `Option<impl Progress>` in favor of `impl Progress`
  - <csr-id-6829e5e5d6aed1e6c87647144e2dd76a1e4b9f1f/> multi-index integrity check; use `integrity::Outcome` for various integrity checks
@@ -877,7 +928,7 @@ A maintenance release without user-facing changes.
  - <csr-id-2ef9a8424af51310db8c1e6df31dde9953ed3d21/> Change accessors named `hash_kind()` to `object_hash()` for consistency
  - <csr-id-b76f6be6c5baa6cf613a174241f007e92bf5ba36/> consistently use `object_hash` instead of `hash_kind`
  - <csr-id-629412b4cb192614b7eff08dbf203e3448c902c1/> data::Entry::from_read() now takes a hash lengths as parameter
-   That way ref-deltas can be interepreted without hard-coding SHA1
+   That way ref-deltas can be interpreted without hard-coding SHA1
  - <csr-id-851dc2c52fa8e204ba2d5ced8fb0959a889869d8/> data::Entry::from_bytes(…, hash_len) takes new parameter
    The hash-len tells it how to interpret ref-delta objects, which
    store the complete hash of the base object.

@@ -1,4 +1,3 @@
-use base64::Engine;
 use std::{
     any::Any,
     borrow::Cow,
@@ -7,6 +6,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use base64::Engine;
 use bstr::BStr;
 use git_packetline::PacketLineRef;
 pub use traits::{Error, GetResponse, Http, PostBodyDataKind, PostResponse};
@@ -153,6 +153,7 @@ pub struct Options {
     pub low_speed_time_seconds: u64,
     /// A curl-style proxy declaration of the form `[protocol://][user[:password]@]proxyhost[:port]`.
     ///
+    /// Note that an empty string means the proxy is disabled entirely.
     /// Refers to `http.proxy`.
     pub proxy: Option<String>,
     /// The comma-separated list of hosts to not send through the `proxy`, or `*` to entirely disable all proxying.
@@ -251,8 +252,7 @@ impl<H: Http> Transport<H> {
         }) {
             return Err(client::Error::Http(Error::Detail {
                 description: format!(
-                    "Didn't find '{}' header to indicate 'smart' protocol, and 'dumb' protocol is not supported.",
-                    wanted_content_type
+                    "Didn't find '{wanted_content_type}' header to indicate 'smart' protocol, and 'dumb' protocol is not supported."
                 ),
             }));
         }
@@ -270,7 +270,7 @@ impl<H: Http> Transport<H> {
             }
             headers.push(Cow::Owned(format!(
                 "Authorization: Basic {}",
-                base64::engine::general_purpose::STANDARD.encode(format!("{}:{}", username, password))
+                base64::engine::general_purpose::STANDARD.encode(format!("{username}:{password}"))
             )))
         }
         Ok(())
@@ -376,13 +376,13 @@ impl<H: Http> client::Transport for Transport<H> {
                 &extra_parameters
                     .iter()
                     .map(|(key, value)| match value {
-                        Some(value) => format!("{}={}", key, value),
+                        Some(value) => format!("{key}={value}"),
                         None => key.to_string(),
                     })
                     .collect::<Vec<_>>()
                     .join(":"),
             );
-            dynamic_headers.push(format!("Git-Protocol: {}", parameters).into());
+            dynamic_headers.push(format!("Git-Protocol: {parameters}").into());
         }
         self.add_basic_auth_if_present(&mut dynamic_headers)?;
         let GetResponse { headers, body } =

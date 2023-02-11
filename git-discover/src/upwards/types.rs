@@ -1,5 +1,4 @@
-use std::ffi::OsStr;
-use std::{env, path::PathBuf};
+use std::{env, ffi::OsStr, path::PathBuf};
 
 /// The error returned by [git_discover::upwards()][crate::upwards()].
 #[derive(Debug, thiserror::Error)]
@@ -42,8 +41,12 @@ pub struct Options<'a> {
     /// Set it to `Full` to only see repositories that [are owned by the current user][git_sec::Trust::from_path_ownership()].
     pub required_trust: git_sec::Trust,
     /// When discovering a repository, ignore any repositories that are located in these directories or any of their parents.
+    ///
+    /// Note that we ignore ceiling directories if the search directory is directly on top of one, which by default is an error
+    /// if `match_ceiling_dir_or_error` is true, the default.
     pub ceiling_dirs: Vec<PathBuf>,
-    /// If true, and `ceiling_dirs` is not empty, we expect at least one ceiling directory to match or else there will be an error.
+    /// If true, default true, and `ceiling_dirs` is not empty, we expect at least one ceiling directory to
+    /// contain our search dir or else there will be an error.
     pub match_ceiling_dir_or_error: bool,
     /// if `true` avoid crossing filesystem boundaries.
     /// Only supported on Unix-like systems.
@@ -77,12 +80,16 @@ impl Options<'_> {
     ///
     /// Note that `GIT_DISCOVERY_ACROSS_FILESYSTEM` for `cross_fs` is **not** read,
     /// as it requires parsing of `git-config` style boolean values.
+    ///
+    /// In addition, this function disables `match_ceiling_dir_or_error` to allow
+    /// discovery if an outside environment variable sets non-matching ceiling directories.
     // TODO: test
     pub fn apply_environment(mut self) -> Self {
         let name = "GIT_CEILING_DIRECTORIES";
         if let Some(ceiling_dirs) = env::var_os(name) {
             self.ceiling_dirs = parse_ceiling_dirs(&ceiling_dirs);
         }
+        self.match_ceiling_dir_or_error = false;
         self
     }
 }
@@ -135,7 +142,7 @@ mod tests {
 
         // Parse & build ceiling dirs string
         let symlink_str = symlink_path.to_str().expect("symlink path is valid utf8");
-        let ceiling_dir_string = format!("{}:relative::{}", symlink_str, symlink_str);
+        let ceiling_dir_string = format!("{symlink_str}:relative::{symlink_str}");
         let ceiling_dirs = parse_ceiling_dirs(OsStr::new(ceiling_dir_string.as_str()));
 
         assert_eq!(ceiling_dirs.len(), 2, "Relative path is discarded");

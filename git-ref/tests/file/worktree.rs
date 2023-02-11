@@ -105,7 +105,7 @@ mod read_only {
             assert_eq!(
                 peel(store.find("worktrees/w-detached/refs/bisect/bad").unwrap()),
                 peel(store.find("worktrees/w-detached/HEAD").unwrap()),
-                "the detached worktree's bisect branch points to its head"
+                "the detached worktrees bisect branch points to its head"
             );
             assert_eq!(
                 w1_head_id,
@@ -172,7 +172,7 @@ mod read_only {
             assert_eq!(
                 w1_head_id,
                 peel(store.find("worktrees/w1/refs/heads/w1").unwrap()),
-                "worktree branch can be accessed with refs notation too (git doesnt do this right now, but it's documented)"
+                "worktree branch can be accessed with refs notation too (git doesn't do this right now, but it's documented)"
             );
             let wd_head_id = peel(store.find("worktrees/w-detached/HEAD").unwrap());
             assert_ne!(wd_head_id, w1_main_id, "both worktrees are in different locations");
@@ -193,7 +193,6 @@ mod read_only {
 mod writable {
     use std::convert::TryInto;
 
-    use crate::util::hex_to_id;
     use git_lock::acquire::Fail;
     use git_ref::{
         file::{transaction::PackedRefs, Store},
@@ -201,9 +200,12 @@ mod writable {
         FullName, FullNameRef, Target,
     };
 
-    use crate::file::{
-        transaction::prepare_and_commit::committer,
-        worktree::{main_store, worktree_store, Mode},
+    use crate::{
+        file::{
+            transaction::prepare_and_commit::committer,
+            worktree::{main_store, worktree_store, Mode},
+        },
+        util::hex_to_id,
     };
 
     fn change_with_id(id: git_hash::ObjectId) -> Change {
@@ -590,7 +592,7 @@ mod writable {
                 assert_eq!(
                     reflog_for_name(&store, reference.name.as_ref(), &mut buf),
                     vec![new_id.to_string()],
-                    "shared worktree references have refelogs"
+                    "shared worktree references have reflogs"
                 );
             }
 

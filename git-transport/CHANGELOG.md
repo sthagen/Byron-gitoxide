@@ -5,6 +5,62 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.25.4 (2023-02-09)
+
+### Documentation
+
+ - <csr-id-39ed9eda62b7718d5109135e5ad406fb1fe2978c/> fix typos
+
+### Bug Fixes
+
+ - <csr-id-eff7ad79d8b920ab9d936d6268060cfc8ae1b47a/> make clear in docs that the writer needs to be dropped for good measure.
+   Otherwise, some transports might deadlock.
+ - <csr-id-acb4c170395779d1c34d74951121acd5c5b19c65/> Use single quotes for ssh path arg
+   Git uses this method of quoting args for SSH transport too
+   Some Git SSH servers require this method to be used (eg. BitBucket)
+ - <csr-id-85c33825678bddde5a3fe409bbb1ff5cecd3a0fc/> Place port for PuTTY and derivates in separate argument
+   All three PuTTY clients require the port to be separated from the "-P"
+   argument
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 14 commits contributed to the release over the course of 28 calendar days.
+ - 30 days passed between releases.
+ - 4 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 1 unique issue was worked on: [#691](https://github.com/Byron/gitoxide/issues/691)
+
+### Thanks Clippy
+
+<csr-read-only-do-not-edit/>
+
+[Clippy](https://github.com/rust-lang/rust-clippy) helped 1 time to make code idiomatic. 
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#691](https://github.com/Byron/gitoxide/issues/691)**
+    - set `rust-version` to 1.64 ([`55066ce`](https://github.com/Byron/gitoxide/commit/55066ce5fd71209abb5d84da2998b903504584bb))
+ * **Uncategorized**
+    - prepare changelogs prior to release ([`7c846d2`](https://github.com/Byron/gitoxide/commit/7c846d2102dc767366771925212712ef8cc9bf07))
+    - Merge branch 'Lioness100/main' ([`1e544e8`](https://github.com/Byron/gitoxide/commit/1e544e82455bf9ecb5e3c2146280eaf7ecd81f16))
+    - fix typos ([`39ed9ed`](https://github.com/Byron/gitoxide/commit/39ed9eda62b7718d5109135e5ad406fb1fe2978c))
+    - make clear in docs that the writer needs to be dropped for good measure. ([`eff7ad7`](https://github.com/Byron/gitoxide/commit/eff7ad79d8b920ab9d936d6268060cfc8ae1b47a))
+    - thanks clippy ([`bac57dd`](https://github.com/Byron/gitoxide/commit/bac57dd05ea2d5a4ee45ef9350fa3f2e19474bc0))
+    - make fmt ([`e22080e`](https://github.com/Byron/gitoxide/commit/e22080e4a29d0bad15a99d565a5e3e304a8743ec))
+    - Merge branch 'adjustments-for-cargo' ([`7bba270`](https://github.com/Byron/gitoxide/commit/7bba2709488b7eb999b8136dbab03af977241678))
+    - Improve documentation on http options ([`5bf9547`](https://github.com/Byron/gitoxide/commit/5bf954717f5ff7c74783c2e459ebb5134d470583))
+    - Merge branch 'ssh-quoting' ([`cc35025`](https://github.com/Byron/gitoxide/commit/cc350250d4ee6800c8033891074389455b115072))
+    - refactor ([`deed1f1`](https://github.com/Byron/gitoxide/commit/deed1f1a81669c53475a88a504f593884d179363))
+    - Use single quotes for ssh path arg ([`acb4c17`](https://github.com/Byron/gitoxide/commit/acb4c170395779d1c34d74951121acd5c5b19c65))
+    - Merge pull request #712 from exactly-one-kas/putty-port ([`021248c`](https://github.com/Byron/gitoxide/commit/021248c8c4784df8f9fa179269f8e6b036d2ddcc))
+    - Place port for PuTTY and derivates in separate argument ([`85c3382`](https://github.com/Byron/gitoxide/commit/85c33825678bddde5a3fe409bbb1ff5cecd3a0fc))
+</details>
+
 ## 0.25.3 (2023-01-10)
 
 A maintenance release without user-facing changes.
@@ -13,7 +69,7 @@ A maintenance release without user-facing changes.
 
 <csr-read-only-do-not-edit/>
 
- - 5 commits contributed to the release.
+ - 6 commits contributed to the release.
  - 1 day passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -31,6 +87,7 @@ A maintenance release without user-facing changes.
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release git-date v0.4.1, git-features v0.26.1, git-glob v0.5.2, git-attributes v0.8.1, git-tempfile v3.0.1, git-ref v0.23.1, git-sec v0.6.1, git-config v0.15.1, git-prompt v0.3.1, git-url v0.13.1, git-discover v0.12.1, git-index v0.12.2, git-mailmap v0.9.1, git-pack v0.30.1, git-odb v0.40.1, git-transport v0.25.3, git-protocol v0.26.2, git-revision v0.10.1, git-refspec v0.7.1, git-worktree v0.12.1, git-repository v0.33.0 ([`5b5b380`](https://github.com/Byron/gitoxide/commit/5b5b3809faa71c658db38b40dfc410224d08a367))
     - prepare changelogs prior to release ([`93bef97`](https://github.com/Byron/gitoxide/commit/93bef97b3c0c75d4bf7119fdd787516e1efc77bf))
     - Merge branch 'patch-1' ([`b93f0c4`](https://github.com/Byron/gitoxide/commit/b93f0c49fc677b6c19aea332cbfc1445ce475375))
     - thanks clippy ([`9e04685`](https://github.com/Byron/gitoxide/commit/9e04685dd3f109bfb27663f9dc7c04102e660bf2))
@@ -254,7 +311,7 @@ A maintenance release without user-facing changes.
  - <csr-id-5f2276b63129163096be3cb229864fc589348da8/> don't enforce V2 as protocol, but smoothly downgrade like git does.
    For backward compatibility the shared handshake implementation allows the
    transport to control which protocol versions it wants to support
-   to allow optiomizing for one special case, namely to prevent it to
+   to allow optimizing for one special case, namely to prevent it to
    read all V1 refs on old servers but abort instead, closing the connection
    without delay.
    
@@ -617,7 +674,7 @@ A maintenance release without user-facing changes.
 ### Other
 
  - <csr-id-5bef0a00e8d01110c054a517f6d9696f981a7efc/> try to make the transport configurable after being boxed, but…
-   …that would force it to be 'static, which is something we excplicitly
+   …that would force it to be 'static, which is something we explicitly
    cannot have. We need references to be contained within, if I remember
    correctly.
 
@@ -820,7 +877,7 @@ A maintenance release without user facing changes.
  - <csr-id-52e8c149ff17ce894cc30d03ead1988f52f0663e/> `client::connect()` now takes a `&BStr` as URL
  - <csr-id-71a43d0bc12661efcb9c94697c704f700a3be488/> use `thiserror` instead of `quickerror`
  - <csr-id-12589cc6f08e4d7aabae30bcdadaa0c2b4850229/> adapt to changes in `git-url` and use `BString` to represent URLs.
-   They can contain paths, which is why `String` can't repsent a URL
+   They can contain paths, which is why `String` can't represent a URL
    losslessly.
    
    For HTTP urls these are ultimately UTF-8 strings though.

@@ -5,6 +5,95 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.34.0 (2023-02-09)
+
+<csr-id-a01f5d72346c36fdcb77af095273da6f4ab86e21/>
+
+### Documentation
+
+ - <csr-id-39ed9eda62b7718d5109135e5ad406fb1fe2978c/> fix typos
+
+### New Features
+
+ - <csr-id-297d59e8396fbe2e5a2224a8524fa0778e786773/> add `env::collate::fetch::Error` - a combined error type with its own API.
+   This error API allows to look at all the steps it takes to perform an operation and
+   gather insights from it which require understanding a lot about the semantics of
+   the contained errors.
+ - <csr-id-d792ea543246632bf1ca8d0e1d239bbe7f07e219/> use enumerations to advertise progress ids publicly.
+   Previously these were an implementation detail which also means they
+   couldn't be relied upon.
+   
+   Thanks to an intermediate enumeration, they become part of the public API
+   and their actual value is not exposed.
+ - <csr-id-5dc408f726d6f0f480438348eb5d713776329710/> read shared indices by dissolving them into the current one.
+   This allows the 'link' extension to be processed correctly, even though it
+   won't be maintained. When written back, the 'link' extension will be removed
+   automatically.
+
+### Bug Fixes
+
+ - <csr-id-5d3a3a245968d5ad8c29ea11a99b4896d1b41191/> don't panic, but error when parsing the rev-specs `^`, `..`, `...`.
+
+### Chore (BREAKING)
+
+ - <csr-id-a01f5d72346c36fdcb77af095273da6f4ab86e21/> adjust to changes in `gitoxide` for clap upgrade to 4.1
+
+### New Features (BREAKING)
+
+ - <csr-id-2faad43d11283ff06381c51d2466307cfb8736ff/> transfer knowledge about configuration and its usage into the type system.
+   That way it's possible to use configuration overrides, even though ultimately being strings,
+   in a type-safe manner and leverage code-completion while at it.
+   
+   In that process, we also change `Repository::(committer|Author)()` to return
+   `Option<Result<...>>` to be able to account for date parse errors.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 22 commits contributed to the release over the course of 25 calendar days.
+ - 30 days passed between releases.
+ - 7 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 1 unique issue was worked on: [#706](https://github.com/Byron/gitoxide/issues/706)
+
+### Thanks Clippy
+
+<csr-read-only-do-not-edit/>
+
+[Clippy](https://github.com/rust-lang/rust-clippy) helped 1 time to make code idiomatic. 
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#706](https://github.com/Byron/gitoxide/issues/706)**
+    - don't panic, but error when parsing the rev-specs `^`, `..`, `...`. ([`5d3a3a2`](https://github.com/Byron/gitoxide/commit/5d3a3a245968d5ad8c29ea11a99b4896d1b41191))
+ * **Uncategorized**
+    - Release git-repository v0.34.0 ([`a42e930`](https://github.com/Byron/gitoxide/commit/a42e930d0022cc91730cce97a5145d3e65c67c01))
+    - Release git-refspec v0.7.2, git-repository v0.34.0 ([`1210c19`](https://github.com/Byron/gitoxide/commit/1210c1926851495df5d6fd3f6906602a7e423548))
+    - Release git-date v0.4.2, git-hash v0.10.2, git-features v0.26.2, git-actor v0.17.1, git-glob v0.5.3, git-path v0.7.1, git-quote v0.4.1, git-attributes v0.8.2, git-config-value v0.10.1, git-tempfile v3.0.2, git-lock v3.0.2, git-validate v0.7.2, git-object v0.26.1, git-ref v0.24.0, git-sec v0.6.2, git-config v0.16.0, git-command v0.2.3, git-prompt v0.3.2, git-url v0.13.2, git-credentials v0.9.1, git-diff v0.26.1, git-discover v0.13.0, git-hashtable v0.1.1, git-bitmap v0.2.1, git-traverse v0.22.1, git-index v0.12.3, git-mailmap v0.9.2, git-chunk v0.4.1, git-pack v0.30.2, git-odb v0.40.2, git-packetline v0.14.2, git-transport v0.25.4, git-protocol v0.26.3, git-revision v0.10.2, git-refspec v0.7.2, git-worktree v0.12.2, git-repository v0.34.0, safety bump 3 crates ([`c196d20`](https://github.com/Byron/gitoxide/commit/c196d206d57a310b1ce974a1cf0e7e6d6db5c4d6))
+    - prepare changelogs prior to release ([`7c846d2`](https://github.com/Byron/gitoxide/commit/7c846d2102dc767366771925212712ef8cc9bf07))
+    - Merge branch 'adjustments-for-cargo' ([`a3df7b5`](https://github.com/Byron/gitoxide/commit/a3df7b5e3cd1fdacc78fedb057010e40e92a8565))
+    - add `env::collate::fetch::Error` - a combined error type with its own API. ([`297d59e`](https://github.com/Byron/gitoxide/commit/297d59e8396fbe2e5a2224a8524fa0778e786773))
+    - Merge branch 'Lioness100/main' ([`1e544e8`](https://github.com/Byron/gitoxide/commit/1e544e82455bf9ecb5e3c2146280eaf7ecd81f16))
+    - fix typos ([`39ed9ed`](https://github.com/Byron/gitoxide/commit/39ed9eda62b7718d5109135e5ad406fb1fe2978c))
+    - upgrade serial-test to 1.0 ([`9ab3e25`](https://github.com/Byron/gitoxide/commit/9ab3e25e4c1ff6d504a79521cfa9453a7e7e7465))
+    - make it easier to use key-assignement validation with actual values. ([`7c99e6d`](https://github.com/Byron/gitoxide/commit/7c99e6d5a5aef3daeaa6c3804d33378725d8c7a8))
+    - fix release build ([`b52035b`](https://github.com/Byron/gitoxide/commit/b52035bf0cb1c3726bd43d7b00da6130c38ba361))
+    - thanks clippy ([`bac57dd`](https://github.com/Byron/gitoxide/commit/bac57dd05ea2d5a4ee45ef9350fa3f2e19474bc0))
+    - make fmt ([`e22080e`](https://github.com/Byron/gitoxide/commit/e22080e4a29d0bad15a99d565a5e3e304a8743ec))
+    - Merge branch 'adjustments-for-cargo' ([`7bba270`](https://github.com/Byron/gitoxide/commit/7bba2709488b7eb999b8136dbab03af977241678))
+    - transfer knowledge about configuration and its usage into the type system. ([`2faad43`](https://github.com/Byron/gitoxide/commit/2faad43d11283ff06381c51d2466307cfb8736ff))
+    - Merge branch 'main' into break_cycel2 ([`e67307a`](https://github.com/Byron/gitoxide/commit/e67307aa9b1b81957abe0d5bae4c0e1008b1c1d7))
+    - Merge branch 'fix-706' ([`ab0bc98`](https://github.com/Byron/gitoxide/commit/ab0bc987e3647de56db9f7b4fc7bda6e76fc5f75))
+    - Break cyclical dev dependencies ([`1fea18f`](https://github.com/Byron/gitoxide/commit/1fea18f5f8b4189a23dc4fa3f041a672f6fbcfb3))
+    - use enumerations to advertise progress ids publicly. ([`d792ea5`](https://github.com/Byron/gitoxide/commit/d792ea543246632bf1ca8d0e1d239bbe7f07e219))
+    - read shared indices by dissolving them into the current one. ([`5dc408f`](https://github.com/Byron/gitoxide/commit/5dc408f726d6f0f480438348eb5d713776329710))
+    - adjust to changes in `gitoxide` for clap upgrade to 4.1 ([`a01f5d7`](https://github.com/Byron/gitoxide/commit/a01f5d72346c36fdcb77af095273da6f4ab86e21))
+</details>
+
 ## 0.33.0 (2023-01-10)
 
 <csr-id-dd7f3bf19cce0d214924fa86aeb4c5823f5bcc02/>
@@ -17,7 +106,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 6 commits contributed to the release.
+ - 7 commits contributed to the release.
  - 1 day passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -35,6 +124,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release git-date v0.4.1, git-features v0.26.1, git-glob v0.5.2, git-attributes v0.8.1, git-tempfile v3.0.1, git-ref v0.23.1, git-sec v0.6.1, git-config v0.15.1, git-prompt v0.3.1, git-url v0.13.1, git-discover v0.12.1, git-index v0.12.2, git-mailmap v0.9.1, git-pack v0.30.1, git-odb v0.40.1, git-transport v0.25.3, git-protocol v0.26.2, git-revision v0.10.1, git-refspec v0.7.1, git-worktree v0.12.1, git-repository v0.33.0 ([`5b5b380`](https://github.com/Byron/gitoxide/commit/5b5b3809faa71c658db38b40dfc410224d08a367))
     - prepare changelogs prior to release ([`93bef97`](https://github.com/Byron/gitoxide/commit/93bef97b3c0c75d4bf7119fdd787516e1efc77bf))
     - Merge branch 'patch-1' ([`b93f0c4`](https://github.com/Byron/gitoxide/commit/b93f0c49fc677b6c19aea332cbfc1445ce475375))
     - thanks clippy ([`b34c9fe`](https://github.com/Byron/gitoxide/commit/b34c9fe58223862712eacc1cb7353e497a4b9778))
@@ -79,7 +169,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Reverted (BREAKING)
 
- - <csr-id-87abb51596bd0a5a6b552a5de98a920d6c797e3c/> `commiter_or_default()`, `author_or_default()` and `user_default()`.
+ - <csr-id-87abb51596bd0a5a6b552a5de98a920d6c797e3c/> `committer_or_default()`, `author_or_default()` and `user_default()`.
    This means that all methods that previously succeeded by adding a default
    will now fail.
    
@@ -294,7 +384,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - <csr-id-28e48083052216ddf1fd1f187cc22d506d3d9f86/> network related Error type support `is_spurious()` method.
    That way the caller can determine more easily if it makes sense
    to try again.
- - <csr-id-457c2e081b1aa5dfaab3f663b9aba66c16369939/> Make `prodash::tree` avaialble as `progress::tree`.
+ - <csr-id-457c2e081b1aa5dfaab3f663b9aba66c16369939/> Make `prodash::tree` available as `progress::tree`.
  - <csr-id-d1b7ec605f8016c52c088477b6b0c5adf7ea0ab2/> read worktree specific configuration to override the one from the shared repository.
    This is intensively used when space checkouts are created, along with
    Cone mode. Thus it's the basis for properly interpreting sparse checkout
@@ -336,7 +426,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - <csr-id-3c84cebc5997356ff5f531c6cc9567bdd9b83eb5/> default features are set to `max-performance-safe` to assure compatibility.
    Previously the `max-performance` setting might have caused issues during compilation
    or issues at runtime if libraries like `git2` are used in the same binary, and the
-   new default feature settings maximizes compatbility so this won't happen.
+   new default feature settings maximizes compatibility so this won't happen.
    
    For best performance, however, one will have to activate the `max-performance`
    feature on top of that.
@@ -363,7 +453,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    of `interrupts::init_handler(…)`.
    
    That way it's possible to temporarily do interrupt handling only while some methods
-   that rquire it are running.
+   that require it are running.
  - <csr-id-becbd8d896a1663f1607be4e86e632773e926f1f/> represent object cache configuration like `GITOXIDE_PACK_CACHE_MEMORY` in git-configuration.
    That way there is a unified system for how to set values, which may be overridable by configuration
    variables or not.
@@ -382,7 +472,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 76 commits contributed to the release over the course of 27 calendar days.
+ - 78 commits contributed to the release over the course of 27 calendar days.
  - 27 days passed between releases.
  - 25 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -408,6 +498,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Merge branch 'patch-1' ([`fbce7bb`](https://github.com/Byron/gitoxide/commit/fbce7bb55c8c2474c0dfc5413649ecf744d00d92))
     - Use specific Iter constructors in stats example ([`0a72c18`](https://github.com/Byron/gitoxide/commit/0a72c1876b8530f44d464b1597abd6428263d36e))
     - adapt to changes in `git-transport` ([`3446a15`](https://github.com/Byron/gitoxide/commit/3446a15eb4380d110e70d7ac8e5339c949f9771d))
+    - Merge branch 'main' into read-split-index ([`c57bdde`](https://github.com/Byron/gitoxide/commit/c57bdde6de37eca9672ea715962bbd02aa3eb055))
+    - adapt to changes in `git-index` ([`2d90ad6`](https://github.com/Byron/gitoxide/commit/2d90ad6b1e0d2d8c4d30560407d69e18bc8d899f))
     - Merge branch 'adjustments-for-cargo' ([`083909b`](https://github.com/Byron/gitoxide/commit/083909bc7eb902eeee2002034fdb6ed88280dc5c))
     - thanks clippy ([`f1160fb`](https://github.com/Byron/gitoxide/commit/f1160fb42acf59b37cbeda546a7079af3c9bc050))
     - adapt to changes in `git-features::fs`. ([`35f7d59`](https://github.com/Byron/gitoxide/commit/35f7d5960210738d88d35aef9c1ed3480681c481))
@@ -511,8 +603,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - <csr-id-f302fc1bcd06fadccd126f4f5f9c0165afabedda/> Set GIT_EDITOR in make_rebase_i_repo.sh
    If the user has core.editor set in their global git config, then that value
-   takes precidence over the EDITOR environment variable. The GIT_EDITOR
-   environment variable, however, has higher precidence than core.editor. For
+   takes precedence over the EDITOR environment variable. The GIT_EDITOR
+   environment variable, however, has higher precedence than core.editor. For
    this test, using GIT_EDITOR ensures that the desired sed command line is
    used.
 
@@ -593,7 +685,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - <csr-id-58e14884b1d025651f874d899cb2d627c4a2afbf/> `Id` implements `std::fmt::Display`
  - <csr-id-25f7aabe38267b6b6c0547806028b2becb806416/> `Remote::repo()` to obtain the underlying repository.
    For convenience.
- - <csr-id-709a73229b7cde56ddffa099158661632c606468/> Support for user-costomizable user agent strings.
+ - <csr-id-709a73229b7cde56ddffa099158661632c606468/> Support for user-customizable user agent strings.
    Doable by setting the `gitoxide.userAgent` variable.
  - <csr-id-e60d07997989993216c2bd93efeb6f1b48da0a87/> add `env::agent()` for obtaining the default client agent string.
 
@@ -610,7 +702,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - <csr-id-db9040f0bb3a16879c8da0252a77df80bd417387/> add `remote::Connection::with_transport_config()`, change the way `*::transport_mut()` is used.
    Previously `transport_mut()` was supposed to be used for calling
    `configure()`, but that doesn't work anymore as `configure()` can
-   only effectivey be called once the initialization of the Connection
+   only effectively be called once the initialization of the Connection
    is complete, as it may depend on the Remote name AND the credential
    provider for proxy auth credential acquisition.
    
@@ -790,7 +882,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - <csr-id-2bece79285e244a7029f9393dafc990e39420e2d/> `create::into(…)` takes `create::Kind` to determine if it's bare or not.
    First of all, `bare` is not an option anymore, but a parameter as
    it can't be defaulted.
-   Other public signatures change as well to accomodate for it.
+   Other public signatures change as well to accommodate for it.
 
 ### Other (BREAKING)
 
@@ -958,7 +1050,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Other
 
  - <csr-id-5bef0a00e8d01110c054a517f6d9696f981a7efc/> try to make the transport configurable after being boxed, but…
-   …that would force it to be 'static, which is something we excplicitly
+   …that would force it to be 'static, which is something we explicitly
    cannot have. We need references to be contained within, if I remember
    correctly.
 
@@ -1327,7 +1419,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    It's unclear what is causing this except that git2 doesn't like libz
    with zlibng support enabled, which happens if git2 in the
    same tree is with us.
- - Transitively through a kindly contributed fix in the `git-discover` crate, `Respository` can now be opened on `exFat` volumes.
+ - Transitively through a kindly contributed fix in the `git-discover` crate, `Repository` can now be opened on `exFat` volumes.
 
 ### Commit Statistics
 
@@ -1375,7 +1467,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - <csr-id-70aa850591de268488ae9bf2d3839a5c9c543c35/> The empty tree can always be returned by `Repository::(try_)find_object()`
    This matches the behaviour of git and libgit2.
-   We conciously chose to only do this on the highest level, allowing lower
+   We consciously chose to only do this on the highest level, allowing lower
    levels to determine if the object exists or not.
  - <csr-id-8d0786646e17a82d20ca6b2799b54f6349d389f4/> Make `find::object::*::Error` publicly available.
  - <csr-id-2d0b63997b276a53b3cf8f09fac51f8e3f044bcd/> Add `Reference::delete()` for simple reference deletion
@@ -1935,7 +2027,7 @@ A maintenance release that speeds up `commit.describe()` performance if `max_can
  - <csr-id-d003c0f139d61e3bd998a0283a9c7af25a60db02/> Support for `lossy` load mode.
    There is a lot of breaking changes as `file::from_paths::Options` now
    became `file::init::Options`, and the same goes for the error type.
- - <csr-id-311d4b447daf8d4364670382a20901468748d34d/> change mostily internal uses of [u8] to BString/BStr
+ - <csr-id-311d4b447daf8d4364670382a20901468748d34d/> change mostly internal uses of [u8] to BString/BStr
 
 ### Commit Statistics
 
@@ -2182,7 +2274,7 @@ A maintenance release that speeds up `commit.describe()` performance if `max_can
 
 ### Bug Fixes
 
- - <csr-id-a1680b44ef568317465d2971da6e0930f9885530/> `Commit::describe()` now returns annnotated tags before lighweight ones and prefers more recent ones as well
+ - <csr-id-a1680b44ef568317465d2971da6e0930f9885530/> `Commit::describe()` now returns annotated tags before lightweight ones and prefers more recent ones as well
  - <csr-id-99365f221065ebc315ac80940ad72cae253743bc/> Support for in truncated history in git-describe
    This allows `describe()` to work on shallow clones.
 
@@ -2196,7 +2288,7 @@ A maintenance release that speeds up `commit.describe()` performance if `max_can
    but that's not how we work.
    
    Maybe we should overhaul the way this works to use `../` instead
-   and just 'absoluteize' the path later (std::path::absolute()) is
+   and just 'absolutize' the path later (std::path::absolute()) is
    on the way for that.
  - <csr-id-da8059ce26343c8cd275f43c879d98c92f77fa51/> remove unused variant
 
@@ -2205,7 +2297,7 @@ A maintenance release that speeds up `commit.describe()` performance if `max_can
  - <csr-id-80e8fd4a5944890f43f3d888b7a73bb26351b195/> integrate trust model into repository discovery
    That way it's possible to ignore repositories which effectively
    aren't owned by the current user, or to not ignore them (default)
-   but assign tigher permissions to the repository.
+   but assign tighter permissions to the repository.
  - <csr-id-2e39b0ede98826e6f85c56fef77ac65a5b7e7ac2/> `path::discover::existing()` -> `path::discover()`
  - <csr-id-38dfdcf80f9b7368ccaa10f4b78b2129849848d0/> remove `values::*Error` in favor of `value::parse::Error`.
    This makes it easier to work with errors in practice, we are either
@@ -2486,7 +2578,7 @@ A maintenance release that speeds up `commit.describe()` performance if `max_can
  - <csr-id-3b0913a2e6695e4e9e94341ef48d2ba3b4a518e6/> `easy::Head::peel_to_commit_in_place()`
    It allows to quickly get a commit from the head, something most people
    want when getting started with any kind of tool.
- - <csr-id-1c22d76c26464db4a185e19bb6c1f9a17fa19bc9/> `Repsitory::load_index()`
+ - <csr-id-1c22d76c26464db4a185e19bb6c1f9a17fa19bc9/> `Repository::load_index()`
    This method makes the index of the default workspace available.
 
 ### Bug Fixes
@@ -2525,7 +2617,7 @@ A maintenance release that speeds up `commit.describe()` performance if `max_can
 
 ### Refactor (BREAKING)
 
- - <csr-id-c10f07c50f6dde4b39bf1e3ff26c239c5f202912/> disoolve 'easy' module by moving everything one level up
+ - <csr-id-c10f07c50f6dde4b39bf1e3ff26c239c5f202912/> dissolve 'easy' module by moving everything one level up
  - <csr-id-bbc6efeceb26050973e1425e68a52e51b9df4572/> clarify different repository types much better
 
 ### Commit Statistics
@@ -2696,11 +2788,11 @@ A maintenance release that speeds up `commit.describe()` performance if `max_can
    Also add some basic instantiation for the new object store.
  - remove borrowing Repo as possible failure cause
    The `easy::Handle` is now a full (but shared) clone of the original
-   Rpeository with additional thread-local state, hence there is no more
+   Repository with additional thread-local state, hence there is no more
    need for a way to access the original repository.
  - remove Easy… abstraction in favor of Handle
    This great reduction of complexity allows for being multi-threading
-   capabie by default with the option to turn that off at compile time.
+   capable by default with the option to turn that off at compile time.
    
    All `to|into_easy…()` methods are removed in favor of `to_easy()`
    along with the removal of all `Easy` types in favor of the single
@@ -3083,7 +3175,7 @@ A maintenance release to properly dealing with previously breaking changes in `g
  - <csr-id-daec7167df524b329daad7dabb1b9920b6ef8936/> build commit history for later use in changelog generation
  - <csr-id-4fe4786797d240a59d29dbf2c6310490a381c8b6/> Allow object access during commit ancestor traversal…
    …by getting only a temporary handle to the pack-cache. The cost of this
-   should be neglible compared to the cost of object decoding.
+   should be negligible compared to the cost of object decoding.
  - <csr-id-debe0094826f83839f907523715def929133fd58/> sketch history acquisition
  - <csr-id-56e39fac54bfa3871c42bbf76a9f7c49486b85be/> add 'Head::peeled()' method
 
@@ -3091,7 +3183,7 @@ A maintenance release to properly dealing with previously breaking changes in `g
 
  - <csr-id-c3385cd144298eb9f06d7751d180e26da7b4d338/> `easy::Object::try_to_commit()` now returns `Result<CommitRef>`…
    …without the nested `Option`, folding the type mismatch into a specific
-   `conversion::Error` instad.
+   `conversion::Error` instead.
  - <csr-id-e59f901f47fb0180211494a1591aed62b856406a/> rename `ObjectAccessExt::tag(…)` to `*::tag_reference(…)`, add `easy::Object::try_to_tag()`
    This one also contains the first and probably only test for tag object
    creation.
