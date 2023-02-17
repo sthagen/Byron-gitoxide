@@ -1,6 +1,6 @@
 use std::{collections::VecDeque, iter::FromIterator};
 
-use git_repository::hash::ObjectId;
+use gix::hash::ObjectId;
 
 use crate::{
     changelog::{
@@ -97,7 +97,9 @@ impl Section {
                 };
                 for rhs_segment in src_segments {
                     match rhs_segment {
-                        Segment::User { .. } => unreachable!("BUG: User segments are never auto-generated"),
+                        Segment::User { markdown } => {
+                            unreachable!("BUG: User segments are never auto-generated: {markdown}")
+                        }
                         Segment::Details(section::Data::Parsed)
                         | Segment::Statistics(section::Data::Parsed)
                         | Segment::Clippy(section::Data::Parsed) => {
@@ -146,7 +148,7 @@ fn merge_read_only_segment(
 }
 
 fn merge_conventional(
-    removed_in_release: &[git_repository::hash::ObjectId],
+    removed_in_release: &[gix::hash::ObjectId],
     dest_segments: &mut Vec<Segment>,
     mut src: section::segment::Conventional,
 ) {
