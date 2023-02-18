@@ -5,7 +5,65 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.22.1 (2023-02-17)
+
+### Bug Fixes
+
+ - <csr-id-73372d0bcdca8cf201f057ebee8d67a8e4752625/> re-enable local-time support for all binaries
+   The `time` improved the way one can opt-in to potential unsoundness
+   in their local time support, forcing the application to make that
+   decision at runtime.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - re-enable local-time support for all binaries ([`73372d0`](https://github.com/Byron/gitoxide/commit/73372d0bcdca8cf201f057ebee8d67a8e4752625))
+</details>
+
+## 0.22.0 (2023-02-17)
+
+A maintenance release without user-facing changes.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 7 commits contributed to the release over the course of 7 calendar days.
+ - 7 days passed between releases.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Merge branch 'rename-crates' into inform-about-gix-rename ([`c9275b9`](https://github.com/Byron/gitoxide/commit/c9275b99ea43949306d93775d9d78c98fb86cfb1))
+    - adjust to renaming for `git-protocol` to `gix-protocol` ([`823795a`](https://github.com/Byron/gitoxide/commit/823795addea3810243cab7936cd8ec0137cbc224))
+    - adjust to renaming of `git-features` to `gix-features` ([`e2dd68a`](https://github.com/Byron/gitoxide/commit/e2dd68a417aad229e194ff20dbbfd77668096ec6))
+    - Merge branch 'rename-crates' ([`6461c3d`](https://github.com/Byron/gitoxide/commit/6461c3da4d6daee857606d94294c3f87fc36965a))
+    - rename `git-repository` to `gix` ([`7bed2a9`](https://github.com/Byron/gitoxide/commit/7bed2a96604397fa990f427b1a970ddeb6f09f1c))
+    - Merge branch 'rename-tracking' ([`9e7d792`](https://github.com/Byron/gitoxide/commit/9e7d79273487abfcb99ed2d439c475a659cd25e6))
+    - keep track of all keys relevant renaming when merging and obtaining status ([`0f2ed59`](https://github.com/Byron/gitoxide/commit/0f2ed59b928ef3f4d6cd5a0cd0380504891d92f2))
+</details>
+
 ## 0.21.0 (2023-02-09)
+
+<csr-id-1d9a5e925890883e9e712db14ac82411ad2fdfc3/>
 
 ### Chore
 
@@ -130,12 +188,12 @@ This release also fixes compatibility issues that formerly prevented to fetch or
     - upgrade to prodash v22 for API improvements ([`77ab98d`](https://github.com/Byron/gitoxide/commit/77ab98dd41c3849b674d8b3794ef29219ca1447d))
     - auto-enabled verbosity for `gix fetch/clone` and add `--no-verbose`. ([`9814369`](https://github.com/Byron/gitoxide/commit/98143699bb9481b010e21647f64dcb8a74bd80ad))
     - switch from `atty` to `is-terminal` ([`7304bc1`](https://github.com/Byron/gitoxide/commit/7304bc1c0efaad64a39520962072343ef02f6c25))
-    - adapt to changes in `gix` ([`c4f68bf`](https://github.com/Byron/gitoxide/commit/c4f68bf775b854625d901fe0bfcbdd38f656d408))
+    - adapt to changes in `git-repository` ([`c4f68bf`](https://github.com/Byron/gitoxide/commit/c4f68bf775b854625d901fe0bfcbdd38f656d408))
     - represent object cache configuration like `GITOXIDE_PACK_CACHE_MEMORY` in git-configuration. ([`becbd8d`](https://github.com/Byron/gitoxide/commit/becbd8d896a1663f1607be4e86e632773e926f1f))
     - represent `GIT_(COMMITTER|AUTHOR)_(NAME|EMAIL|DATE)` with git configuration. ([`a4ac9cf`](https://github.com/Byron/gitoxide/commit/a4ac9cf3e667a3059e33aac8188150529578622d))
     - `open::ReplacementObjects` is removed in favor of two custom git-configuration flags. ([`49f39d6`](https://github.com/Byron/gitoxide/commit/49f39d6bb487c0254176a5082f2c7851b83952a1))
     - apply related environment variables as config overrides ([`9441c26`](https://github.com/Byron/gitoxide/commit/9441c261bcae61d1d1e674b5e783f38b0471be29))
-    - adapt to changes in `gix` ([`f1a4c8b`](https://github.com/Byron/gitoxide/commit/f1a4c8b42ed8c94e7fe3a61eb222cf6b0886f4ee))
+    - adapt to changes in `git-repository` ([`f1a4c8b`](https://github.com/Byron/gitoxide/commit/f1a4c8b42ed8c94e7fe3a61eb222cf6b0886f4ee))
     - update progress of http.proxyAuthMethod ([`872dc1a`](https://github.com/Byron/gitoxide/commit/872dc1ab43ce626b4166dae3dc8bddf8e85c9409))
     - add `--strict` option to enforce strict checking of configuration. ([`aeb4a1d`](https://github.com/Byron/gitoxide/commit/aeb4a1d5cb76316058c7d687e26f5c7db351c09c))
     - don't lock stdout/stderr as it will deadlock on dbg-printing ([`62cae0e`](https://github.com/Byron/gitoxide/commit/62cae0e6bfe8113c0225152a896338017c8de474))
@@ -631,7 +689,7 @@ It's also an attempt to trigger CI to build binary releases.
 
 <csr-id-4d2d433e7e98ac42db858688edac06e68ee4d10d/>
 
-Adapt to changes in `git-features` which change `Send + Sync` to `Send + Clone`. This happens to allow non-sync implementations (i.e. thread-local), along with `Sync` ones
+Adapt to changes in `gix-features` which change `Send + Sync` to `Send + Clone`. This happens to allow non-sync implementations (i.e. thread-local), along with `Sync` ones
 which usually are `Clone` too as they are passed by immutable reference (which is `Clone + Copy`).
 
 ### Refactor (BREAKING)
@@ -791,18 +849,18 @@ A first usable version of `gix` to make using `gitoxide` from your applications 
 ### Feature list
 
 * `gix` as hub crate for application development with focus on usability without sacrificing any knob to tune performance.
-* opt-in `async` for `git-packetline`, `git-transport` and `git-protocol` for fully async git clients, along with the `light-async` feature toggle to build a `gix pack-receive` with an async client instead of a blocking one.
+* opt-in `async` for `gix-packetline`, `gix-transport` and `gix-protocol` for fully async git clients, along with the `light-async` feature toggle to build a `gix pack-receive` with an async client instead of a blocking one.
 * Statistics for `gix pack-create` with the `-s/--statistics` flag to have data indicating the cost of the operation. Currently it's doing a lot of work that has to be avoided in order to be useable in production and the numbers underline that. Future iterations will cause key metrics to go down.
 * Packs are now reproducible by default, which means that the same tip will always generate a pack with the same hash. This may be a desirable property for some kinds of packs, but not for others which is why it can be turned off for a considerable speed boost.
-* `git-tempfile` crate
-* `git-lock` crate
-* `git-ref` crate with complete loose-ref, packed-ref and transaction support.
+* `gix-tempfile` crate
+* `gix-lock` crate
+* `gix-ref` crate with complete loose-ref, packed-ref and transaction support.
 
 
 ### Performance
 
 * On M1, thanks to [a new release](https://github.com/RustCrypto/hashes/pull/289#event-5035369215), Sha1 is now computed much faster which unlocks a massive performance boost. In my test, verifying/decoding the entire linux kernel pack now happens in 17s, as compared to 37s for canonical `git`.
-* `git-object` parsing is a few percent faster thanks a reworked error handling for objects. By default, error collection is disabled entirely making the error case zero-sized. If needed, verbose and stacked errors can be turned on using a feature toggle for applications who expect repositories with malformed objects and need detailed diagnostics.
+* `gix-object` parsing is a few percent faster thanks a reworked error handling for objects. By default, error collection is disabled entirely making the error case zero-sized. If needed, verbose and stacked errors can be turned on using a feature toggle for applications who expect repositories with malformed objects and need detailed diagnostics.
 
 ### New Features
 
@@ -886,8 +944,8 @@ These are created to account for breaking changes within the dependency graph of
 could not be installed anymore.
 This was eventually fixed with new minor releases across the ecosystem.
 
-Finally, yet another breaking change due to the introduction of the `git-hash`
-crate to break a dependency cycle between `git-object` and `git-features` caused
+Finally, yet another breaking change due to the introduction of the `gix-hash`
+crate to break a dependency cycle between `gix-object` and `gix-features` caused
 yet another maintenance release.
 
 ## v0.5.0 (2020-12-15)
