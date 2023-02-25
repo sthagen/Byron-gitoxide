@@ -1,7 +1,11 @@
 mod changes {
     mod to_obtain_tree {
-        use gix_diff::tree::recorder::Location;
-        use gix_diff::tree::{recorder, recorder::Change::*};
+        use std::collections::HashMap;
+
+        use gix_diff::tree::{
+            recorder,
+            recorder::{Change::*, Location},
+        };
         use gix_hash::{oid, ObjectId};
         use gix_object::{bstr::ByteSlice, tree::EntryMode, TreeRefIter};
         use gix_odb::pack::Find;
@@ -132,19 +136,32 @@ mod changes {
             .expect("valid hex id")
         }
 
-        fn all_commits(db: &gix_odb::Handle) -> Vec<ObjectId> {
+        fn all_commits(db: &gix_odb::Handle) -> HashMap<String, ObjectId> {
             use gix_traverse::commit;
+            let mut buf = Vec::new();
 
             let head = head_of(db);
             commit::Ancestors::new(Some(head), commit::ancestors::State::default(), |oid, buf| {
                 use gix_odb::FindExt;
                 db.find_commit_iter(oid, buf)
             })
-            .collect::<Vec<_>>()
-            .into_iter()
-            .rev()
             .collect::<Result<Vec<_>, _>>()
             .expect("valid iteration")
+            .into_iter()
+            .map(|c| {
+                use gix_odb::FindExt;
+                (
+                    db.find_commit(c, &mut buf)
+                        .unwrap()
+                        .message
+                        .trim()
+                        .to_str_lossy()
+                        .into_owned(),
+                    c,
+                )
+            })
+            .rev()
+            .collect()
         }
 
         #[test]
@@ -152,7 +169,7 @@ mod changes {
             let db = db(None)?;
             let all_commits = all_commits(&db);
             assert_eq!(
-                diff_with_previous_commit_from(&db, &all_commits[0])?,
+                diff_with_previous_commit_from(&db, &all_commits["f added"])?,
                 vec![Addition {
                     entry_mode: EntryMode::Blob,
                     oid: hex_to_id("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"),
@@ -162,7 +179,7 @@ mod changes {
             );
 
             assert_eq!(
-                diff_with_previous_commit_from(&db, &all_commits[1])?,
+                diff_with_previous_commit_from(&db, &all_commits["f modified"])?,
                 vec![Modification {
                     previous_entry_mode: EntryMode::Blob,
                     previous_oid: hex_to_id("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"),
@@ -174,18 +191,18 @@ mod changes {
             );
 
             assert_eq!(
-                diff_with_previous_commit_from(&db, &all_commits[2])?,
+                diff_with_previous_commit_from(&db, &all_commits["f deleted"])?,
                 vec![Deletion {
                     entry_mode: EntryMode::Blob,
                     oid: hex_to_id("28ce6a8b26aa170e1de65536fe8abe1832bd3242"),
                     path: "f".into()
                 }],
                 ":100644 000000 28ce6a8b26aa170e1de65536fe8abe1832bd3242 0000000000000000000000000000000000000000 D	f
-"
+            "
             );
 
             assert_eq!(
-                diff_with_previous_commit_from(&db, &all_commits[4])?,
+                diff_with_previous_commit_from(&db, &all_commits["f mode modified to dir f/"])?,
                 vec![
                     Deletion {
                         entry_mode: EntryMode::Blob,
@@ -208,7 +225,27 @@ mod changes {
             );
 
             assert_eq!(
-                diff_with_previous_commit_from(&db, &all_commits[5])?,
+                diff_with_previous_commit_from(&db, &all_commits["a renamed to b"])?,
+                vec![
+                    Deletion {
+                        entry_mode: EntryMode::Blob,
+                        oid: hex_to_id("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"),
+                        path: "a".into()
+                    },
+                    Addition {
+                        entry_mode: EntryMode::Blob,
+                        oid: hex_to_id("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"),
+                        path: "b".into()
+                    }
+                ],
+                "simple rename, same level
+                 :100644 000000 e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 0000000000000000000000000000000000000000 D      a
+                 :000000 100644 0000000000000000000000000000000000000000 e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 A      b"
+
+            );
+
+            assert_eq!(
+                diff_with_previous_commit_from(&db, &all_commits["f/f modified"])?,
                 vec![
                     Modification {
                         previous_entry_mode: EntryMode::Tree,
@@ -241,7 +278,7 @@ mod changes {
             #[cfg(not(windows))]
             let link_entry_mode = EntryMode::Link;
             assert_eq!(
-                diff_with_previous_commit_from(&db, &all_commits[8])?,
+                diff_with_previous_commit_from(&db, &all_commits["f/f mode changed to link"])?,
                 vec![
                     Modification {
                         previous_entry_mode: EntryMode::Tree,
@@ -262,16 +299,16 @@ mod changes {
             );
 
             assert_eq!(
-                diff_with_previous_commit_from(&db, &all_commits[10])?,
+                diff_with_previous_commit_from(&db, &all_commits["f/ changed into file f"])?,
                 vec![
-                    Deletion {
-                        entry_mode: EntryMode::Tree,
-                        oid: tree_with_link_id,
-                        path: "f".into()
-                    },
                     Addition {
                         entry_mode: EntryMode::Blob,
                         oid: hex_to_id("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"),
+                        path: "f".into()
+                    },
+                    Deletion {
+                        entry_mode: EntryMode::Tree,
+                        oid: tree_with_link_id,
                         path: "f".into()
                     },
                     Deletion {
@@ -296,7 +333,7 @@ mod changes {
                  :120000 000000 2e65efe2a145dda7ee51d1741299f848e5bf752e 0000000000000000000000000000000000000000 D	f/f"
             );
             assert_eq!(
-                diff_with_previous_commit_from(&db, &all_commits[12])?,
+                diff_with_previous_commit_from(&db, &all_commits["delete d/"])?,
                 vec![
                     Deletion {
                         entry_mode: EntryMode::Tree,
@@ -312,7 +349,7 @@ mod changes {
                 ":100644 000000 e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 0000000000000000000000000000000000000000 D	d/f"
             );
             assert_eq!(
-                diff_with_previous_commit_from(&db, &all_commits[13])?,
+                diff_with_previous_commit_from(&db, &all_commits["add /c /d /e"])?,
                 vec![
                     Addition {
                         entry_mode: EntryMode::Blob,
@@ -335,7 +372,7 @@ mod changes {
                  :000000 100644 0000000000000000000000000000000000000000 e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 A	e"
             );
             assert_eq!(
-                diff_with_previous_commit_from(&db, &all_commits[14])?,
+                diff_with_previous_commit_from(&db, &all_commits["add g/a"])?,
                 vec![
                     Addition {
                         entry_mode: EntryMode::Tree,
@@ -351,7 +388,7 @@ mod changes {
                 ":000000 100644 0000000000000000000000000000000000000000 e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 A	g/a"
             );
             assert_eq!(
-                diff_with_previous_commit_from(&db, &all_commits[15])?,
+                diff_with_previous_commit_from(&db, &all_commits["remove /c /d /e"])?,
                 vec![
                     Deletion {
                         entry_mode: EntryMode::Blob,
@@ -374,7 +411,7 @@ mod changes {
                  :100644 000000 e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 0000000000000000000000000000000000000000 D	e"
             );
             assert_eq!(
-                diff_with_previous_commit_from(&db, &all_commits[16])?,
+                diff_with_previous_commit_from(&db, &all_commits["rm /f, add /ff"])?,
                 vec![
                     Deletion {
                         entry_mode: EntryMode::Blob,
@@ -391,7 +428,7 @@ mod changes {
                   :000000 100644 0000000000000000000000000000000000000000 e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 A	ff"
             );
             assert_eq!(
-                diff_with_previous_commit_from(&db, &all_commits[17])?,
+                diff_with_previous_commit_from(&db, &all_commits["rm g/a, add g/aa"])?,
                 vec![
                     Modification {
                         previous_entry_mode: EntryMode::Tree,
@@ -415,7 +452,7 @@ mod changes {
                  :000000 100644 0000000000000000000000000000000000000000 e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 A	g/aa"
             );
             assert_eq!(
-                diff_with_previous_commit_from(&db, &all_commits[18])?,
+                diff_with_previous_commit_from(&db, &all_commits["rm /ff, add /f"])?,
                 vec![
                     Addition {
                         entry_mode: EntryMode::Blob,
@@ -432,7 +469,7 @@ mod changes {
                   :000000 100644 0000000000000000000000000000000000000000 e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 A	ff"
             );
             assert_eq!(
-                diff_with_previous_commit_from(&db, &all_commits[19])?,
+                diff_with_previous_commit_from(&db, &all_commits["rm g/aa, add g/a"])?,
                 vec![
                     Modification {
                         previous_entry_mode: EntryMode::Tree,
@@ -464,7 +501,7 @@ mod changes {
             let all_commits = all_commits(&db);
 
             assert_eq!(
-                diff_with_previous_commit_from(&db, &all_commits[0])?,
+                diff_with_previous_commit_from(&db, &all_commits["f added"])?,
                 vec![
                     Addition {
                         entry_mode: EntryMode::Tree,
@@ -480,7 +517,7 @@ mod changes {
                 ":000000 100644 0000000000000000000000000000000000000000 e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 A      a/f"
             );
             assert_eq!(
-                diff_with_previous_commit_from(&db, &all_commits[1])?,
+                diff_with_previous_commit_from(&db, &all_commits["f modified"])?,
                 vec![
                     Modification {
                         previous_entry_mode: EntryMode::Tree,
@@ -500,7 +537,7 @@ mod changes {
                 ":100644 100644 e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 28ce6a8b26aa170e1de65536fe8abe1832bd3242 M      a/f"
             );
 
-            for commit in all_commits {
+            for (_, commit) in all_commits {
                 // Just make sure it works - checked results with dbg!() once and am too ~~lazy~~ time constrained to add the
                 // assertions now similar to the non-nested version.
                 diff_with_previous_commit_from(&db, &commit)?;
@@ -514,13 +551,10 @@ mod changes {
             let db = db(None)?;
             let all_commits = all_commits(&db);
 
+            let last_commit = all_commits["rm g/aa, add g/a"];
+            let first_commit = all_commits["f added"];
             assert_eq!(
-                diff_commits(
-                    &db,
-                    all_commits[0].to_owned(),
-                    all_commits.last().expect("we have many commits"),
-                    None
-                )?,
+                diff_commits(&db, first_commit.to_owned(), &last_commit, None)?,
                 vec![
                     Addition {
                         entry_mode: EntryMode::Blob,
@@ -540,12 +574,7 @@ mod changes {
                 ]
             );
             assert_eq!(
-                diff_commits(
-                    &db,
-                    all_commits.last().expect("we have many commits").to_owned(),
-                    &all_commits[0],
-                    Location::FileName.into()
-                )?,
+                diff_commits(&db, last_commit.to_owned(), &first_commit, Location::FileName.into())?,
                 vec![
                     Deletion {
                         entry_mode: EntryMode::Blob,
@@ -573,12 +602,7 @@ mod changes {
             let all_commits = all_commits(&db);
 
             assert_eq!(
-                diff_commits(
-                    &db,
-                    None::<ObjectId>,
-                    &all_commits[all_commits.len() - 6],
-                    Some(Location::Path)
-                )?,
+                diff_commits(&db, None::<ObjectId>, &all_commits["add g/a"], Some(Location::Path))?,
                 vec![
                     Addition {
                         entry_mode: EntryMode::Tree,
@@ -619,6 +643,72 @@ mod changes {
                         entry_mode: EntryMode::Blob,
                         oid: hex_to_id("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"),
                         path: "a/g/a".into()
+                    }
+                ]
+            );
+            Ok(())
+        }
+
+        #[test]
+        fn interesting_rename() -> crate::Result {
+            let db = db(None)?;
+            let all_commits = all_commits(&db);
+
+            assert_eq!(
+                diff_with_previous_commit_from(&db, &all_commits["interesting rename 1"])?,
+                vec![
+                    Deletion {
+                        entry_mode: EntryMode::Tree,
+                        oid: hex_to_id("f84fc275158a2973cb4a79b1618b79ec7f573a95"),
+                        path: "git-sec".into()
+                    },
+                    Addition {
+                        entry_mode: EntryMode::Tree,
+                        oid: hex_to_id("f84fc275158a2973cb4a79b1618b79ec7f573a95"),
+                        path: "gix-sec".into()
+                    },
+                    Deletion {
+                        entry_mode: EntryMode::Blob,
+                        oid: hex_to_id("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"),
+                        path: "git-sec/2".into()
+                    },
+                    Addition {
+                        entry_mode: EntryMode::Blob,
+                        oid: hex_to_id("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"),
+                        path: "gix-sec/2".into()
+                    }
+                ]
+            );
+            Ok(())
+        }
+
+        #[test]
+        fn interesting_rename_2() -> crate::Result {
+            let db = db(None)?;
+            let all_commits = all_commits(&db);
+
+            assert_eq!(
+                diff_with_previous_commit_from(&db, &all_commits["interesting rename 2"])?,
+                vec![
+                    Addition {
+                        entry_mode: EntryMode::Tree,
+                        oid: hex_to_id("f84fc275158a2973cb4a79b1618b79ec7f573a95"),
+                        path: "git-sec".into()
+                    },
+                    Deletion {
+                        entry_mode: EntryMode::Tree,
+                        oid: hex_to_id("f84fc275158a2973cb4a79b1618b79ec7f573a95"),
+                        path: "gix-sec".into()
+                    },
+                    Addition {
+                        entry_mode: EntryMode::Blob,
+                        oid: hex_to_id("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"),
+                        path: "git-sec/2".into()
+                    },
+                    Deletion {
+                        entry_mode: EntryMode::Blob,
+                        oid: hex_to_id("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"),
+                        path: "gix-sec/2".into()
                     }
                 ]
             );

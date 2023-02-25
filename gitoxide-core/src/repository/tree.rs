@@ -1,17 +1,15 @@
 use std::{borrow::Cow, io};
 
 use anyhow::bail;
-
-use gix::{prelude::ObjectIdExt, Tree};
+use gix::Tree;
 
 use crate::OutputFormat;
 
 mod entries {
     use std::collections::VecDeque;
 
-    use gix::bstr::{ByteSlice, ByteVec};
     use gix::{
-        bstr::{BStr, BString},
+        bstr::{BStr, BString, ByteSlice, ByteVec},
         objs::tree::EntryRef,
         traverse::tree::visit::Action,
     };
@@ -176,13 +174,10 @@ pub fn entries(
 }
 
 fn treeish_to_tree<'repo>(treeish: Option<&str>, repo: &'repo gix::Repository) -> anyhow::Result<Tree<'repo>> {
-    Ok(match treeish {
-        Some(hex) => gix::hash::ObjectId::from_hex(hex.as_bytes())
-            .map(|id| id.attach(repo))?
-            .object()?
-            .try_into_tree()?,
-        None => repo.head()?.peel_to_commit_in_place()?.tree()?,
-    })
+    let spec = treeish
+        .map(|spec| format!("{spec}^{{tree}}"))
+        .unwrap_or_else(|| "@^{tree}".into());
+    Ok(repo.rev_parse_single(spec.as_str())?.object()?.into_tree())
 }
 
 fn format_entry(
