@@ -22,6 +22,7 @@ pub fn update(
     repo: &gix::Repository,
     con: &mut rusqlite::Connection,
     progress: &mut impl gix::Progress,
+    mut err: impl std::io::Write,
     Options {
         object_cache_size_mb,
         find_copies_harder,
@@ -294,7 +295,7 @@ pub fn update(
                                     }
                                 }
                                 if tx_stats.send(Ok((chunk_id, out_chunk))).is_err() {
-                                    break;
+                                    bail!("Thread failed to send result");
                                 }
                             }
                             Ok(())
@@ -323,12 +324,6 @@ pub fn update(
                         }
                     };
                     if let Some((first_parent, commit)) = res {
-                        if chunk.len() == CHUNK_SIZE {
-                            tx_tree_ids
-                                .send((chunk_id, std::mem::replace(&mut chunk, Vec::with_capacity(CHUNK_SIZE))))
-                                .ok();
-                            chunk_id += 1;
-                        }
                         chunk.push(Task {
                             parent_commit: first_parent,
                             commit,
@@ -340,6 +335,12 @@ pub fn update(
                             commit: oid.to_owned(),
                             compute_stats: false,
                         });
+                    }
+                    if chunk.len() == CHUNK_SIZE {
+                        tx_tree_ids
+                            .send((chunk_id, std::mem::replace(&mut chunk, Vec::with_capacity(CHUNK_SIZE))))
+                            .ok();
+                        chunk_id += 1;
                     }
                 }
                 Ok(gix::objs::CommitRefIter::from_bytes(obj.data))
@@ -357,7 +358,7 @@ pub fn update(
                     }
                 }
                 Err(gix::traverse::commit::ancestors::Error::FindExisting { .. }) => {
-                    eprintln!("shallow repository - commit history is truncated");
+                    writeln!(err, "shallow repository - commit history is truncated").ok();
                     break;
                 }
                 Err(err) => return Err(err.into()),
