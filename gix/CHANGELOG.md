@@ -5,6 +5,103 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.41.0 (2023-03-10)
+
+A maintenance release without user-facing changes, but with some fixes in the dependency chain, namely:
+
+- `gix-credentials` allows credential helpers to ignore `stdin`, making it robust when facing helpers that don't read from `stdin`.
+- `gix-tempfile` refers to the most recent version of `tempfile` without pinning it, which removes a security vulnerability.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 3 commits contributed to the release.
+ - 1 day passed between releases.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Prepare changelogs prior to release ([`e06f5f5`](https://github.com/Byron/gitoxide/commit/e06f5f523e83f4da390eddbebcb9a2d58674587b))
+    - Merge branch 'password-in-urls' ([`85f8b28`](https://github.com/Byron/gitoxide/commit/85f8b283a1671e2631cda437ca8da93f9a2a4ebd))
+    - Adjust to changes in `gix-url` ([`66602bb`](https://github.com/Byron/gitoxide/commit/66602bbb7fe62f7425c8289902a1d2fce121e87c))
+</details>
+
+## 0.40.0 (2023-03-09)
+
+### New Features
+
+ - <csr-id-5bfbb9a32f8edb8bfb71ae00167277b9109de35a/> `Repository::shallow_commits()` returns an uptodate list of shallow boundary commits.
+ - <csr-id-3e69535630714205904fe64f511da28a3f2d7fb6/> `Repository::is_shallow()` to test if a repository is shallow.
+
+### Bug Fixes (BREAKING)
+
+ - <csr-id-1046ea2b3312838169aa08f30b598bf4ce2338d9/> allow to traverse the entire commit graph of shallow repos
+   Previously, when traversing commits, we would assume to be in a
+   shallow repository if a commit's parent could not be found in the
+   repository.
+   
+   Now we validate that assumption by reading the 'shallow' file to
+   check if the last seen commit is on the commit boundary.
+   
+   This removes `is_shallow` and `error_on_missing_commit()` on the
+   `revision::walk::Platform` as shallow commits are now known and handled
+   without any guesswork.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 5 commits contributed to the release over the course of 3 calendar days.
+ - 4 days passed between releases.
+ - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release gix v0.40.0 ([`18e72c9`](https://github.com/Byron/gitoxide/commit/18e72c988a58415080d4555bc869ae04df8d04fa))
+    - Merge branch 'shallow-support' ([`6d88fd2`](https://github.com/Byron/gitoxide/commit/6d88fd208bcdec0603d57785bdbfe2f286a65384))
+    - Allow to traverse the entire commit graph of shallow repos ([`1046ea2`](https://github.com/Byron/gitoxide/commit/1046ea2b3312838169aa08f30b598bf4ce2338d9))
+    - `Repository::shallow_commits()` returns an uptodate list of shallow boundary commits. ([`5bfbb9a`](https://github.com/Byron/gitoxide/commit/5bfbb9a32f8edb8bfb71ae00167277b9109de35a))
+    - `Repository::is_shallow()` to test if a repository is shallow. ([`3e69535`](https://github.com/Byron/gitoxide/commit/3e69535630714205904fe64f511da28a3f2d7fb6))
+</details>
+
+## 0.39.0 (2023-03-04)
+
+A maintenance release without user-facing changes, primarily for getting the progress-bar updates into `cargo`.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 3 commits contributed to the release.
+ - 3 days passed between releases.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release gix-attributes v0.10.0, gix-ref v0.26.0, gix-config v0.18.0, gix-url v0.15.0, gix-credentials v0.11.0, gix-discover v0.15.0, gix-index v0.14.0, gix-mailmap v0.11.0, gix-odb v0.42.0, gix-transport v0.27.0, gix-protocol v0.28.0, gix-revision v0.12.0, gix-refspec v0.9.0, gix-worktree v0.14.0, gix v0.39.0 ([`93e75fe`](https://github.com/Byron/gitoxide/commit/93e75fed454ed8b342231bde4638db90e407ce52))
+    - Prepare changelogs prior to release ([`895e482`](https://github.com/Byron/gitoxide/commit/895e482badf01e953bb9144001eebd5e1b1c4d84))
+    - Release gix-features v0.28.0, gix-actor v0.19.0, gix-object v0.28.0, gix-diff v0.28.0, gix-traverse v0.24.0, gix-pack v0.32.0, safety bump 20 crates ([`0f411e9`](https://github.com/Byron/gitoxide/commit/0f411e93ec812592bb9d3a52b751399dd86f76f7))
+</details>
+
 ## 0.38.0 (2023-03-01)
 
 ### New Features
@@ -42,7 +139,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 16 commits contributed to the release over the course of 4 calendar days.
+ - 17 commits contributed to the release over the course of 4 calendar days.
  - 4 days passed between releases.
  - 6 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 1 unique issue was worked on: [#339](https://github.com/Byron/gitoxide/issues/339)
@@ -56,6 +153,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#339](https://github.com/Byron/gitoxide/issues/339)**
     - Gate all signal handling behind the `signals` feature toggle. ([`441f5ac`](https://github.com/Byron/gitoxide/commit/441f5ac4dd2f0636ec07065f8095e8bae5ce6985))
  * **Uncategorized**
+    - Release gix-tempfile v4.1.0, gix-lock v4.0.0, gix-ref v0.25.0, gix-config v0.17.0, gix-url v0.14.0, gix-credentials v0.10.0, gix-diff v0.27.0, gix-discover v0.14.0, gix-hashtable v0.1.2, gix-bitmap v0.2.2, gix-traverse v0.23.0, gix-index v0.13.0, gix-mailmap v0.10.0, gix-pack v0.31.0, gix-odb v0.41.0, gix-transport v0.26.0, gix-protocol v0.27.0, gix-revision v0.11.0, gix-refspec v0.8.0, gix-worktree v0.13.0, gix v0.38.0, safety bump 6 crates ([`ea9fd1d`](https://github.com/Byron/gitoxide/commit/ea9fd1d9b60e1e9e17042e9e37c06525823c40a5))
     - Release gix-features v0.27.0, gix-actor v0.18.0, gix-quote v0.4.3, gix-attributes v0.9.0, gix-object v0.27.0, gix-ref v0.25.0, gix-config v0.17.0, gix-url v0.14.0, gix-credentials v0.10.0, gix-diff v0.27.0, gix-discover v0.14.0, gix-hashtable v0.1.2, gix-bitmap v0.2.2, gix-traverse v0.23.0, gix-index v0.13.0, gix-mailmap v0.10.0, gix-pack v0.31.0, gix-odb v0.41.0, gix-transport v0.26.0, gix-protocol v0.27.0, gix-revision v0.11.0, gix-refspec v0.8.0, gix-worktree v0.13.0, gix v0.38.0 ([`e6cc618`](https://github.com/Byron/gitoxide/commit/e6cc6184a7a49dbc2503c1c1bdd3688ca5cec5fe))
     - Adjust manifests prior to release ([`addd789`](https://github.com/Byron/gitoxide/commit/addd78958fdd1e54eb702854e96079539d01965a))
     - Prepare changelogs prior to release ([`94c99c7`](https://github.com/Byron/gitoxide/commit/94c99c71520f33269cc8dbc26f82a74747cc7e16))
