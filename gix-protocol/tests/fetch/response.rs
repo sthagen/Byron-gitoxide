@@ -139,12 +139,11 @@ mod v1 {
     }
 
     mod arguments {
-        use crate::fetch::response::id;
-        use crate::fetch::transport;
         use bstr::ByteSlice;
         use gix_protocol::{fetch, Command};
-        use gix_transport::client::Capabilities;
-        use gix_transport::Protocol;
+        use gix_transport::{client::Capabilities, Protocol};
+
+        use crate::fetch::{response::id, transport};
 
         #[maybe_async::test(feature = "blocking-client", async(feature = "async-client", async_std::test))]
         async fn all() -> crate::Result {
@@ -193,6 +192,7 @@ mod v2 {
 
         #[cfg(feature = "async-client")]
         use futures_lite::io::AsyncReadExt;
+        use gix_packetline::read::ProgressAction;
         use gix_protocol::fetch::{
             self,
             response::{Acknowledgement, ShallowUpdate},
@@ -213,7 +213,9 @@ mod v2 {
                 let r = fetch::Response::from_line_reader(Protocol::V2, &mut reader).await?;
                 assert!(r.acknowledgements().is_empty(), "it should go straight to the packfile");
                 assert!(r.has_pack());
-                reader.set_progress_handler(Some(Box::new(|_is_err, _text| ())));
+                reader.set_progress_handler(Some(Box::new(|_is_err, _text| {
+                    gix_transport::packetline::read::ProgressAction::Continue
+                })));
                 let mut buf = Vec::new();
                 let bytes_read = reader.read_to_end(&mut buf).await?;
                 assert_eq!(bytes_read, 876, "should be able to read the whole pack");
@@ -295,6 +297,7 @@ mod v2 {
             let mut buf = Vec::new();
             reader.set_progress_handler(Some(Box::new(|is_err: bool, _data: &[u8]| {
                 assert!(!is_err, "fixture does not have an error");
+                ProgressAction::Continue
             }) as gix_transport::client::HandleProgress));
             let bytes_read = reader.read_to_end(&mut buf).await?;
             assert_eq!(bytes_read, 1643, "should be able to read the whole pack");
@@ -346,7 +349,8 @@ mod v2 {
             assert!(r.has_pack());
             let mut buf = Vec::new();
             reader.set_progress_handler(Some(Box::new(|a: bool, b: &[u8]| {
-                gix_protocol::RemoteProgress::translate_to_progress(a, b, &mut gix_features::progress::Discard)
+                gix_protocol::RemoteProgress::translate_to_progress(a, b, &mut gix_features::progress::Discard);
+                ProgressAction::Continue
             }) as gix_transport::client::HandleProgress));
             let bytes_read = reader.read_to_end(&mut buf).await?;
             assert_eq!(bytes_read, 5360, "should be able to read the whole pack");
@@ -355,12 +359,11 @@ mod v2 {
     }
 
     mod arguments {
-        use crate::fetch::response::id;
-        use crate::fetch::transport;
         use bstr::ByteSlice;
         use gix_protocol::{fetch, Command};
-        use gix_transport::client::Capabilities;
-        use gix_transport::Protocol;
+        use gix_transport::{client::Capabilities, Protocol};
+
+        use crate::fetch::{response::id, transport};
 
         #[maybe_async::test(feature = "blocking-client", async(feature = "async-client", async_std::test))]
         async fn all() -> crate::Result {
