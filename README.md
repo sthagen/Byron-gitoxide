@@ -89,6 +89,7 @@ is usable to some extent.
   * [gix-date](https://github.com/Byron/gitoxide/blob/main/crate-status.md#gix-date)
   * [gix-hashtable](https://github.com/Byron/gitoxide/blob/main/crate-status.md#gix-hashtable)
 * **idea** _(just a name placeholder)_
+  * [gix-archive](https://github.com/Byron/gitoxide/blob/main/crate-status.md#gix-archive)
   * [gix-note](https://github.com/Byron/gitoxide/blob/main/crate-status.md#gix-note)
   * [gix-fetchhead](https://github.com/Byron/gitoxide/blob/main/crate-status.md#gix-fetchhead)
   * [gix-filter](https://github.com/Byron/gitoxide/blob/main/crate-status.md#gix-filter)
@@ -98,7 +99,7 @@ is usable to some extent.
   * [gix-submodule](https://github.com/Byron/gitoxide/blob/main/crate-status.md#gix-submodule)
   * [gix-tui](https://github.com/Byron/gitoxide/blob/main/crate-status.md#gix-tui)
   * [gix-tix](https://github.com/Byron/gitoxide/blob/main/crate-status.md#gix-tix)
-  * [git-bundle](https://github.com/Byron/gitoxide/blob/main/crate-status.md#git-bundle)
+  * [gix-bundle](https://github.com/Byron/gitoxide/blob/main/crate-status.md#gix-bundle)
   
 ### Stress Testing
   * [x] Verify huge packs
