@@ -152,7 +152,7 @@ impl ThreadSafeRepository {
             ref current_dir,
         } = options;
         let current_dir = current_dir.as_deref().expect("BUG: current_dir must be set by caller");
-        let git_dir_trust = git_dir_trust.expect("trust must be been determined by now");
+        let git_dir_trust = git_dir_trust.expect("trust must be determined by now");
 
         // TODO: assure we handle the worktree-dir properly as we can have config per worktree with an extension.
         //       This would be something read in later as have to first check for extensions. Also this means
@@ -180,9 +180,7 @@ impl ThreadSafeRepository {
         };
         let head = refs.find("HEAD").ok();
         let git_install_dir = crate::path::install_dir().ok();
-        let home = std::env::var_os("HOME")
-            .map(PathBuf::from)
-            .and_then(|home| env.home.check_opt(home));
+        let home = gix_path::home_dir().and_then(|home| env.home.check_opt(home));
 
         let mut filter_config_section = filter_config_section.unwrap_or(config::section::is_trusted);
         let config = config::Cache::from_stage_one(
