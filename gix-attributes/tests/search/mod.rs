@@ -1,15 +1,20 @@
-use bstr::{BStr, ByteSlice};
-use gix_attributes::search::{AttributeId, Outcome};
-use gix_attributes::{AssignmentRef, NameRef, StateRef};
-use gix_glob::pattern::Case;
-use gix_utils::FilesystemCapabilities;
 use std::collections::BTreeMap;
 
+use bstr::{BStr, ByteSlice};
+use gix_attributes::{
+    search::{AttributeId, Outcome},
+    AssignmentRef, NameRef, StateRef,
+};
+use gix_glob::pattern::Case;
+
 mod specials {
-    use gix_attributes::search::{MetadataCollection, Outcome};
-    use gix_attributes::Search;
-    use gix_glob::pattern::Case;
     use std::path::Path;
+
+    use gix_attributes::{
+        search::{MetadataCollection, Outcome},
+        Search,
+    };
+    use gix_glob::pattern::Case;
 
     #[test]
     fn dir_slash_never_matches_but_dir_slah_double_star_does() {
@@ -62,7 +67,7 @@ fn baseline() -> crate::Result {
     let mut buf = Vec::new();
     // Due to the way our setup differs from gits dynamic stack (which involves trying to read files from disk
     // by path) we can only test one case baseline, so we require multiple platforms (or filesystems) to run this.
-    let case = if FilesystemCapabilities::probe("../.git").ignore_case {
+    let case = if gix_fs::Capabilities::probe("../.git").ignore_case {
         Case::Fold
     } else {
         Case::Sensitive
@@ -269,9 +274,9 @@ mod baseline {
 
         Ok((group, collection, base, input))
     }
-    use gix_attributes::search::MetadataCollection;
-    use gix_attributes::{AssignmentRef, StateRef};
     use std::path::PathBuf;
+
+    use gix_attributes::{search::MetadataCollection, AssignmentRef, StateRef};
 
     /// Read user-attributes and baseline in one go.
     pub fn user_attributes(

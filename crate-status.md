@@ -105,11 +105,16 @@ and itself relies on all `git-*` crates. It's not meant for consumption, for app
 * [x] hashset
 
 ### gix-utils
-
 * **filesystem**
    * [x] probe capabilities
    * [x] symlink creation and removal
    * [x] file snapshots
+    
+### gix-fs
+* [x] probe capabilities
+* [x] symlink creation and removal
+* [x] file snapshots
+* [x] stack abstraction
 
 ### gix-object
 * *decode (zero-copy)* borrowed objects
@@ -708,8 +713,11 @@ See its [README.md](https://github.com/Byron/gitoxide/blob/main/gix-lock/README.
 
 ### gix-archive
 
-Analysis to be done.
-
+* [ ] `write_to()` for creating an archive with various container formats
+* [ ] add custom entries to the archive
+* [ ] handling of archive specific filters
+* [ ] filter files of tree (with access to attributes)
+* [ ] support for worktree conversion (via attributes and filters)
 * [ ] API documentation
     * [ ] Some examples
 

@@ -1,33 +1,48 @@
 /// The stage of an entry, one of 0 = base, 1 = ours, 2 = theirs
 pub type Stage = u32;
 
-mod mode;
-pub use mode::Mode;
+///
+pub mod mode;
 
 mod flags;
 pub(crate) use flags::at_rest;
 pub use flags::Flags;
 
+///
+pub mod stat;
 mod write;
 
-/// The time component in a [`Stat`] struct.
-#[derive(Debug, Default, PartialEq, Eq, Hash, Ord, PartialOrd, Clone, Copy)]
-#[cfg_attr(feature = "serde1", derive(serde::Serialize, serde::Deserialize))]
-pub struct Time {
-    /// The amount of seconds elapsed since EPOCH
-    pub secs: u32,
-    /// The amount of nanoseconds elapsed in the current second, ranging from 0 to 999.999.999 .
-    pub nsecs: u32,
+use bitflags::bitflags;
+
+// TODO: we essentially treat this as an enum withj the only exception being
+// that `FILE_EXECUTABLE.contains(FILE)` works might want to turn this into an
+// enum proper
+bitflags! {
+    /// The kind of file of an entry.
+    #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+    pub struct Mode: u32 {
+        /// directory (only used for sparse checkouts), equivalent to a tree, which is _excluded_ from the index via
+        /// cone-mode.
+        const DIR = 0o040000;
+        /// regular file
+        const FILE = 0o100644;
+        /// regular file, executable
+        const FILE_EXECUTABLE = 0o100755;
+        /// Symbolic link
+        const SYMLINK = 0o120000;
+        /// A git commit for submodules
+        const COMMIT = 0o160000;
+    }
 }
 
 /// An entry's filesystem stat information.
 #[derive(Debug, Default, PartialEq, Eq, Hash, Ord, PartialOrd, Clone, Copy)]
-#[cfg_attr(feature = "serde1", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Stat {
     /// Modification time
-    pub mtime: Time,
+    pub mtime: stat::Time,
     /// Creation time
-    pub ctime: Time,
+    pub ctime: stat::Time,
     /// Device number
     pub dev: u32,
     /// Inode number
@@ -64,29 +79,11 @@ mod access {
 }
 
 mod _impls {
-    use std::{cmp::Ordering, ops::Add, time::SystemTime};
+    use std::cmp::Ordering;
 
     use bstr::BStr;
 
-    use crate::{entry::Time, Entry, State};
-
-    impl From<SystemTime> for Time {
-        fn from(s: SystemTime) -> Self {
-            let d = s
-                .duration_since(std::time::UNIX_EPOCH)
-                .expect("system time is not before unix epoch!");
-            Time {
-                secs: d.as_secs() as u32,
-                nsecs: d.subsec_nanos(),
-            }
-        }
-    }
-
-    impl From<Time> for SystemTime {
-        fn from(s: Time) -> Self {
-            std::time::UNIX_EPOCH.add(std::time::Duration::new(s.secs.into(), s.nsecs))
-        }
-    }
+    use crate::{Entry, State};
 
     impl Entry {
         /// Compare one entry to another by their path, by comparing only their common path portion byte by byte, then resorting to

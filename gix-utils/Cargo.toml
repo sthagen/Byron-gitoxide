@@ -12,4 +12,4 @@ rust-version = "1.64"
 doctest = false
 
 [dependencies]
-gix-features = { path = "../gix-features" }
+fastrand = "1.9.0"

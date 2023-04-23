@@ -10,7 +10,7 @@ use crate::{borrowed::oid, Kind, SIZE_OF_SHA1_DIGEST};
 
 /// An owned hash identifying objects, most commonly Sha1
 #[derive(PartialEq, Eq, Ord, PartialOrd, Clone, Copy)]
-#[cfg_attr(feature = "serde1", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ObjectId {
     /// A SHA 1 hash digest
     Sha1([u8; SIZE_OF_SHA1_DIGEST]),
@@ -22,7 +22,7 @@ pub enum ObjectId {
 // extremely unlikely to begin with so it doesn't matter.
 // This implementation matches the `Hash` implementation for `oid`
 // and allows the usage of custom Hashers that only copy a truncated ShaHash
-#[allow(clippy::derive_hash_xor_eq)]
+#[allow(clippy::derived_hash_with_manual_eq)]
 impl Hash for ObjectId {
     fn hash<H: Hasher>(&self, state: &mut H) {
         state.write(self.as_slice())
@@ -77,21 +77,21 @@ pub mod decode {
 
 /// Access and conversion
 impl ObjectId {
-    /// Returns the kind of hash used in this `Id`
+    /// Returns the kind of hash used in this `Id`.
     #[inline]
     pub fn kind(&self) -> crate::Kind {
         match self {
             ObjectId::Sha1(_) => crate::Kind::Sha1,
         }
     }
-    /// Return the raw byte slice representing this hash
+    /// Return the raw byte slice representing this hash.
     #[inline]
     pub fn as_slice(&self) -> &[u8] {
         match self {
             Self::Sha1(b) => b.as_ref(),
         }
     }
-    /// Return the raw mutable byte slice representing this hash
+    /// Return the raw mutable byte slice representing this hash.
     #[inline]
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
         match self {
@@ -99,7 +99,7 @@ impl ObjectId {
         }
     }
 
-    /// The hash of an empty blob
+    /// The hash of an empty blob.
     #[inline]
     pub const fn empty_blob(hash: Kind) -> ObjectId {
         match hash {
@@ -109,7 +109,7 @@ impl ObjectId {
         }
     }
 
-    /// The hash of an empty tree
+    /// The hash of an empty tree.
     #[inline]
     pub const fn empty_tree(hash: Kind) -> ObjectId {
         match hash {
@@ -119,12 +119,18 @@ impl ObjectId {
         }
     }
 
-    /// Returns true if this hash consists of all null bytes
+    /// Returns true if this hash consists of all null bytes.
     #[inline]
     pub fn is_null(&self) -> bool {
         match self {
             ObjectId::Sha1(digest) => &digest[..] == oid::null_sha1().as_bytes(),
         }
+    }
+
+    /// Returns `true` if this hash is equal to an empty blob.
+    #[inline]
+    pub fn is_empty_blob(&self) -> bool {
+        self == &Self::empty_blob(self.kind())
     }
 
     /// Returns an Digest representing a hash with whose memory is zeroed.

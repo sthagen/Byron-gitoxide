@@ -22,20 +22,21 @@ pub mod prefix;
 /// An partial owned hash possibly identifying an object uniquely,
 /// whose non-prefix bytes are zeroed.
 #[derive(PartialEq, Eq, Hash, Ord, PartialOrd, Clone, Copy, Debug)]
-#[cfg_attr(feature = "serde1", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Prefix {
     bytes: ObjectId,
     hex_len: usize,
 }
 
-/// The size of a SHA1 hash digest in bytes
+/// The size of a SHA1 hash digest in bytes.
 const SIZE_OF_SHA1_DIGEST: usize = 20;
 
-/// Denotes the kind of function to produce a `Id`
-#[derive(PartialEq, Eq, Debug, Hash, Ord, PartialOrd, Clone, Copy)]
-#[cfg_attr(feature = "serde1", derive(serde::Serialize, serde::Deserialize))]
+/// Denotes the kind of function to produce a `Id`.
+#[derive(Default, PartialEq, Eq, Debug, Hash, Ord, PartialOrd, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Kind {
     /// The Sha1 hash with 160 bits.
+    #[default]
     Sha1 = 1,
 }
 

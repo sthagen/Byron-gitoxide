@@ -12,7 +12,7 @@ bitflags! {
     /// keep special rules only applicable when matching paths.
     ///
     /// The mode is typically created when parsing the pattern by inspecting it and isn't typically handled by the user.
-    #[cfg_attr(feature = "serde1", derive(serde::Serialize, serde::Deserialize))]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone, Ord, PartialOrd)]
     pub struct Mode: u32 {
         /// The pattern does not contain a sub-directory and - it doesn't contain slashes after removing the trailing one.
@@ -31,18 +31,13 @@ bitflags! {
 /// Describes whether to match a path case sensitively or not.
 ///
 /// Used in [Pattern::matches_repo_relative_path()].
-#[derive(Debug, PartialOrd, PartialEq, Copy, Clone, Hash, Ord, Eq)]
+#[derive(Default, Debug, PartialOrd, PartialEq, Copy, Clone, Hash, Ord, Eq)]
 pub enum Case {
     /// The case affects the match
+    #[default]
     Sensitive,
     /// Ignore the case of ascii characters.
     Fold,
-}
-
-impl Default for Case {
-    fn default() -> Self {
-        Case::Sensitive
-    }
 }
 
 /// Instantiation

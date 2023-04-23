@@ -35,7 +35,7 @@ pub mod write;
 
 /// All known versions of a git index file.
 #[derive(PartialEq, Eq, Debug, Hash, Ord, PartialOrd, Clone, Copy)]
-#[cfg_attr(feature = "serde1", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Version {
     /// Supports entries and various extensions.
     V2 = 2,
@@ -91,11 +91,12 @@ pub struct State {
     ///
     /// Note that on platforms that only have a precisions of a second for this time, we will treat all entries with the
     /// same timestamp as this as potentially changed, checking more thoroughly if a change actually happened.
-    #[allow(dead_code)]
     timestamp: FileTime,
     version: Version,
     entries: Vec<Entry>,
     /// A memory area keeping all index paths, in full length, independently of the index version.
+    ///
+    /// Ranges into this storage are referred to by parts of `entries`.
     path_backing: PathStorage,
     /// True if one entry in the index has a special marker mode
     is_sparse: bool,
@@ -196,6 +197,6 @@ fn size_of_entry() {
     assert_eq!(std::mem::size_of::<crate::Entry>(), 80);
 
     // the reason we have our own time is half the size.
-    assert_eq!(std::mem::size_of::<crate::entry::Time>(), 8);
+    assert_eq!(std::mem::size_of::<crate::entry::stat::Time>(), 8);
     assert_eq!(std::mem::size_of::<filetime::FileTime>(), 16);
 }

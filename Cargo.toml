@@ -33,7 +33,7 @@ fast = ["gix/max-performance", "gix/comfort"]
 ## Use `clap` 3.0 to build the prettiest, best documented and most user-friendly CLI at the expense of binary size.
 ## Provides a terminal user interface for detailed and exhaustive progress.
 ## Provides a line renderer for leaner progress display, without the need for a full-blown TUI.
-pretty-cli = [ "gitoxide-core/serde1", "prodash/progress-tree", "prodash/progress-tree-log", "prodash/local-time", "env_logger/humantime", "env_logger/color", "env_logger/auto-color" ]
+pretty-cli = [ "gitoxide-core/serde", "prodash/progress-tree", "prodash/progress-tree-log", "prodash/local-time", "env_logger/humantime", "env_logger/color", "env_logger/auto-color" ]
 
 ## The `--verbose` flag will be powered by an interactive progress mechanism that doubles as log as well as interactive progress
 ## that appears after a short duration.
@@ -88,8 +88,8 @@ cache-efficiency-debug = ["gix-features/cache-efficiency-debug"]
 anyhow = "1.0.42"
 
 gitoxide-core = { version = "^0.26.0", path = "gitoxide-core" }
-gix-features = { version = "^0.28.1", path = "gix-features" }
-gix = { version = "^0.43.1", path = "gix", default-features = false }
+gix-features = { version = "^0.29.0", path = "gix-features" }
+gix = { version = "^0.44.0", path = "gix", default-features = false }
 time = "0.3.19"
 
 clap = { version = "4.1.1", features = ["derive", "cargo"] }
@@ -178,6 +178,7 @@ members = [
     "gix-refspec",
     "gix-path",
     "gix-utils",
+    "gix-fs",
     "gix",
     "gitoxide-core",
     "gix-hashtable",

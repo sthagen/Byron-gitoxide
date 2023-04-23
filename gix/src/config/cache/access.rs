@@ -1,8 +1,8 @@
 #![allow(clippy::result_large_err)]
-use gix_attributes::Source;
-use gix_glob::pattern::Case;
 use std::{borrow::Cow, path::PathBuf, time::Duration};
 
+use gix_attributes::Source;
+use gix_glob::pattern::Case;
 use gix_lock::acquire::Fail;
 
 use crate::{
@@ -11,7 +11,7 @@ use crate::{
     config::{
         cache::util::{ApplyLeniency, ApplyLeniencyDefault},
         checkout_options,
-        tree::{Checkout, Core, Key},
+        tree::{gitoxide, Checkout, Core, Key},
         Cache,
     },
     remote,
@@ -139,7 +139,7 @@ impl Cache {
     pub(crate) fn checkout_options(
         &self,
         git_dir: &std::path::Path,
-    ) -> Result<gix_worktree::index::checkout::Options, checkout_options::Error> {
+    ) -> Result<gix_worktree::checkout::Options, checkout_options::Error> {
         fn boolean(
             me: &Cache,
             full_key: &str,
@@ -161,7 +161,7 @@ impl Cache {
                 .integer_filter_by_key("checkout.workers", &mut self.filter_config_section.clone())
                 .map(|value| Checkout::WORKERS.try_from_workers(value)),
         )?;
-        let capabilities = gix_utils::FilesystemCapabilities {
+        let capabilities = gix_fs::Capabilities {
             precompose_unicode: boolean(self, "core.precomposeUnicode", &Core::PRECOMPOSE_UNICODE, false)?,
             ignore_case: boolean(self, "core.ignoreCase", &Core::IGNORE_CASE, false)?,
             executable_bit: boolean(self, "core.fileMode", &Core::FILE_MODE, true)?,
@@ -172,11 +172,11 @@ impl Cache {
         } else {
             Case::Sensitive
         };
-        Ok(gix_worktree::index::checkout::Options {
+        Ok(gix_worktree::checkout::Options {
             attributes: self.assemble_attribute_globals(
                 git_dir,
                 case,
-                gix_worktree::fs::cache::state::attributes::Source::AttributeListThenWorktree,
+                gix_worktree::cache::state::attributes::Source::AttributeListThenWorktree,
                 self.attributes,
             )?,
             fs: capabilities,
@@ -184,14 +184,18 @@ impl Cache {
             destination_is_initially_empty: false,
             overwrite_existing: false,
             keep_going: false,
-            trust_ctime: boolean(self, "core.trustCTime", &Core::TRUST_C_TIME, true)?,
-            check_stat: self
-                .apply_leniency(
-                    self.resolved
-                        .string("core", None, "checkStat")
-                        .map(|v| Core::CHECK_STAT.try_into_checkstat(v)),
-                )?
-                .unwrap_or(true),
+            stat_options: gix_index::entry::stat::Options {
+                trust_ctime: boolean(self, "core.trustCTime", &Core::TRUST_C_TIME, true)?,
+                use_nsec: boolean(self, "gitoxide.core.useNsec", &gitoxide::Core::USE_NSEC, false)?,
+                use_stdev: boolean(self, "gitoxide.core.useStdev", &gitoxide::Core::USE_STDEV, false)?,
+                check_stat: self
+                    .apply_leniency(
+                        self.resolved
+                            .string("core", None, "checkStat")
+                            .map(|v| Core::CHECK_STAT.try_into_checkstat(v)),
+                    )?
+                    .unwrap_or(true),
+            },
         })
     }
 
@@ -200,9 +204,9 @@ impl Cache {
         &self,
         git_dir: &std::path::Path,
         case: gix_glob::pattern::Case,
-        source: gix_worktree::fs::cache::state::attributes::Source,
+        source: gix_worktree::cache::state::attributes::Source,
         attributes: crate::permissions::Attributes,
-    ) -> Result<gix_worktree::fs::cache::state::Attributes, config::attribute_stack::Error> {
+    ) -> Result<gix_worktree::cache::state::Attributes, config::attribute_stack::Error> {
         let configured_or_user_attributes = match self
             .trusted_file_path("core", None, Core::ATTRIBUTES_FILE.name)
             .transpose()?
@@ -228,7 +232,7 @@ impl Cache {
         let info_attributes_path = git_dir.join("info").join("attributes");
         let mut buf = Vec::new();
         let mut collection = gix_attributes::search::MetadataCollection::default();
-        Ok(gix_worktree::fs::cache::state::Attributes::new(
+        Ok(gix_worktree::cache::state::Attributes::new(
             gix_attributes::Search::new_globals(attribute_files, &mut buf, &mut collection)?,
             Some(info_attributes_path),
             case,

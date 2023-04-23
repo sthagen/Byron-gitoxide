@@ -11,7 +11,7 @@ use memmap2::Mmap;
 
 /// An representing an full- or delta-object within a pack
 #[derive(PartialEq, Eq, Debug, Hash, Ord, PartialOrd, Clone)]
-#[cfg_attr(feature = "serde1", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Entry {
     /// The entry's header
     pub header: entry::Header,
@@ -48,18 +48,13 @@ pub mod output;
 pub type EntryRange = std::ops::Range<Offset>;
 
 /// Supported versions of a pack data file
-#[derive(PartialEq, Eq, Debug, Hash, Ord, PartialOrd, Clone, Copy)]
-#[cfg_attr(feature = "serde1", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Default, PartialEq, Eq, Debug, Hash, Ord, PartialOrd, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[allow(missing_docs)]
 pub enum Version {
+    #[default]
     V2,
     V3,
-}
-
-impl Default for Version {
-    fn default() -> Self {
-        Version::V2
-    }
 }
 
 /// A pack data file

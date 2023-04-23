@@ -73,12 +73,15 @@ mod refs_impl {
                 .to_bstring()
         ));
         let map = remote
-            .connect(gix::remote::Direction::Fetch, progress)
+            .connect(gix::remote::Direction::Fetch)
             .await?
-            .ref_map(gix::remote::ref_map::Options {
-                prefix_from_spec_as_filter_on_remote: !matches!(kind, refs::Kind::Remote),
-                ..Default::default()
-            })
+            .ref_map(
+                &mut progress,
+                gix::remote::ref_map::Options {
+                    prefix_from_spec_as_filter_on_remote: !matches!(kind, refs::Kind::Remote),
+                    ..Default::default()
+                },
+            )
             .await?;
 
         if handshake_info {
@@ -97,7 +100,7 @@ mod refs_impl {
             refs::Kind::Remote => {
                 match format {
                     OutputFormat::Human => drop(print(out, &map.remote_refs)),
-                    #[cfg(feature = "serde1")]
+                    #[cfg(feature = "serde")]
                     OutputFormat::Json => serde_json::to_writer_pretty(
                         out,
                         &map.remote_refs.into_iter().map(JsonRef::from).collect::<Vec<_>>(),
@@ -224,7 +227,7 @@ mod refs_impl {
         Ok(())
     }
 
-    #[cfg_attr(feature = "serde1", derive(serde::Serialize, serde::Deserialize))]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     pub enum JsonRef {
         Peeled {
             path: String,

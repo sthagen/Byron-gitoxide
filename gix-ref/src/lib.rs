@@ -57,20 +57,15 @@ pub mod peel;
 ///
 pub mod store {
     /// The way a file store handles the reflog
-    #[derive(Debug, PartialOrd, PartialEq, Ord, Eq, Hash, Clone, Copy)]
+    #[derive(Default, Debug, PartialOrd, PartialEq, Ord, Eq, Hash, Clone, Copy)]
     pub enum WriteReflog {
         /// Always write the reflog for all references for ref edits, unconditionally.
         Always,
         /// Write a ref log for ref edits according to the standard rules.
+        #[default]
         Normal,
         /// Never write a ref log.
         Disable,
-    }
-
-    impl Default for WriteReflog {
-        fn default() -> Self {
-            WriteReflog::Normal
-        }
     }
 
     /// A thread-local handle for interacting with a [`Store`][crate::Store] to find and iterate references.
@@ -106,7 +101,7 @@ pub(crate) struct Store {
 
 /// A validated complete and fully qualified referenced reference name, safe to use for all operations.
 #[derive(PartialEq, Eq, Debug, Hash, Ord, PartialOrd, Clone)]
-#[cfg_attr(feature = "serde1", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FullName(pub(crate) BString);
 
 /// A validated complete and fully qualified referenced reference name, safe to use for all operations.
@@ -133,7 +128,7 @@ pub struct Namespace(BString);
 
 /// Denotes the kind of reference.
 #[derive(PartialEq, Eq, Debug, Hash, Ord, PartialOrd, Clone, Copy)]
-#[cfg_attr(feature = "serde1", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Kind {
     /// A ref that points to an object id
     Peeled,
@@ -184,7 +179,7 @@ pub enum Category<'a> {
 
 /// Denotes a ref target, equivalent to [`Kind`], but with mutable data.
 #[derive(PartialEq, Eq, Debug, Hash, Ord, PartialOrd, Clone)]
-#[cfg_attr(feature = "serde1", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Target {
     /// A ref that points to an object id
     Peeled(ObjectId),

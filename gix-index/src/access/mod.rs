@@ -1,6 +1,7 @@
 use std::cmp::Ordering;
 
 use bstr::{BStr, ByteSlice, ByteVec};
+use filetime::FileTime;
 
 use crate::{entry, extension, Entry, PathStorage, State, Version};
 
@@ -13,6 +14,20 @@ impl State {
     /// Return the version used to store this state's information on disk.
     pub fn version(&self) -> Version {
         self.version
+    }
+
+    /// Returns time at which the state was created, indicating its freshness compared to other files on disk.
+    pub fn timestamp(&self) -> FileTime {
+        self.timestamp
+    }
+
+    /// Updates the timestamp of this state, indicating its freshness compared to other files on disk.
+    ///
+    /// Be careful about using this as setting a timestamp without correctly updating the index
+    /// **will cause (file system) race conditions** see racy-git.txt in the git documentation
+    /// for more details.
+    pub fn set_timestamp(&mut self, timestamp: FileTime) {
+        self.timestamp = timestamp
     }
 
     /// Return the kind of hashes used in this instance.
@@ -117,6 +132,12 @@ impl State {
     pub fn entries_mut(&mut self) -> &mut [Entry] {
         &mut self.entries
     }
+
+    /// Return a writable slice to entries and read-access to their path storage at the same time.
+    pub fn entries_mut_and_pathbacking(&mut self) -> (&mut [Entry], &PathStorage) {
+        (&mut self.entries, &self.path_backing)
+    }
+
     /// Return mutable entries along with their paths in an iterator.
     pub fn entries_mut_with_paths(&mut self) -> impl Iterator<Item = (&mut Entry, &BStr)> {
         let paths = &self.path_backing;

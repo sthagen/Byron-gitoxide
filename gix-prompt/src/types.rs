@@ -15,24 +15,19 @@ pub enum Error {
     TtyIo(#[from] std::io::Error),
     #[cfg(unix)]
     #[error("Failed to obtain or set terminal configuration")]
-    TerminalConfiguration(#[from] nix::errno::Errno),
+    TerminalConfiguration(#[from] rustix::io::Errno),
 }
 
 /// The way the user is prompted.
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Mode {
     /// Visibly show user input.
     Visible,
     /// Do not show user input, suitable for sensitive data.
+    #[default]
     Hidden,
     /// Do not prompt the user at all but rather abort with an error. This is useful in conjunction with [Options::askpass].
     Disable,
-}
-
-impl Default for Mode {
-    fn default() -> Self {
-        Mode::Hidden
-    }
 }
 
 /// The options used in `[ask()]`.

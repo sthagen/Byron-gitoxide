@@ -14,7 +14,7 @@ doctest = false
 
 [features]
 ## Data structures implement `serde::Serialize` and `serde::Deserialize`.
-serde1 = [ "serde", "bitflags/serde" ]
+serde = [ "dep:serde", "bitflags/serde" ]
 
 [dependencies]
 serde = { version = "1.0.114", optional = true, default-features = false, features = ["std", "derive"] }
@@ -27,7 +27,7 @@ libc = "0.2.123"
 
 [target.'cfg(windows)'.dependencies]
 gix-path = { version = "^0.7.1", path = "../gix-path" }
-dirs = "5"
+home = "0.5.4"
 windows = { version = "0.48", features = [
     "Win32_Foundation",
     "Win32_Security_Authorization",
