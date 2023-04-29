@@ -1,11 +1,8 @@
-use std::path::Path;
-
 use bstr::{BStr, ByteSlice};
 use gix_glob::pattern::Case;
-use gix_index::entry::Mode;
-use gix_odb::{pack::bundle::write::Options, FindExt};
+use gix_odb::FindExt;
+use gix_worktree::cache::state::ignore::Source;
 use gix_worktree::Cache;
-use tempfile::{tempdir, TempDir};
 
 use crate::hex_to_id;
 
@@ -47,7 +44,7 @@ fn special_exclude_cases_we_handle_differently() {
             Default::default(),
             gix_ignore::Search::from_git_dir(&git_dir, None, &mut buf).unwrap(),
             None,
-            case,
+            Source::WorktreeThenIdMappingIfNotSkipped,
         ),
     );
     let mut cache = Cache::new(&dir, state, case, buf, Default::default());
@@ -68,12 +65,12 @@ fn special_exclude_cases_we_handle_differently() {
         let is_dir = dir.join(&relative_path).metadata().ok().map(|m| m.is_dir());
 
         let platform = cache
-            .at_entry(relative_entry, is_dir, |oid, buf| {
+            .at_entry(relative_entry, is_dir, |_oid, _buf| {
                 Err(std::io::Error::new(std::io::ErrorKind::Other, "unreachable"))
             })
             .unwrap();
         let match_ = platform.matching_exclude_pattern().expect("match all values");
-        let is_excluded = platform.is_excluded();
+        let _is_excluded = platform.is_excluded();
 
         match relative_entry.as_bytes() {
             b"tld" | b"tld/" | b"tld/file" | b"tld/sd" | b"tld/sd/" => {
@@ -93,20 +90,26 @@ fn check_against_baseline() -> crate::Result {
     let user_exclude_path = dir.join("user.exclude");
     assert!(user_exclude_path.is_file());
 
+    // Due to the way our setup differs from gits dynamic stack (which involves trying to read files from disk
+    // by path) we can only test one case baseline, so we require multiple platforms (or filesystems) to run this.
+    let case = if gix_fs::Capabilities::probe("../.git").ignore_case {
+        Case::Fold
+    } else {
+        Case::Sensitive
+    };
     let mut index = gix_index::File::at(git_dir.join("index"), gix_hash::Kind::Sha1, Default::default())?;
     let odb = gix_odb::at(git_dir.join("objects"))?;
-    let case = gix_glob::pattern::Case::Sensitive;
     let state = gix_worktree::cache::State::for_add(
-        Default::default(), // TODO: attribute tests
+        Default::default(),
         gix_worktree::cache::state::Ignore::new(
             gix_ignore::Search::from_overrides(vec!["!force-include"]),
             gix_ignore::Search::from_git_dir(&git_dir, Some(user_exclude_path), &mut buf)?,
             None,
-            case,
+            Source::WorktreeThenIdMappingIfNotSkipped,
         ),
     );
     let paths_storage = index.take_path_backing();
-    let attribute_files_in_index = state.attribute_list_from_index(&index, &paths_storage, case);
+    let attribute_files_in_index = state.id_mappings_from_index(&index, &paths_storage, Default::default(), case);
     assert_eq!(
         attribute_files_in_index,
         vec![(
@@ -154,10 +157,5 @@ fn check_against_baseline() -> crate::Result {
             }
         }
     }
-
-    cache.set_case(Case::Fold);
-    let platform = cache.at_entry("User-file-ANYWHERE", Some(false), |oid, buf| odb.find_blob(oid, buf))?;
-    let m = platform.matching_exclude_pattern().expect("match");
-    assert_eq!(m.pattern.text, "user-file-anywhere");
     Ok(())
 }

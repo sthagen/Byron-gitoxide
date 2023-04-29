@@ -55,8 +55,6 @@ pub mod index {
     pub enum Subcommands {
         /// Validate constraints and assumptions of an index along with its integrity.
         Verify,
-        /// Print all entries to standard output
-        Entries,
         /// Print information about the index structure
         Info {
             /// Do not extract specific extension information to gain only a superficial idea of the index's composition.
@@ -107,7 +105,7 @@ pub mod pack {
             /// Possible values are "none" and "tree-traversal". Default is "none".
             expansion: Option<core::pack::create::ObjectExpansion>,
 
-            #[clap(long, default_value_t = 3, requires = "nondeterministic-count")]
+            #[clap(long, default_value_t = 3, requires = "nondeterministic_count")]
             /// The amount of threads to use when counting and the `--nondeterminisitc-count` flag is set, defaulting
             /// to the globally configured threads.
             ///
@@ -287,13 +285,13 @@ pub mod pack {
 
         #[derive(Debug, clap::Subcommand)]
         pub enum Subcommands {
-            /// Display all entries of a multi-index: <oid> <pack-id> <pack-offset>
+            /// Display all entries of a multi-index as: *oid* *pack-id* *pack-offset*
             Entries,
             /// Print general information about a multi-index file
             Info,
             /// Verify a multi-index quickly without inspecting objects themselves
             Verify,
-            /// Create a multi-pack index from one or more pack index files, overwriting possibloy existing files.
+            /// Create a multi-pack index from one or more pack index files, overwriting possibly existing files.
             Create {
                 /// Paths to the pack index files to read (with .idx extension).
                 ///

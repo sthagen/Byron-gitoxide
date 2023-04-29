@@ -5,7 +5,21 @@ use bstr::{BStr, ByteSlice};
 use gix_hash::oid;
 
 use super::Cache;
-use crate::PathOidMapping;
+use crate::PathIdMapping;
+
+/// Various aggregate numbers collected from when the corresponding [`Cache`] was instantiated.
+#[derive(Default, Clone, Copy, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct Statistics {
+    /// The amount of platforms created to do further matching.
+    pub platforms: usize,
+    /// Information about the stack delegate.
+    pub delegate: delegate::Statistics,
+    /// Information about attributes
+    pub attributes: state::attributes::Statistics,
+    /// Information about the ignore stack
+    pub ignore: state::ignore::Statistics,
+}
 
 #[derive(Clone)]
 pub enum State {
@@ -13,10 +27,6 @@ pub enum State {
     CreateDirectoryAndAttributesStack {
         /// If there is a symlink or a file in our path, try to unlink it before creating the directory.
         unlink_on_collision: bool,
-
-        /// just for testing
-        #[cfg(debug_assertions)]
-        test_mkdir_calls: usize,
         /// State to handle attribute information
         attributes: state::Attributes,
     },
@@ -31,50 +41,25 @@ pub enum State {
     IgnoreStack(state::Ignore),
 }
 
-#[cfg(debug_assertions)]
-impl Cache {
-    pub fn set_case(&mut self, case: gix_glob::pattern::Case) {
-        self.case = case;
-    }
-    pub fn num_mkdir_calls(&self) -> usize {
-        match self.state {
-            State::CreateDirectoryAndAttributesStack { test_mkdir_calls, .. } => test_mkdir_calls,
-            _ => 0,
-        }
-    }
-
-    pub fn reset_mkdir_calls(&mut self) {
-        if let State::CreateDirectoryAndAttributesStack { test_mkdir_calls, .. } = &mut self.state {
-            *test_mkdir_calls = 0;
-        }
-    }
-
-    pub fn unlink_on_collision(&mut self, value: bool) {
-        if let State::CreateDirectoryAndAttributesStack {
-            unlink_on_collision, ..
-        } = &mut self.state
-        {
-            *unlink_on_collision = value;
-        }
-    }
-}
-
 #[must_use]
 pub struct Platform<'a> {
     parent: &'a Cache,
     is_dir: Option<bool>,
 }
 
+/// Initialization
 impl Cache {
-    /// Create a new instance with `worktree_root` being the base for all future paths we handle, assuming it to be valid which includes
-    /// symbolic links to be included in it as well.
-    /// The `case` configures attribute and exclusion query case sensitivity.
+    /// Create a new instance with `worktree_root` being the base for all future paths we match.
+    /// `state` defines the capabilities of the cache.
+    /// The `case` configures attribute and exclusion case sensitivity at *query time*, which should match the case that
+    /// `state` might be configured with.
+    /// `buf` is used when reading files, and `id_mappings` should have been created with [State::id_mappings_from_index()].
     pub fn new(
         worktree_root: impl Into<PathBuf>,
         state: State,
         case: gix_glob::pattern::Case,
         buf: Vec<u8>,
-        attribute_files_in_index: Vec<PathOidMapping>,
+        id_mappings: Vec<PathIdMapping>,
     ) -> Self {
         let root = worktree_root.into();
         Cache {
@@ -82,15 +67,21 @@ impl Cache {
             state,
             case,
             buf,
-            attribute_files_in_index,
+            id_mappings,
+            statistics: Statistics::default(),
         }
     }
+}
 
-    /// Append the `relative` path to the root directory the cache contains and efficiently create leading directories
-    /// unless `is_dir` is known (`Some(…)`) then `relative` points to a directory itself in which case the entire resulting
+/// Entry points for attribute query
+impl Cache {
+    /// Append the `relative` path to the root directory of the cache and efficiently create leading directories, while assuring that no
+    /// symlinks are in that path.
+    /// Unless `is_dir` is known with `Some(…)`, then `relative` points to a directory itself in which case the entire resulting
     /// path is created as directory. If it's not known it is assumed to be a file.
+    /// `find` maybe used to lookup objects from an [id mapping][crate::cache::State::id_mappings_from_index()], with mappnigs
     ///
-    /// Provide access to cached information for that `relative` entry via the platform returned.
+    /// Provide access to cached information for that `relative` path via the returned platform.
     pub fn at_path<Find, E>(
         &mut self,
         relative: impl AsRef<Path>,
@@ -101,19 +92,30 @@ impl Cache {
         Find: for<'a> FnMut(&oid, &'a mut Vec<u8>) -> Result<gix_object::BlobRef<'a>, E>,
         E: std::error::Error + Send + Sync + 'static,
     {
-        let mut delegate = platform::StackDelegate {
+        self.statistics.platforms += 1;
+        let mut delegate = StackDelegate {
             state: &mut self.state,
             buf: &mut self.buf,
             is_dir: is_dir.unwrap_or(false),
-            attribute_files_in_index: &self.attribute_files_in_index,
+            id_mappings: &self.id_mappings,
             find,
+            case: self.case,
+            statistics: &mut self.statistics,
         };
         self.stack.make_relative_path_current(relative, &mut delegate)?;
         Ok(Platform { parent: self, is_dir })
     }
 
-    /// **Panics** on illformed UTF8 in `relative`
-    // TODO: more docs
+    /// Obtain a platform for lookups from a repo-`relative` path, typically obtained from an index entry. `is_dir` should reflect
+    /// whether it's a directory or not, or left at `None` if unknown.
+    /// `find` maybe used to lookup objects from an [id mapping][crate::cache::State::id_mappings_from_index()].
+    /// All effects are similar to [`at_path()`][Self::at_path()].
+    ///
+    /// If `relative` ends with `/` and `is_dir` is `None`, it is automatically assumed to be a directory.
+    ///
+    /// ### Panics
+    ///
+    /// on illformed UTF8 in `relative`
     pub fn at_entry<'r, Find, E>(
         &mut self,
         relative: impl Into<&'r BStr>,
@@ -130,9 +132,33 @@ impl Cache {
         self.at_path(
             relative_path,
             is_dir.or_else(|| relative.ends_with_str("/").then_some(true)),
-            // is_dir,
             find,
         )
+    }
+}
+
+/// Mutation
+impl Cache {
+    /// Reset the statistics after returning them.
+    pub fn take_statistics(&mut self) -> Statistics {
+        std::mem::take(&mut self.statistics)
+    }
+
+    /// Return our state for applying changes.
+    pub fn state_mut(&mut self) -> &mut State {
+        &mut self.state
+    }
+}
+
+/// Access
+impl Cache {
+    /// Return the statistics we gathered thus far.
+    pub fn statistics(&self) -> &Statistics {
+        &self.statistics
+    }
+    /// Return the state for introspection.
+    pub fn state(&self) -> &State {
+        &self.state
     }
 
     /// Return the base path against which all entries or paths should be relative to when querying.
@@ -142,6 +168,10 @@ impl Cache {
         self.stack.root()
     }
 }
+
+///
+pub mod delegate;
+use delegate::StackDelegate;
 
 mod platform;
 ///
