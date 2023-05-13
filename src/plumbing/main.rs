@@ -13,6 +13,7 @@ use gitoxide_core as core;
 use gitoxide_core::pack::verify;
 use gix::bstr::io::BufReadExt;
 
+use crate::plumbing::options::attributes;
 use crate::{
     plumbing::{
         options::{commit, config, credential, exclude, free, index, mailmap, odb, revision, tree, Args, Subcommands},
@@ -831,8 +832,64 @@ pub fn main() -> Result<()> {
                 },
             ),
         },
+        Subcommands::Attributes(cmd) => match cmd {
+            attributes::Subcommands::Query { statistics, pathspecs } => prepare_and_run(
+                "attributes-query",
+                verbose,
+                progress,
+                progress_keep_open,
+                None,
+                move |_progress, out, err| {
+                    use gix::bstr::ByteSlice;
+                    core::repository::attributes::query(
+                        repository(Mode::Strict)?,
+                        if pathspecs.is_empty() {
+                            Box::new(
+                                stdin_or_bail()?
+                                    .byte_lines()
+                                    .filter_map(Result::ok)
+                                    .filter_map(|line| gix::path::Spec::from_bytes(line.as_bstr())),
+                            ) as Box<dyn Iterator<Item = gix::path::Spec>>
+                        } else {
+                            Box::new(pathspecs.into_iter())
+                        },
+                        out,
+                        err,
+                        core::repository::attributes::query::Options { format, statistics },
+                    )
+                },
+            ),
+            attributes::Subcommands::ValidateBaseline { statistics, no_ignore } => prepare_and_run(
+                "attributes-validate-baseline",
+                auto_verbose,
+                progress,
+                progress_keep_open,
+                None,
+                move |progress, out, err| {
+                    use gix::bstr::ByteSlice;
+                    core::repository::attributes::validate_baseline(
+                        repository(Mode::StrictWithGitInstallConfig)?,
+                        stdin_or_bail().ok().map(|stdin| {
+                            stdin
+                                .byte_lines()
+                                .filter_map(Result::ok)
+                                .filter_map(|line| gix::path::Spec::from_bytes(line.as_bstr()))
+                        }),
+                        progress,
+                        out,
+                        err,
+                        core::repository::attributes::validate_baseline::Options {
+                            format,
+                            statistics,
+                            ignore: !no_ignore,
+                        },
+                    )
+                },
+            ),
+        },
         Subcommands::Exclude(cmd) => match cmd {
             exclude::Subcommands::Query {
+                statistics,
                 patterns,
                 pathspecs,
                 show_ignore_patterns,
@@ -842,7 +899,7 @@ pub fn main() -> Result<()> {
                 progress,
                 progress_keep_open,
                 None,
-                move |_progress, out, _err| {
+                move |_progress, out, err| {
                     use gix::bstr::ByteSlice;
                     core::repository::exclude::query(
                         repository(Mode::Strict)?,
@@ -857,10 +914,12 @@ pub fn main() -> Result<()> {
                             Box::new(pathspecs.into_iter())
                         },
                         out,
+                        err,
                         core::repository::exclude::query::Options {
                             format,
                             show_ignore_patterns,
                             overrides: patterns,
+                            statistics,
                         },
                     )
                 },
