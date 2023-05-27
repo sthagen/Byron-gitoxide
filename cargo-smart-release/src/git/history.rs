@@ -103,7 +103,7 @@ pub fn crate_ref_segments<'h>(
         let refs = ctx.repo.references()?;
         match tag_prefix {
             Some(prefix) => BTreeMap::from_iter(
-                refs.prefixed(PathBuf::from(format!("refs/tags/{}-", prefix)))?
+                refs.prefixed(PathBuf::from(format!("refs/tags/{prefix}-")))?
                     .peeled()
                     .filter_map(|r| r.ok().map(|r| r.detach()))
                     .filter(|r| is_tag_name(prefix, strip_tag_path(r.name.as_ref())))
@@ -132,20 +132,8 @@ pub fn crate_ref_segments<'h>(
     };
 
     let dir = ctx.repo_relative_path(package);
-    let mut filter = dir
-        .map(|dir| {
-            let mut components = dir.components().collect::<Vec<_>>();
-            match components.len() {
-                0 => unreachable!("BUG: it's None if empty"),
-                1 => Filter::Fast {
-                    name: components.pop().map(component_to_bytes).expect("exactly one").into(),
-                },
-                _ => Filter::Slow {
-                    components: components.into_iter().map(component_to_bytes).collect(),
-                },
-            }
-        })
-        .unwrap_or_else(|| {
+    let mut filter = dir.map_or_else(
+        || {
             if ctx.meta.workspace_members.len() == 1 {
                 Filter::None
             } else {
@@ -158,9 +146,22 @@ pub fn crate_ref_segments<'h>(
                     name: Cow::Borrowed(b"src"),
                 }
             }
-        });
+        },
+        |dir| {
+            let mut components = dir.components().collect::<Vec<_>>();
+            match components.len() {
+                0 => unreachable!("BUG: it's None if empty"),
+                1 => Filter::Fast {
+                    name: components.pop().map(component_to_bytes).expect("exactly one").into(),
+                },
+                _ => Filter::Slow {
+                    components: components.into_iter().map(component_to_bytes).collect(),
+                },
+            }
+        },
+    );
 
-    for item in history.items.iter() {
+    for item in &history.items {
         match tags_by_commit.remove(&item.id) {
             None => add_item_if_package_changed(ctx, &mut segment, &mut filter, item, &history.data_by_tree_id)?,
             Some(next_ref) => {
@@ -249,7 +250,7 @@ fn add_item_if_package_changed<'a>(
                     }
                     history.push(item)
                 }
-                (None, Some(_)) | (None, None) => {}
+                (None, _) => {}
             };
         }
         Filter::Slow { ref components } => {
@@ -269,7 +270,7 @@ fn add_item_if_package_changed<'a>(
                     }
                 }
                 (Some(_), None) => history.push(item),
-                (None, Some(_)) | (None, None) => {}
+                (None, _) => {}
             };
         }
     };

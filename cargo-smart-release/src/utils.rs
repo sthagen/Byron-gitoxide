@@ -60,10 +60,7 @@ pub fn is_top_level_package(manifest_path: &Utf8Path, repo: &gix::Repository) ->
 }
 
 pub fn version_req_unset_or_default(req: &VersionReq) -> bool {
-    req.comparators
-        .last()
-        .map(|comp| comp.op == semver::Op::Caret)
-        .unwrap_or(true)
+    req.comparators.last().map_or(true, |comp| comp.op == semver::Op::Caret)
 }
 
 pub fn package_eq_dependency_ignore_dev_without_version(package: &Package, dependency: &Dependency) -> bool {
@@ -114,8 +111,8 @@ pub fn tag_name(package: &Package, version: &semver::Version, repo: &gix::Reposi
 
 fn tag_name_inner(package_name: Option<&str>, version: &semver::Version) -> String {
     match package_name {
-        Some(name) => format!("{}-v{}", name, version),
-        None => format!("v{}", version),
+        Some(name) => format!("{name}-v{version}"),
+        None => format!("v{version}"),
     }
 }
 

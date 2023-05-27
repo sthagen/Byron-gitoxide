@@ -168,8 +168,7 @@ fn commit_locks_and_generate_bail_message(
                     None
                 } else {
                     Some(format!(
-                        "Write changelog entries for crate(s) {} and try again",
-                        names_of_crates_in_need_of_changelog_entry
+                        "Write changelog entries for crate(s) {names_of_crates_in_need_of_changelog_entry} and try again"
                     ))
                 }
             })
@@ -322,12 +321,10 @@ fn generate_commit_message(
             } else {
                 let names_and_versions = names_and_versions(safety_bumped_packages);
                 match safety_bumped_packages.len() {
-                    1 => format!(", safety bump {}", names_and_versions).into(),
-                    num_crates => format!(
-                        ", safety bump {} crates\n\nSAFETY BUMP: {}",
-                        num_crates, names_and_versions
-                    )
-                    .into(),
+                    1 => format!(", safety bump {names_and_versions}").into(),
+                    num_crates => {
+                        format!(", safety bump {num_crates} crates\n\nSAFETY BUMP: {names_and_versions}").into()
+                    }
                 }
             }
         }
@@ -350,7 +347,7 @@ fn generate_commit_message(
                 num_logs,
                 match num_new {
                     0 => Cow::Borrowed(""),
-                    num_new => format!("({} new) ", num_new).into(),
+                    num_new => format!("({num_new} new) ").into(),
                 }
             )
             .into(),
@@ -488,7 +485,7 @@ fn gather_changelog_data<'meta>(
                 capitalize_commit,
             )?;
             lock.with_mut(|file| file.write_all(write_buf.as_bytes()))?;
-            *made_change |= previous_content.map(|previous| write_buf != previous).unwrap_or(true);
+            *made_change |= previous_content.map_or(true, |previous| write_buf != previous);
             pending_changelogs.push((publishee, log_init_state.is_modified(), lock));
             release_section_by_publishee.insert(publishee.name.as_str(), log.take_recent_release_section());
         }
@@ -537,7 +534,7 @@ fn set_version_and_update_package_dependency(
                     let force_update = conservative_pre_release_version_handling
                         && version::is_pre_release(new_version) // setting the lower bound unnecessarily can be harmful
                         // don't claim to be conservative if this is necessary anyway
-                        && req_as_version(&version_req).map(|req_version|!version::rhs_is_breaking_bump_for_lhs(&req_version, new_version)).unwrap_or(false);
+                        && req_as_version(&version_req).map_or(false, |req_version|!version::rhs_is_breaking_bump_for_lhs(&req_version, new_version));
                     if !version_req.matches(new_version) || force_update {
                         if !version_req_unset_or_default(&version_req) {
                             bail!(
@@ -547,7 +544,7 @@ fn set_version_and_update_package_dependency(
                                 current_version_req
                             );
                         }
-                        let new_version = format!("^{}", new_version);
+                        let new_version = format!("^{new_version}");
                         if version_req.to_string() != new_version {
                             log::trace!(
                                 "Pending '{}' {}manifest {} update: '{} = \"{}\"' (from {})",
@@ -598,7 +595,7 @@ fn find_dependency_tables(
                             move |(k, v)| match DEP_TABLES.iter().find(|dtn| *dtn == &k.get()) {
                                 Some(dtn) => v.as_table_like_mut().map({
                                     let target_name = target_name.clone();
-                                    move |t| (t, format!("{} ({})", dtn, target_name).into())
+                                    move |t| (t, format!("{dtn} ({target_name})").into())
                                 }),
                                 None => None,
                             }

@@ -412,7 +412,7 @@ where
         .expect("at least one commit at this point");
     if show_pii {
         results_by_hours.sort_by(|a, b| a.hours.partial_cmp(&b.hours).unwrap_or(std::cmp::Ordering::Equal));
-        for entry in results_by_hours.iter() {
+        for entry in &results_by_hours {
             entry.write_to(
                 total_hours,
                 file_stats.then_some(total_files),
@@ -459,10 +459,10 @@ where
         )?;
     }
     if ignored_bot_commits != 0 {
-        writeln!(out, "commits by bots: {}", ignored_bot_commits)?;
+        writeln!(out, "commits by bots: {ignored_bot_commits}")?;
     }
     if needs_stats && skipped_merge_commits != 0 {
-        writeln!(out, "stats omitted for {} merge commits", skipped_merge_commits)?;
+        writeln!(out, "stats omitted for {skipped_merge_commits} merge commits")?;
     }
     assert_eq!(
         total_commits,
