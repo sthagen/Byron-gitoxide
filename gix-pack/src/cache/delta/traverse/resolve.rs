@@ -1,8 +1,9 @@
-use std::sync::atomic::{AtomicBool, AtomicIsize};
-use std::{collections::BTreeMap, sync::atomic::Ordering};
+use std::{
+    collections::BTreeMap,
+    sync::atomic::{AtomicBool, AtomicIsize, Ordering},
+};
 
-use gix_features::progress::Progress;
-use gix_features::{threading, zlib};
+use gix_features::{progress::Progress, threading, zlib};
 
 use crate::{
     cache::delta::{
@@ -405,11 +406,18 @@ fn set_len(v: &mut Vec<u8>, new_len: usize) {
 
 fn decompress_all_at_once_with(b: &[u8], decompressed_len: usize, out: &mut Vec<u8>) -> Result<(), Error> {
     set_len(out, decompressed_len);
-    zlib::Inflate::default()
-        .once(b, out)
-        .map_err(|err| Error::ZlibInflate {
+    use std::cell::RefCell;
+    thread_local! {
+        pub static INFLATE: RefCell<zlib::Inflate> = RefCell::new(zlib::Inflate::default());
+    }
+
+    INFLATE.with(|inflate| {
+        let mut inflate = inflate.borrow_mut();
+        inflate.reset();
+        inflate.once(b, out).map_err(|err| Error::ZlibInflate {
             source: err,
             message: "Failed to decompress entry",
-        })?;
+        })
+    })?;
     Ok(())
 }

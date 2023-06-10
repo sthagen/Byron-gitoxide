@@ -68,6 +68,34 @@ mod keys {
             .validate("https://github.com/byron/gitoxide".into())
             .is_ok());
     }
+
+    #[test]
+    fn unsigned_integer() {
+        for valid in [0, 1, 100_124] {
+            assert!(gix::config::tree::Core::DELTA_BASE_CACHE_LIMIT
+                .validate(valid.to_string().as_bytes().into())
+                .is_ok());
+        }
+
+        for invalid in [-1, -100] {
+            assert_eq!(
+                gix::config::tree::Core::DELTA_BASE_CACHE_LIMIT
+                    .validate(invalid.to_string().as_str().into())
+                    .unwrap_err()
+                    .to_string(),
+                "cannot use sign for unsigned integer"
+            );
+        }
+
+        let out_of_bounds = ((i64::MAX as u64) + 1).to_string();
+        assert_eq!(
+            gix::config::tree::Core::DELTA_BASE_CACHE_LIMIT
+                .validate(out_of_bounds.as_bytes().into())
+                .unwrap_err()
+                .to_string(),
+            "Could not decode '9223372036854775808': Integers needs to be positive or negative numbers which may have a suffix like 1k, 42, or 50G"
+        );
+    }
 }
 
 mod branch {
@@ -118,9 +146,12 @@ mod ssh {
 }
 
 mod fetch {
+    use gix::{
+        config::tree::{Fetch, Key},
+        remote::fetch::negotiate::Algorithm,
+    };
+
     use crate::config::tree::bcow;
-    use gix::config::tree::{Fetch, Key};
-    use gix::remote::fetch::negotiate::Algorithm;
 
     #[test]
     fn algorithm() -> crate::Result {
@@ -382,8 +413,9 @@ mod core {
 }
 
 mod index {
-    use crate::config::tree::bcow;
     use gix::config::tree::{Index, Key};
+
+    use crate::config::tree::bcow;
 
     #[test]
     fn threads() {
@@ -482,17 +514,16 @@ mod pack {
     }
 }
 
-#[cfg(any(feature = "blocking-network-client", feature = "async-network-client"))]
 mod protocol {
-    use gix::{
-        config::tree::{protocol, Key, Protocol},
-        remote::url::scheme_permission::Allow,
-    };
+    use gix::config::tree::{Key, Protocol};
 
-    use crate::config::tree::bcow;
-
+    #[cfg(any(feature = "blocking-network-client", feature = "async-network-client"))]
     #[test]
     fn allow() -> crate::Result {
+        use gix::{config::tree::protocol, remote::url::scheme_permission::Allow};
+
+        use crate::config::tree::bcow;
+
         for (key, protocol_name_parameter) in [
             (&Protocol::ALLOW, None),
             (&protocol::NameParameter::ALLOW, Some("http")),
@@ -517,6 +548,43 @@ mod protocol {
             );
         }
         Ok(())
+    }
+
+    #[test]
+    fn version() {
+        for valid in [0, 1, 2] {
+            assert!(Protocol::VERSION.validate(valid.to_string().as_str().into()).is_ok());
+        }
+
+        assert_eq!(
+            Protocol::VERSION.validate("5".into()).unwrap_err().to_string(),
+            "protocol version 5 is unknown"
+        );
+
+        #[cfg(any(feature = "blocking-network-client", feature = "async-network-client"))]
+        {
+            for (valid, expected) in [
+                (None, gix_protocol::transport::Protocol::V2),
+                (Some(0), gix_protocol::transport::Protocol::V0),
+                (Some(1), gix_protocol::transport::Protocol::V1),
+                (Some(2), gix_protocol::transport::Protocol::V2),
+            ] {
+                assert_eq!(
+                    Protocol::VERSION
+                        .try_into_protocol_version(valid.map(Ok))
+                        .expect("valid version"),
+                    expected
+                );
+            }
+
+            assert_eq!(
+                Protocol::VERSION
+                    .try_into_protocol_version(Some(Ok(5)))
+                    .unwrap_err()
+                    .to_string(),
+                "The key \"protocol.version=5\" was invalid"
+            );
+        }
     }
 }
 

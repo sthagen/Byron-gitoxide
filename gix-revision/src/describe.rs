@@ -148,8 +148,10 @@ pub(crate) mod function {
     use gix_hash::oid;
 
     use super::{Error, Outcome};
-    use crate::describe::{CommitTime, Flags, Options, MAX_CANDIDATES};
-    use crate::{Graph, PriorityQueue};
+    use crate::{
+        describe::{CommitTime, Flags, Options, MAX_CANDIDATES},
+        Graph, PriorityQueue,
+    };
 
     /// Given a `commit` id, traverse the commit `graph` and collect candidate names from the `name_by_oid` mapping to produce
     /// an `Outcome`, which converted [`into_format()`][Outcome::into_format()] will produce a typical `git describe` string.
@@ -198,7 +200,7 @@ pub(crate) mod function {
         graph.clear();
         graph.insert(commit.to_owned(), 0u32);
 
-        while let Some(commit) = queue.pop() {
+        while let Some(commit) = queue.pop_value() {
             commits_seen += 1;
             let flags = if let Some(name) = name_by_oid.get(&commit) {
                 if candidates.len() < max_candidates {
@@ -322,12 +324,12 @@ pub(crate) mod function {
         first_parent: bool,
     ) -> Result<u32, Error> {
         let mut commits_seen = 0;
-        while let Some(commit) = queue.pop() {
+        while let Some(commit) = queue.pop_value() {
             commits_seen += 1;
             let flags = graph[&commit];
             if (flags & best_candidate.identity_bit) == best_candidate.identity_bit {
                 if queue
-                    .iter_random()
+                    .iter_unordered()
                     .all(|id| (graph[id] & best_candidate.identity_bit) == best_candidate.identity_bit)
                 {
                     break;

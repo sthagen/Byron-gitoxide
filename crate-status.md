@@ -233,6 +233,7 @@ Check out the [performance discussion][gix-traverse-performance] as well.
   * [x] nested traversal
 * **commits**
   * [x] ancestor graph traversal similar to `git revlog`
+  * [ ] `commitgraph` support
 * [x] API documentation
     * [ ] Examples
     
@@ -389,9 +390,9 @@ A mechanism to associate metadata with any object, and keep revisions of it usin
 
 ### gix-negotiate
 * **algorithms**
-  - [ ] `noop`
-  - [ ] `consecutive`
-  - [ ] `skipping`
+  - [x] `noop`
+  - [x] `consecutive`
+  - [x] `skipping`
 
 ### gix-fetchhead
 * [ ] parse `FETCH_HEAD` information back entirely
@@ -476,11 +477,13 @@ Make it the best-performing implementation and the most convenient one.
  
 ### gix-revision
 * [x] `describe()` (similar to `git name-rev`)
-* [x] primitives to help with graph traversal, along with commit-graph acceleration.
 * parse specifications 
     * [x] parsing and navigation
     * [x] revision ranges
     * [ ] full date parsing support (depends on `gix-date`)
+ 
+### gix-revision
+* [x] primitives to help with graph traversal, along with commit-graph acceleration.
  
 ### gix-submodule
 * CRUD for submodules
@@ -551,6 +554,7 @@ The git staging area.
 
 * [x] read-only access
     * [x] Graph lookup of commit information to obtain timestamps, generation and parents, and extra edges
+    * [ ] [Corrected generation dates](https://github.com/git/git/commit/e8b63005c48696a26f976f5f9b0ccaf1983e439d)
     * [ ] Bloom filter index
     * [ ] Bloom filter data
 * [ ] create and update graphs and graph files
@@ -669,8 +673,9 @@ See its [README.md](https://github.com/Byron/gitoxide/blob/main/gix-lock/README.
         * [x] fetch
            * [x] shallow (remains shallow, options to adjust shallow boundary)
            * [ ] a way to auto-explode small packs to avoid them to pile up
-           * [ ] 'ref-in-want'
-           * [ ] standard negotiation algorithms (right now we only have a 'naive' one)
+           * [x] 'ref-in-want'
+           * [ ] 'wanted-ref'
+           * [x] standard negotiation algorithms `consecutive`, `skipping` and `noop`.
         * [ ] push
         * [x] ls-refs
         * [x] ls-refs with ref-spec filter

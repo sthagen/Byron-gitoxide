@@ -7,21 +7,23 @@ pub struct Options {
 }
 
 pub(crate) mod function {
-    use std::collections::BTreeSet;
-    use std::io;
-    use std::io::{BufRead, Write};
-    use std::iter::Peekable;
-    use std::ops::Sub;
-    use std::path::PathBuf;
-    use std::sync::atomic::Ordering;
+    use std::{
+        collections::BTreeSet,
+        io,
+        io::{BufRead, Write},
+        iter::Peekable,
+        ops::Sub,
+        path::PathBuf,
+        sync::atomic::Ordering,
+    };
 
     use anyhow::{anyhow, bail};
-    use gix::odb::FindExt;
-    use gix::Progress;
+    use gix::{odb::FindExt, Progress};
 
-    use crate::repository::attributes::query::{attributes_cache, index_on_demand};
-    use crate::repository::attributes::validate_baseline::Options;
-    use crate::OutputFormat;
+    use crate::{
+        repository::attributes::{query::attributes_cache, validate_baseline::Options},
+        OutputFormat,
+    };
 
     pub fn validate_baseline(
         repo: gix::Repository,
@@ -54,7 +56,7 @@ pub(crate) mod function {
                 let repo = repo.clone();
                 let num_entries = &mut num_entries;
                 move || -> anyhow::Result<_> {
-                    let index = index_on_demand(&repo)?.into_owned();
+                    let index = repo.index_or_load_from_head()?.into_owned();
                     let (entries, path_backing) = index.into_parts().0.into_entries();
                     *num_entries = Some(entries.len());
                     let iter = Box::new(entries.into_iter().map(move |e| {
@@ -100,7 +102,7 @@ pub(crate) mod function {
                     });
 
                     let stdout = std::io::BufReader::new(child.stdout.take().expect("we configured it"));
-                    let mut lines = stdout.lines().filter_map(Result::ok).peekable();
+                    let mut lines = stdout.lines().map_while(Result::ok).peekable();
                     while let Some(baseline) = parse_attributes(&mut lines) {
                         if tx_base.send(baseline).is_err() {
                             child.kill().ok();
@@ -350,8 +352,7 @@ pub(crate) mod function {
     }
 
     fn parse_attribute_line(line: &str) -> Option<(&str, gix::attrs::AssignmentRef<'_>)> {
-        use gix::attrs::StateRef;
-        use gix::bstr::ByteSlice;
+        use gix::{attrs::StateRef, bstr::ByteSlice};
 
         let mut prev = None;
         let mut tokens = line.splitn(3, |b| {

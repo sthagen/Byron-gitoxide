@@ -1,6 +1,6 @@
+use std::{cmp::Ordering, collections::BinaryHeap};
+
 use crate::PriorityQueue;
-use std::cmp::Ordering;
-use std::collections::BinaryHeap;
 
 pub(crate) struct Item<K, T> {
     key: K,
@@ -39,6 +39,29 @@ impl<K: Ord, T> Ord for Item<K, T> {
     }
 }
 
+impl<K, T> Clone for Item<K, T>
+where
+    K: Clone,
+    T: Clone,
+{
+    fn clone(&self) -> Self {
+        Item {
+            key: self.key.clone(),
+            value: self.value.clone(),
+        }
+    }
+}
+
+impl<K, T> Clone for PriorityQueue<K, T>
+where
+    K: Clone + Ord,
+    T: Clone,
+{
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
 impl<K: Ord, T> PriorityQueue<K, T> {
     /// Create a new instance.
     pub fn new() -> Self {
@@ -49,19 +72,39 @@ impl<K: Ord, T> PriorityQueue<K, T> {
         self.0.push(Item { key, value });
     }
 
-    /// Pop the highest-priority item off the queue.
-    pub fn pop(&mut self) -> Option<T> {
+    /// Pop the highest-priority item value off the queue.
+    pub fn pop_value(&mut self) -> Option<T> {
         self.0.pop().map(|t| t.value)
     }
 
+    /// Pop the highest-priority item key and value off the queue.
+    pub fn pop(&mut self) -> Option<(K, T)> {
+        self.0.pop().map(|t| (t.key, t.value))
+    }
+
     /// Iterate all items ordered from highest to lowest priority.
-    pub fn iter_random(&self) -> impl Iterator<Item = &T> {
+    pub fn iter_unordered(&self) -> impl Iterator<Item = &T> {
         self.0.iter().map(|t| &t.value)
+    }
+
+    /// Turn this instance into an iterator over its keys and values in arbitrary order.
+    pub fn into_iter_unordered(self) -> impl Iterator<Item = (K, T)> {
+        self.0.into_vec().into_iter().map(|item| (item.key, item.value))
     }
 
     /// Return true if the queue is empty.
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+
+    /// Returns the greatest item `(K, T)` tuple, as ordered by `K`, if the queue is not empty, without removing it.
+    pub fn peek(&self) -> Option<(&K, &T)> {
+        self.0.peek().map(|e| (&e.key, &e.value))
+    }
+
+    /// Drop all items from the queue, without changing its capacity.
+    pub fn clear(&mut self) {
+        self.0.clear()
     }
 }
 

@@ -5,6 +5,130 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.33.2 (2023-06-10)
+
+### New Features
+
+ - <csr-id-c8e8b9fc55486215bda4c380d3c84a6c6ae5f602/> support `capabilities^{}` syntax to announce caps in empty repos under V1
+   This is supposed to work for existing code, but doesn't in our case as we really
+   want to associate a branch. In this case, we can ignore the ref as it's a null
+   hash anyway.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 2 commits contributed to the release.
+ - 2 days passed between releases.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Prepare changelogs prior to release ([`298f3d7`](https://github.com/Byron/gitoxide/commit/298f3d7359c5b183314d8c584e45dcdd559d88b3))
+    - Support `capabilities^{}` syntax to announce caps in empty repos under V1 ([`c8e8b9f`](https://github.com/Byron/gitoxide/commit/c8e8b9fc55486215bda4c380d3c84a6c6ae5f602))
+</details>
+
+## 0.33.1 (2023-06-07)
+
+### Bug Fixes
+
+ - <csr-id-88670c2ff995e4478f4a40b2733c6c8ca811fa15/> assure we don't stop early on NAK if READY was sent to handle V1 specialty.
+   Seeing READY means a pack will follow, which is exactly the kind of knowledge we want.
+   Thus we now either listen to the client OR to what the server says.
+   
+   Note that this remedy relies on `multi-ack-detailed`, which some very old servers might
+   not support. For those we would be out-of-luck, but that seems acceptable.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 2 commits contributed to the release.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 1 unique issue was worked on: [#882](https://github.com/Byron/gitoxide/issues/882)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#882](https://github.com/Byron/gitoxide/issues/882)**
+    - Assure we don't stop early on NAK if READY was sent to handle V1 specialty. ([`88670c2`](https://github.com/Byron/gitoxide/commit/88670c2ff995e4478f4a40b2733c6c8ca811fa15))
+ * **Uncategorized**
+    - Release gix-protocol v0.33.1 ([`9c99ed3`](https://github.com/Byron/gitoxide/commit/9c99ed30162081a7f26d72e0ed26966ff62d2b1c))
+</details>
+
+## 0.33.0 (2023-06-06)
+
+### New Features
+
+ - <csr-id-877aa2921d8491d301945f86d5a69382e40fb081/> Add `fetch::Arguments::is_stateless()` to aid proper use of arguments.
+   When arguments are used, haves are reset every round in stateless protocols, while
+   everything else is repeated. However, this also means that previously confirmed common
+   commits aren't repeated unless this is specifically implemented by the user of `Arguments`.
+   
+   That caller can now easily determine if negotiations have to be compensated for.
+   
+   Please note that `Arguments` explicitly doesn't implement repeating of all prior arguments, which
+   would also repeat a lot of *in-vain* haves.
+
+### Bug Fixes
+
+ - <csr-id-c5dc7b4c43f07c04cdfb218de03e6725ff3fdb64/> `include-tag` is now properly handled in V1 fetch arguments
+   Previously it would be added like it's V2 arguments, which makes using it
+   in V1 impossible.
+
+### Bug Fixes (BREAKING)
+
+ - <csr-id-6a3c02131c9ebca911be5f751e5a6c67fbdbf609/> make V1 stateless negotations work.
+   This is done by working around another V1 negotiation oddity
+   by exploiting client-side knowledge. For very old servers, we probably
+   wouldn't be able to do multi-rounds without dead-locking, but with
+   recent-enough (probably 10 years or so) old git servers all should
+   work fine.
+   
+   All this to not actually have to implement the V1 strangeness, allowing
+   our code to work smoothly with all permutations of stateless/stateful connections
+   and V1/V2 interactions, with a single high-level implementation essentially.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 13 commits contributed to the release over the course of 12 calendar days.
+ - 40 days passed between releases.
+ - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release gix-date v0.5.1, gix-hash v0.11.2, gix-features v0.30.0, gix-actor v0.21.0, gix-path v0.8.1, gix-glob v0.8.0, gix-quote v0.4.4, gix-attributes v0.13.0, gix-chunk v0.4.2, gix-commitgraph v0.16.0, gix-config-value v0.12.1, gix-fs v0.2.0, gix-tempfile v6.0.0, gix-utils v0.1.2, gix-lock v6.0.0, gix-validate v0.7.5, gix-object v0.30.0, gix-ref v0.30.0, gix-sec v0.8.1, gix-config v0.23.0, gix-command v0.2.5, gix-prompt v0.5.1, gix-url v0.19.0, gix-credentials v0.15.0, gix-diff v0.30.0, gix-discover v0.19.0, gix-hashtable v0.2.1, gix-ignore v0.3.0, gix-bitmap v0.2.4, gix-traverse v0.26.0, gix-index v0.17.0, gix-mailmap v0.13.0, gix-revision v0.15.0, gix-negotiate v0.2.0, gix-pack v0.36.0, gix-odb v0.46.0, gix-packetline v0.16.2, gix-transport v0.32.0, gix-protocol v0.33.0, gix-refspec v0.11.0, gix-worktree v0.18.0, gix v0.45.0, safety bump 29 crates ([`9a9fa96`](https://github.com/Byron/gitoxide/commit/9a9fa96fa8a722bddc5c3b2270b0edf8f6615141))
+    - Prepare changelogs prior to release ([`8f15cec`](https://github.com/Byron/gitoxide/commit/8f15cec1ec7d5a9d56bb158f155011ef2bb3539b))
+    - Merge branch 'integrate-gix-negotiate' ([`ae845de`](https://github.com/Byron/gitoxide/commit/ae845dea6cee6523c88a23d7a14293589cf8092f))
+    - Make V1 stateless negotations work. ([`6a3c021`](https://github.com/Byron/gitoxide/commit/6a3c02131c9ebca911be5f751e5a6c67fbdbf609))
+    - `include-tag` is now properly handled in V1 fetch arguments ([`c5dc7b4`](https://github.com/Byron/gitoxide/commit/c5dc7b4c43f07c04cdfb218de03e6725ff3fdb64))
+    - Add `fetch::Arguments::is_stateless()` to aid proper use of arguments. ([`877aa29`](https://github.com/Byron/gitoxide/commit/877aa2921d8491d301945f86d5a69382e40fb081))
+    - Adapt to changes in `gix-transport` ([`60eaceb`](https://github.com/Byron/gitoxide/commit/60eaceb5cd4b9206e9262cf05d9036c31a7b7d11))
+    - Merge branch 'fix-docs' ([`420553a`](https://github.com/Byron/gitoxide/commit/420553a10d780e0b2dc466cac120989298a5f187))
+    - Cleaning up documentation ([`2578e57`](https://github.com/Byron/gitoxide/commit/2578e576bfa365d194a23a1fb0bf09be230873de))
+    - Apply -W clippy::cloned-instead-of-copied ([`150463c`](https://github.com/Byron/gitoxide/commit/150463c26f0d2e1c2b5facba731ccba29cf23228))
+    - Merge branch 'main' into auto-clippy ([`3ef5c90`](https://github.com/Byron/gitoxide/commit/3ef5c90aebce23385815f1df674c1d28d58b4b0d))
+    - Merge branch 'blinxen/main' ([`9375cd7`](https://github.com/Byron/gitoxide/commit/9375cd75b01aa22a0e2eed6305fe45fabfd6c1ac))
+    - Include license files in all crates ([`facaaf6`](https://github.com/Byron/gitoxide/commit/facaaf633f01c857dcf2572c6dbe0a92b7105c1c))
+</details>
+
 ## 0.32.0 (2023-04-27)
 
 A maintenance release without user-facing changes.
@@ -13,7 +137,7 @@ A maintenance release without user-facing changes.
 
 <csr-read-only-do-not-edit/>
 
- - 2 commits contributed to the release.
+ - 3 commits contributed to the release.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -24,6 +148,7 @@ A maintenance release without user-facing changes.
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release gix-path v0.8.0, gix-glob v0.7.0, gix-attributes v0.12.0, gix-config-value v0.12.0, gix-ref v0.29.0, gix-sec v0.8.0, gix-config v0.22.0, gix-prompt v0.5.0, gix-url v0.18.0, gix-credentials v0.14.0, gix-discover v0.18.0, gix-ignore v0.2.0, gix-pack v0.35.0, gix-odb v0.45.0, gix-transport v0.31.0, gix-protocol v0.32.0, gix-refspec v0.10.1, gix-worktree v0.17.0, gix v0.44.1 ([`7ebc9f7`](https://github.com/Byron/gitoxide/commit/7ebc9f734ec4371dd27daa568c0244185bb49eb5))
     - Prepare changelogs prior to release ([`0135158`](https://github.com/Byron/gitoxide/commit/013515897215400539bfd53c25548bd054186ba6))
     - Bump gix-path v0.8.0, safety bump 20 crates (gix set to 0.44.1 manually) ([`43ebaf2`](https://github.com/Byron/gitoxide/commit/43ebaf267557218865862538ffc7bdf00558492f))
 </details>
