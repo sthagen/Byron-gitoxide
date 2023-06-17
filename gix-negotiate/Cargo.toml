@@ -6,7 +6,7 @@ license = "MIT/Apache-2.0"
 description = "A crate of the gitoxide project implementing negotiation algorithms"
 authors = ["Sebastian Thiel <sebastian.thiel@icloud.com>"]
 edition = "2021"
-rust-version = "1.64"
+rust-version = "1.65"
 
 [lib]
 doctest = false
@@ -15,8 +15,9 @@ test = false
 [dependencies]
 gix-hash = { version = "^0.11.2", path = "../gix-hash" }
 gix-object = { version = "^0.30.0", path = "../gix-object" }
+gix-date = { version = "^0.5.1", path = "../gix-date" }
 gix-commitgraph = { version = "^0.16.0", path = "../gix-commitgraph" }
-gix-revision = { version = "^0.15.2", path = "../gix-revision" }
+gix-revwalk = { version = "^0.1.0", path = "../gix-revwalk" }
 thiserror = "1.0.40"
 smallvec = "1.10.0"
 bitflags = "2"

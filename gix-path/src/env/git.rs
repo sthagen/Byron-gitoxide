@@ -8,6 +8,7 @@ use bstr::{BStr, BString, ByteSlice};
 /// Returns the file that contains git configuration coming with the installation of the `git` file in the current `PATH`, or `None`
 /// if no `git` executable was found or there were other errors during execution.
 pub(crate) fn install_config_path() -> Option<&'static BStr> {
+    let _span = gix_trace::detail!("gix_path::git::install_config_path()");
     static PATH: once_cell::sync::Lazy<Option<BString>> = once_cell::sync::Lazy::new(|| {
         // Shortcut: in Msys shells this variable is set which allows to deduce the installation directory
         // so we can save the `git` invocation.
@@ -23,7 +24,7 @@ pub(crate) fn install_config_path() -> Option<&'static BStr> {
             .stderr(Stdio::null());
         first_file_from_config_with_origin(cmd.output().ok()?.stdout.as_slice().into()).map(ToOwned::to_owned)
     });
-    PATH.as_ref().map(|b| b.as_ref())
+    PATH.as_ref().map(AsRef::as_ref)
 }
 
 fn first_file_from_config_with_origin(source: &BStr) -> Option<&BStr> {

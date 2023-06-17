@@ -4,7 +4,7 @@ use gitoxide_core as core;
 use gix::bstr::BString;
 
 #[derive(Debug, clap::Parser)]
-#[clap(name = "gix-plumbing", about = "The git underworld", version = clap::crate_version!())]
+#[clap(name = "gix", about = "The git underworld", version = env!("GITOXIDE_VERSION"))]
 #[clap(subcommand_required = true)]
 #[clap(arg_required_else_help = true)]
 pub struct Args {
@@ -28,6 +28,11 @@ pub struct Args {
     /// Display verbose messages and progress information
     #[clap(long, short = 'v')]
     pub verbose: bool,
+
+    /// Display structured `tracing` output in a tree-like structure.
+    #[clap(long)]
+    #[cfg(feature = "tracing")]
+    pub trace: bool,
 
     /// Turn off verbose message display for commands where these are shown by default.
     #[clap(long, conflicts_with("verbose"))]
@@ -72,6 +77,9 @@ pub struct Args {
 
 #[derive(Debug, clap::Subcommand)]
 pub enum Subcommands {
+    /// Subcommands for interacting with commit-graphs
+    #[clap(subcommand)]
+    CommitGraph(commitgraph::Subcommands),
     /// Interact with the object database.
     #[clap(subcommand)]
     Odb(odb::Subcommands),
@@ -114,9 +122,53 @@ pub enum Subcommands {
     /// Show which git configuration values are used or planned.
     ConfigTree,
     Config(config::Platform),
+    #[cfg(feature = "gitoxide-core-tools-corpus")]
+    Corpus(corpus::Platform),
     /// Subcommands that need no git repository to run.
     #[clap(subcommand)]
     Free(free::Subcommands),
+}
+
+#[cfg(feature = "gitoxide-core-tools-corpus")]
+pub mod corpus {
+    use std::path::PathBuf;
+
+    #[derive(Debug, clap::Parser)]
+    #[command(about = "run algorithms on a corpus of git repositories and store their results for later analysis")]
+    pub struct Platform {
+        /// The path to the database to read and write depending on the sub-command.
+        #[arg(long, default_value = "corpus.db")]
+        pub db: PathBuf,
+        /// The path to the root of the corpus to search repositories in.
+        #[arg(long, short = 'p', default_value = ".")]
+        pub path: PathBuf,
+        #[clap(subcommand)]
+        pub cmd: SubCommands,
+    }
+
+    #[derive(Debug, clap::Subcommand)]
+    pub enum SubCommands {
+        /// Perform a corpus run on all registered repositories.
+        Run {
+            /// Don't run any task, but print all repos that would be traversed once.
+            ///
+            /// Note that this will refresh repositories if necessary and store them in the database, it just won't run tasks.
+            #[clap(long, short = 'n')]
+            dry_run: bool,
+
+            /// The SQL that will be appended to the actual select statement for repositories to apply additional filtering, like `LIMIT 10`.
+            ///
+            /// The string must be trusted even though the engine will only execute a single statement.
+            #[clap(long, short = 'r')]
+            repo_sql_suffix: Option<String>,
+
+            /// The short_names of the tasks to include when running.
+            #[clap(long, short = 't')]
+            include_task: Vec<String>,
+        },
+        /// Re-read all repositories under the corpus directory, and add or update them.
+        Refresh,
+    }
 }
 
 pub mod config {
@@ -151,6 +203,14 @@ pub mod fetch {
         /// Output additional typically information provided by the server as part of the connection handshake.
         #[clap(long, short = 'H')]
         pub handshake_info: bool,
+
+        /// Print statistics about negotiation phase.
+        #[clap(long, short = 's')]
+        pub negotiation_info: bool,
+
+        /// Open the commit graph used for negotiation and write an SVG file to PATH.
+        #[clap(long, value_name = "PATH", short = 'g')]
+        pub open_negotiation_graph: Option<std::path::PathBuf>,
 
         #[clap(flatten)]
         pub shallow: ShallowOptions,
@@ -412,13 +472,42 @@ pub mod credential {
     }
 }
 
+///
+pub mod commitgraph {
+    #[derive(Debug, clap::Subcommand)]
+    pub enum Subcommands {
+        /// Verify the integrity of a commit graph
+        Verify {
+            /// output statistical information about the pack
+            #[clap(long, short = 's')]
+            statistics: bool,
+        },
+        /// List all entries in the commit-graph as reachable by starting from `HEAD`.
+        List {
+            /// The rev-spec to list reachable commits from.
+            #[clap(default_value = "@")]
+            spec: std::ffi::OsString,
+        },
+    }
+}
+
 pub mod revision {
     #[derive(Debug, clap::Subcommand)]
     #[clap(visible_alias = "rev", visible_alias = "r")]
     pub enum Subcommands {
         /// List all commits reachable from the given rev-spec.
         #[clap(visible_alias = "l")]
-        List { spec: std::ffi::OsString },
+        List {
+            /// How many commits to list at most.
+            #[clap(long, short = 'l')]
+            limit: Option<usize>,
+            /// Write the graph as SVG file to the given path.
+            #[clap(long, short = 's')]
+            svg: Option<std::path::PathBuf>,
+            /// The rev-spec to list reachable commits from.
+            #[clap(default_value = "@")]
+            spec: std::ffi::OsString,
+        },
         /// Provide the revision specification like `@~1` to explain.
         #[clap(visible_alias = "e")]
         Explain { spec: std::ffi::OsString },

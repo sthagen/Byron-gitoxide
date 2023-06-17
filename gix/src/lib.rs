@@ -77,6 +77,7 @@ pub use gix_features::{parallel, progress::Progress, threading};
 pub use gix_fs as fs;
 pub use gix_glob as glob;
 pub use gix_hash as hash;
+pub use gix_hashtable as hashtable;
 pub use gix_ignore as ignore;
 #[doc(inline)]
 pub use gix_index as index;
@@ -92,6 +93,7 @@ pub use gix_ref as refs;
 pub use gix_refspec as refspec;
 pub use gix_sec as sec;
 pub use gix_tempfile as tempfile;
+pub use gix_trace as trace;
 pub use gix_traverse as traverse;
 pub use gix_url as url;
 #[doc(inline)]

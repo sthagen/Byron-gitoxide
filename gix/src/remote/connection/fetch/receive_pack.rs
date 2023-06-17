@@ -19,7 +19,8 @@ use crate::{
         connection::fetch::config,
         fetch,
         fetch::{
-            negotiate, negotiate::Algorithm, refs, Error, Outcome, Prepare, ProgressId, RefLogMessage, Shallow, Status,
+            negotiate, negotiate::Algorithm, outcome, refs, Error, Outcome, Prepare, ProgressId, RefLogMessage,
+            Shallow, Status,
         },
     },
     Progress, Repository,
@@ -77,6 +78,7 @@ where
         P: Progress,
         P::SubProgress: 'static,
     {
+        let _span = gix_trace::coarse!("fetch::Prepare::receive()");
         let mut con = self.con.take().expect("receive() can only be called once");
 
         let handshake = &self.ref_map.handshake;
@@ -114,6 +116,7 @@ where
             });
         }
 
+        let negotiate_span = gix_trace::detail!("negotiate");
         let mut negotiator = repo
             .config
             .resolved
@@ -138,13 +141,13 @@ where
             &mut graph,
             &self.ref_map,
             &self.shallow,
+            negotiate::make_refmapping_ignore_predicate(con.remote.fetch_tags, &self.ref_map),
         )?;
         let mut previous_response = None::<gix_protocol::fetch::Response>;
-        let mut round = 1;
-        let mut write_pack_bundle = match &action {
+        let (mut write_pack_bundle, negotiate) = match &action {
             negotiate::Action::NoChange | negotiate::Action::SkipToRefUpdate => {
                 gix_protocol::indicate_end_of_interaction(&mut con.transport).await.ok();
-                None
+                (None, None)
             }
             negotiate::Action::MustNegotiate {
                 remote_ref_target_known,
@@ -155,8 +158,9 @@ where
                     &self.ref_map,
                     remote_ref_target_known,
                     &self.shallow,
-                    con.remote.fetch_tags,
+                    negotiate::make_refmapping_ignore_predicate(con.remote.fetch_tags, &self.ref_map),
                 );
+                let mut rounds = Vec::new();
                 let is_stateless =
                     arguments.is_stateless(!con.transport.connection_persists_across_multiple_requests());
                 let mut haves_to_send = gix_negotiate::window_size(is_stateless, None);
@@ -165,7 +169,7 @@ where
                 let mut common = is_stateless.then(Vec::new);
                 let reader = 'negotiation: loop {
                     progress.step();
-                    progress.set_name(format!("negotiate (round {round})"));
+                    progress.set_name(format!("negotiate (round {})", rounds.len() + 1));
 
                     let is_done = match negotiate::one_round(
                         negotiator.deref_mut(),
@@ -181,6 +185,12 @@ where
                             }
                             seen_ack |= ack_seen;
                             in_vain += haves_sent;
+                            rounds.push(outcome::negotiate::Round {
+                                haves_sent,
+                                in_vain,
+                                haves_to_send,
+                                previous_response_had_at_least_one_in_common: ack_seen,
+                            });
                             let is_done = haves_sent != haves_to_send || (seen_ack && in_vain >= 256);
                             haves_to_send = gix_negotiate::window_size(is_stateless, haves_to_send);
                             is_done
@@ -205,12 +215,12 @@ where
                             setup_remote_progress(progress, &mut reader, should_interrupt);
                         }
                         break 'negotiation reader;
-                    } else {
-                        round += 1;
                     }
                 };
-                drop(graph);
+                let graph = graph.detach();
                 drop(graph_repo);
+                drop(negotiate_span);
+
                 let previous_response = previous_response.expect("knowledge of a pack means a response was received");
                 if !previous_response.shallow_updates().is_empty() && shallow_lock.is_none() {
                     let reject_shallow_remote = repo
@@ -266,7 +276,7 @@ where
                         crate::shallow::write(shallow_lock, shallow_commits, previous_response.shallow_updates())?;
                     }
                 }
-                write_pack_bundle
+                (write_pack_bundle, Some(outcome::Negotiate { graph, rounds }))
             }
         };
 
@@ -293,21 +303,17 @@ where
 
         let out = Outcome {
             ref_map: std::mem::take(&mut self.ref_map),
-            status: if matches!(self.dry_run, fetch::DryRun::Yes) {
-                assert!(write_pack_bundle.is_none(), "in dry run we never read a bundle");
-                Status::DryRun {
+            status: match write_pack_bundle {
+                Some(write_pack_bundle) => Status::Change {
+                    write_pack_bundle,
                     update_refs,
-                    negotiation_rounds: round,
-                }
-            } else {
-                match write_pack_bundle {
-                    Some(write_pack_bundle) => Status::Change {
-                        write_pack_bundle,
-                        update_refs,
-                        negotiation_rounds: round,
-                    },
-                    None => Status::NoPackReceived { update_refs },
-                }
+                    negotiate: negotiate.expect("if we have a pack, we always negotiated it"),
+                },
+                None => Status::NoPackReceived {
+                    dry_run: matches!(self.dry_run, fetch::DryRun::Yes),
+                    negotiate,
+                    update_refs,
+                },
             },
         };
         Ok(out)
@@ -348,14 +354,14 @@ fn add_shallow_args(
             args.deepen_relative();
         }
         Shallow::Since { cutoff } => {
-            args.deepen_since(cutoff.seconds_since_unix_epoch as usize);
+            args.deepen_since(cutoff.seconds);
         }
         Shallow::Exclude {
             remote_refs,
             since_cutoff,
         } => {
             if let Some(cutoff) = since_cutoff {
-                args.deepen_since(cutoff.seconds_since_unix_epoch as usize);
+                args.deepen_since(cutoff.seconds);
             }
             for ref_ in remote_refs {
                 args.deepen_not(ref_.as_ref().as_bstr());

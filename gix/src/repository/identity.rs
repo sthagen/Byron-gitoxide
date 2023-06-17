@@ -31,13 +31,13 @@ impl crate::Repository {
         let p = self.config.personas();
 
         Ok(gix_actor::SignatureRef {
-            name: p.committer.name.as_ref().or(p.user.name.as_ref()).map(|v| v.as_ref())?,
+            name: p.committer.name.as_ref().or(p.user.name.as_ref()).map(AsRef::as_ref)?,
             email: p
                 .committer
                 .email
                 .as_ref()
                 .or(p.user.email.as_ref())
-                .map(|v| v.as_ref())?,
+                .map(AsRef::as_ref)?,
             time: match extract_time_or_default(p.committer.time.as_ref(), &gitoxide::Commit::COMMITTER_DATE) {
                 Ok(t) => t,
                 Err(err) => return Some(Err(err)),
@@ -61,8 +61,8 @@ impl crate::Repository {
         let p = self.config.personas();
 
         Ok(gix_actor::SignatureRef {
-            name: p.author.name.as_ref().or(p.user.name.as_ref()).map(|v| v.as_ref())?,
-            email: p.author.email.as_ref().or(p.user.email.as_ref()).map(|v| v.as_ref())?,
+            name: p.author.name.as_ref().or(p.user.name.as_ref()).map(AsRef::as_ref)?,
+            email: p.author.email.as_ref().or(p.user.email.as_ref()).map(AsRef::as_ref)?,
             time: match extract_time_or_default(p.author.time.as_ref(), &gitoxide::Commit::AUTHOR_DATE) {
                 Ok(t) => t,
                 Err(err) => return Some(Err(err)),
@@ -73,9 +73,9 @@ impl crate::Repository {
 }
 
 fn extract_time_or_default(
-    time: Option<&Result<gix_actor::Time, gix_date::parse::Error>>,
+    time: Option<&Result<gix_date::Time, gix_date::parse::Error>>,
     config_key: &'static keys::Time,
-) -> Result<gix_actor::Time, config::time::Error> {
+) -> Result<gix_date::Time, config::time::Error> {
     match time {
         Some(Ok(t)) => Ok(*t),
         None => Ok(gix_date::Time::now_local_or_utc()),
@@ -88,7 +88,7 @@ pub(crate) struct Entity {
     pub name: Option<BString>,
     pub email: Option<BString>,
     /// A time parsed from an environment variable, handling potential errors is delayed.
-    pub time: Option<Result<gix_actor::Time, gix_date::parse::Error>>,
+    pub time: Option<Result<gix_date::Time, gix_date::parse::Error>>,
 }
 
 #[derive(Debug, Clone)]
@@ -117,11 +117,11 @@ impl Personas {
                 config
                     .string(name_key.section.name(), None, name_key.name)
                     .or_else(|| fallback.as_ref().and_then(|(s, name_key, _)| s.value(name_key.name)))
-                    .map(|v| v.into_owned()),
+                    .map(std::borrow::Cow::into_owned),
                 config
                     .string(email_key.section.name(), None, email_key.name)
                     .or_else(|| fallback.as_ref().and_then(|(s, _, email_key)| s.value(email_key.name)))
-                    .map(|v| v.into_owned()),
+                    .map(std::borrow::Cow::into_owned),
             )
         }
         let now = SystemTime::now();
@@ -152,7 +152,7 @@ impl Personas {
         user_email = user_email.or_else(|| {
             config
                 .string_by_key(gitoxide::User::EMAIL_FALLBACK.logical_name().as_str())
-                .map(|v| v.into_owned())
+                .map(std::borrow::Cow::into_owned)
         });
         Personas {
             user: Entity {

@@ -4,6 +4,7 @@ use std::{borrow::Cow, path::PathBuf, time::Duration};
 use gix_attributes::Source;
 use gix_lock::acquire::Fail;
 
+use crate::config::cache::util::ApplyLeniencyDefaultValue;
 use crate::{
     bstr::BStr,
     config,
@@ -69,6 +70,18 @@ impl Cache {
             .get_or_try_init(|| remote::url::SchemePermission::from_config(&self.resolved, self.filter_config_section))
     }
 
+    pub(crate) fn may_use_commit_graph(&self) -> Result<bool, config::boolean::Error> {
+        const DEFAULT: bool = true;
+        self.resolved
+            .boolean_by_key("core.commitGraph")
+            .map(|res| {
+                Core::COMMIT_GRAPH
+                    .enrich_error(res)
+                    .with_lenient_default_value(self.lenient_config, DEFAULT)
+            })
+            .unwrap_or(Ok(DEFAULT))
+    }
+
     pub(crate) fn diff_renames(
         &self,
     ) -> Result<Option<crate::object::tree::diff::Rewrites>, crate::object::tree::diff::rewrites::Error> {
@@ -102,7 +115,7 @@ impl Cache {
     /// The path to the user-level excludes file to ignore certain files in the worktree.
     pub(crate) fn excludes_file(&self) -> Option<Result<PathBuf, gix_config::path::interpolate::Error>> {
         self.trusted_file_path("core", None, Core::EXCLUDES_FILE.name)?
-            .map(|p| p.into_owned())
+            .map(std::borrow::Cow::into_owned)
             .into()
     }
 

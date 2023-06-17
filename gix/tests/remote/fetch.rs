@@ -137,12 +137,13 @@ mod blocking_and_async_io {
 
         match out.status {
             Status::Change {
-                negotiation_rounds,
+                negotiate,
                 write_pack_bundle,
                 ..
             } => {
                 assert_eq!(
-                    negotiation_rounds, 1,
+                    negotiate.rounds.len(),
+                    1,
                     "we don't really have a way to see that tips from alternates were added, I think"
                 );
                 assert_eq!(
@@ -215,11 +216,12 @@ mod blocking_and_async_io {
                 match changes.status {
                     Status::Change {
                         write_pack_bundle,
-                        negotiation_rounds,
+                        negotiate,
                         ..
                     } => {
                         assert_eq!(
-                            negotiation_rounds, expected_negotiation_rounds,
+                            negotiate.rounds.len(),
+                            expected_negotiation_rounds,
                             "we need multiple rounds"
                         );
                         // the server only has our `b1` and an extra commit or two.
@@ -335,38 +337,69 @@ mod blocking_and_async_io {
         async(feature = "async-network-client-async-std", async_std::test)
     )]
     async fn fetch_empty_pack() -> crate::Result {
-        let daemon = spawn_git_daemon_if_async(repo_path("base"))?;
-        for (fetch_tags, expected_ref_count) in [
-            (fetch::Tags::None, 1),
-            (fetch::Tags::Included, 7),
-            (fetch::Tags::All, 7),
+        for version in [
+            gix::protocol::transport::Protocol::V1,
+            gix::protocol::transport::Protocol::V2,
         ] {
-            let (repo, _tmp) = repo_rw("two-origins");
-            let mut remote = into_daemon_remote_if_async(
-                repo.head()?
-                    .into_remote(Fetch)
-                    .expect("present")?
-                    .with_fetch_tags(fetch_tags),
-                daemon.as_ref(),
-                None,
-            );
-            remote.replace_refspecs(Some("HEAD:refs/remotes/origin/does-not-yet-exist"), Fetch)?;
-
-            let res = remote
-                .connect(Fetch)
-                .await?
-                .prepare_fetch(gix::progress::Discard, Default::default())
-                .await?
-                .receive(gix::progress::Discard, &AtomicBool::default())
-                .await?;
-
-            match res.status {
-                fetch::Status::NoPackReceived { update_refs } => {
-                    assert_eq!(update_refs.edits.len(), expected_ref_count);
+            for (shallow_args, expected) in [(None, [1, 7, 7]), (Some("--depth=2"), [1, 2, 2])] {
+                if version == gix::protocol::transport::Protocol::V1 && shallow_args.is_some() {
+                    // TODO: We cannot yet handle shallow mode for V1 as it will send shallow-info as part of the handshake :/.
+                    //       It's probaby not the most important thing to be able to clone from a shallow remote anyway.
+                    continue;
                 }
-                _ => unreachable!(
-                    "default negotiation is able to realize nothing is required and doesn't get to receiving a pack"
-                ),
+                for (fetch_tags, expected_ref_count) in [fetch::Tags::None, fetch::Tags::Included, fetch::Tags::All]
+                    .into_iter()
+                    .zip(expected)
+                {
+                    let (mut repo, _tmp) = try_repo_rw_args(
+                        "two-origins",
+                        shallow_args,
+                        if shallow_args.is_some() {
+                            Mode::CloneWithShallowSupport
+                        } else {
+                            Mode::FastClone
+                        },
+                    )?;
+                    let daemon = spawn_git_daemon_if_async(
+                        repo.work_dir()
+                            .expect("non-bare")
+                            .ancestors()
+                            .nth(1)
+                            .expect("parent")
+                            .join("base"),
+                    )?;
+                    repo.config_snapshot_mut().set_value(
+                        &gix::config::tree::Protocol::VERSION,
+                        (version as u8).to_string().as_str(),
+                    )?;
+                    let mut remote = into_daemon_remote_if_async(
+                        repo.head()?
+                            .into_remote(Fetch)
+                            .expect("present")?
+                            .with_fetch_tags(fetch_tags),
+                        daemon.as_ref(),
+                        None,
+                    );
+                    remote.replace_refspecs(Some("HEAD:refs/remotes/origin/does-not-yet-exist"), Fetch)?;
+
+                    let res = remote
+                        .connect(Fetch)
+                        .await?
+                        .prepare_fetch(gix::progress::Discard, Default::default())
+                        .await?
+                        .receive(gix::progress::Discard, &AtomicBool::default())
+                        .await?;
+
+                    match res.status {
+                    fetch::Status::NoPackReceived { update_refs, negotiate: _, dry_run } => {
+                        assert_eq!(update_refs.edits.len(), expected_ref_count, "{shallow_args:?}|{fetch_tags:?}");
+                        assert!(!dry_run, "we actually perform the operation");
+                    },
+                    _ => unreachable!(
+                        "{shallow_args:?}|{fetch_tags:?}: default negotiation is able to realize nothing is required and doesn't get to receiving a pack"
+                    ),
+                }
+                }
             }
         }
         Ok(())
@@ -416,14 +449,14 @@ mod blocking_and_async_io {
                 .await?;
 
             match res.status {
-                gix::remote::fetch::Status::Change { write_pack_bundle, update_refs, negotiation_rounds } => {
-                    assert_eq!(negotiation_rounds, 1);
+                gix::remote::fetch::Status::Change { write_pack_bundle, update_refs, negotiate } => {
+                    assert_eq!(negotiate.rounds.len(), 1);
                     assert_eq!(write_pack_bundle.index.data_hash, hex_to_id(expected_data_hash), );
                     assert_eq!(write_pack_bundle.index.num_objects, 3 + num_objects_offset, "{fetch_tags:?}");
-                    assert!(write_pack_bundle.data_path.as_deref().map_or(false, |p| p.is_file()));
-                    assert!(write_pack_bundle.index_path.as_deref().map_or(false, |p| p.is_file()));
+                    assert!(write_pack_bundle.data_path.as_deref().map_or(false, std::path::Path::is_file));
+                    assert!(write_pack_bundle.index_path.as_deref().map_or(false, std::path::Path::is_file));
                     assert_eq!(update_refs.edits.len(), expected_ref_edits, "{fetch_tags:?}");
-                    assert_eq!(write_pack_bundle.keep_path.as_deref().map_or(false, |p| p.is_file()), update_refs.edits.is_empty(),".keep are kept if there was no edit to prevent `git gc` from clearing out the pack as it's not referred to necessarily");
+                    assert_eq!(write_pack_bundle.keep_path.as_deref().map_or(false, std::path::Path::is_file), update_refs.edits.is_empty(),".keep are kept if there was no edit to prevent `git gc` from clearing out the pack as it's not referred to necessarily");
                 },
                 _ => unreachable!("Naive negotiation sends the same have and wants, resulting in an empty pack (technically no change, but we don't detect it) - empty packs are fine")
             }
@@ -500,9 +533,9 @@ mod blocking_and_async_io {
                     fetch::Status::Change {
                         write_pack_bundle,
                         update_refs,
-                        negotiation_rounds,
+                        negotiate,
                     } => {
-                        assert_eq!(negotiation_rounds, 1);
+                        assert_eq!(negotiate.rounds.len(), 1);
                         assert_eq!(write_pack_bundle.pack_version, gix::odb::pack::data::Version::V2);
                         assert_eq!(write_pack_bundle.object_hash, repo.object_hash());
                         assert_eq!(write_pack_bundle.index.num_objects, 4, "{dry_run}: this value is 4 when git does it with 'consecutive' negotiation style, but could be 33 if completely naive.");
@@ -538,15 +571,16 @@ mod blocking_and_async_io {
 
                         update_refs
                     }
-                    fetch::Status::DryRun {
+                    fetch::Status::NoPackReceived {
+                        dry_run,
                         update_refs,
-                        negotiation_rounds,
+                        negotiate: _,
                     } => {
-                        assert_eq!(negotiation_rounds, 1);
+                        assert!(
+                            dry_run,
+                            "the only reason we receive no pack is if we are in dry-run mode"
+                        );
                         update_refs
-                    }
-                    fetch::Status::NoPackReceived { .. } => {
-                        unreachable!("we firmly expect changes here, as the other origin has changes")
                     }
                 };
 

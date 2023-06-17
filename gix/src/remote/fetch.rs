@@ -6,12 +6,14 @@ pub mod negotiate {
     pub use super::super::connection::fetch::negotiate::Error;
     #[cfg(any(feature = "blocking-network-client", feature = "async-network-client"))]
     pub(crate) use super::super::connection::fetch::negotiate::{
-        add_wants, mark_complete_and_common_ref, one_round, Action,
+        add_wants, make_refmapping_ignore_predicate, mark_complete_and_common_ref, one_round, Action,
     };
 }
 
 #[cfg(any(feature = "blocking-network-client", feature = "async-network-client"))]
-pub use super::connection::fetch::{prepare, refs, Error, Outcome, Prepare, ProgressId, RefLogMessage, Status};
+pub use super::connection::fetch::{
+    outcome, prepare, refs, Error, Outcome, Prepare, ProgressId, RefLogMessage, Status,
+};
 
 /// If `Yes`, don't really make changes but do as much as possible to get an idea of what would be done.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

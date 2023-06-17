@@ -91,7 +91,7 @@ pub mod describe {
                         let (prio, tag_time) = match target_id {
                             Some(target_id) if peeled_id != *target_id => {
                                 let tag = repo.find_object(target_id).ok()?.try_into_tag().ok()?;
-                                (1, tag.tagger().ok()??.time.seconds_since_unix_epoch)
+                                (1, tag.tagger().ok()??.time.seconds)
                             }
                             _ => (0, 0),
                         };
@@ -124,11 +124,7 @@ pub mod describe {
                             // TODO: we assume direct refs for tags, which is the common case, but it doesn't have to be
                             //       so rather follow symrefs till the first object and then peel tags after the first object was found.
                             let tag = r.try_id()?.object().ok()?.try_into_tag().ok()?;
-                            let tag_time = tag
-                                .tagger()
-                                .ok()
-                                .and_then(|s| s.map(|s| s.time.seconds_since_unix_epoch))
-                                .unwrap_or(0);
+                            let tag_time = tag.tagger().ok().and_then(|s| s.map(|s| s.time.seconds)).unwrap_or(0);
                             let commit_id = tag.target_id().ok()?.object().ok()?.try_into_commit().ok()?.id;
                             Some((commit_id, tag_time, Cow::<BStr>::from(r.name().shorten().to_owned())))
                         })
@@ -187,7 +183,7 @@ pub mod describe {
         ///
         /// Note that there will always be `Some(format)`
         pub fn try_format(&self) -> Result<Option<gix_revision::describe::Format<'static>>, Error> {
-            self.try_resolve()?.map(|r| r.format()).transpose()
+            self.try_resolve()?.map(Resolution::format).transpose()
         }
 
         /// Try to find a name for the configured commit id using all prior configuration, returning `Some(Outcome)`
@@ -206,7 +202,7 @@ pub mod describe {
                     self.repo
                         .objects
                         .try_find(id, buf)
-                        .map(|r| r.and_then(|d| d.try_into_commit_iter()))
+                        .map(|r| r.and_then(gix_object::Data::try_into_commit_iter))
                 },
                 gix_commitgraph::Graph::from_info_dir(self.repo.objects.store_ref().path().join("info")).ok(),
             );

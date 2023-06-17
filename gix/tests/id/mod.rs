@@ -80,7 +80,7 @@ mod ancestors {
                 .ancestors()
                 .use_commit_graph(toggle)
                 .all()?
-                .map(|c| c.map(|c| c.detach()))
+                .map(|c| c.map(gix::revision::walk::Info::detach))
                 .collect::<Result<Vec<_>, _>>()?;
             assert_eq!(commits_graph_order.len(), 4, "need a specific amount of commits");
 
@@ -89,7 +89,7 @@ mod ancestors {
                 .use_commit_graph(!toggle)
                 .sorting(commit::Sorting::ByCommitTimeNewestFirst)
                 .all()?
-                .map(|c| c.map(|c| c.detach()))
+                .map(|c| c.map(gix::revision::walk::Info::detach))
                 .collect::<Result<Vec<_>, _>>()?;
             assert_eq!(
                 commits_by_commit_date.len(),
@@ -123,9 +123,7 @@ mod ancestors {
             for sorting in [
                 commit::Sorting::BreadthFirst,
                 commit::Sorting::ByCommitTimeNewestFirst,
-                commit::Sorting::ByCommitTimeNewestFirstCutoffOlderThan {
-                    time_in_seconds_since_epoch: 0,
-                },
+                commit::Sorting::ByCommitTimeNewestFirstCutoffOlderThan { seconds: 0 },
             ] {
                 let commits_graph_order = head
                     .ancestors()
