@@ -4,7 +4,7 @@ description = "The library implementing all capabilities of the gitoxide CLI"
 repository = "https://github.com/Byron/gitoxide"
 version = "0.30.0"
 authors = ["Sebastian Thiel <sebastian.thiel@icloud.com>"]
-license = "MIT/Apache-2.0"
+license = "MIT OR Apache-2.0"
 edition = "2021"
 
 [lib]
@@ -25,6 +25,9 @@ query = ["dep:rusqlite"]
 ## *Note that* `organize` we need for finding git repositories fast.
 corpus = [ "dep:rusqlite", "dep:sysinfo", "organize", "dep:crossbeam-channel", "dep:serde_json", "dep:tracing-forest", "dep:tracing-subscriber", "dep:tracing", "dep:parking_lot" ]
 
+## The ability to create archives from virtual worktrees, similar to `git archive`.
+archive = ["dep:gix-archive-for-configuration-only", "gix/worktree-archive"]
+
 #! ### Mutually Exclusive Networking
 #! If both are set, _blocking-client_ will take precedence, allowing `--all-features` to be used.
 
@@ -41,9 +44,10 @@ serde = ["gix/serde", "dep:serde_json", "dep:serde", "bytesize/serde"]
 
 [dependencies]
 # deselect everything else (like "performance") as this should be controllable by the parent application.
-gix = { version = "^0.48.0", path = "../gix", default-features = false }
-gix-pack-for-configuration-only = { package = "gix-pack", version = "^0.39.1", path = "../gix-pack", default-features = false, features = ["pack-cache-lru-dynamic", "pack-cache-lru-static"] }
-gix-transport-configuration-only = { package = "gix-transport", version = "^0.33.1", path = "../gix-transport", default-features = false }
+gix = { version = "^0.50.0", path = "../gix", default-features = false }
+gix-pack-for-configuration-only = { package = "gix-pack", version = "^0.40.1", path = "../gix-pack", default-features = false, features = ["pack-cache-lru-dynamic", "pack-cache-lru-static"] }
+gix-transport-configuration-only = { package = "gix-transport", version = "^0.34.1", path = "../gix-transport", default-features = false }
+gix-archive-for-configuration-only = { package = "gix-archive", version = "^0.2.0", path = "../gix-archive", optional = true, features = ["tar", "tar_gz"] }
 serde = { version = "1.0.114", optional = true, default-features = false, features = ["derive"] }
 anyhow = "1.0.42"
 thiserror = "1.0.34"
@@ -59,11 +63,11 @@ futures-io = { version = "0.3.16", optional = true }
 blocking = { version = "1.0.2", optional = true }
 
 # for 'organize' functionality
-gix-url = { version = "^0.20.1", path = "../gix-url", optional = true }
+gix-url = { version = "^0.21.1", path = "../gix-url", optional = true }
 jwalk = { version = "0.8.0", optional = true }
 
 # for 'hours'
-itertools = { version = "0.10.1", optional = true }
+itertools = { version = "0.11.0", optional = true }
 fs-err = { version = "2.6.0", optional = true }
 crossbeam-channel = { version = "0.5.6", optional = true }
 smallvec = { version = "1.10.0", optional = true }
@@ -81,7 +85,7 @@ tracing = { version = "0.1.37", optional = true }
 
 # for svg graph output
 layout-rs = "0.1.1"
-open = "4.1.0"
+open = "5.0.0"
 
 document-features = { version = "0.2.0", optional = true }
 

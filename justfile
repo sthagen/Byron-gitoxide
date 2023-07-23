@@ -11,8 +11,11 @@ alias c := check
 # run all tests, clippy, including journey tests, try building docs
 test: clippy check doc unit-tests journey-tests-pure journey-tests-small journey-tests-async journey-tests journey-tests-smart-release
 
-# run all tests, without clippy, including journey tests, try building docs
-ci-test: check doc unit-tests journey-tests-pure journey-tests-small journey-tests-async journey-tests journey-tests-smart-release
+# run all tests, without clippy, including journey tests, try building docs (and clear target on CI)
+ci-test: check doc unit-tests clear-target journey-tests-pure journey-tests-small journey-tests-async journey-tests journey-tests-smart-release
+
+clear-target:
+    cargo clean
 
 # Run cargo clippy on all crates
 clippy *clippy-args:
@@ -128,6 +131,10 @@ doc $RUSTDOCFLAGS="-D warnings":
 # run all unit tests
 unit-tests:
     cargo test --all
+    cargo test -p gix-archive --no-default-features
+    cargo test -p gix-archive --features tar
+    cargo test -p gix-archive --features tar_gz
+    cargo test -p gix-archive --features zip
     cd gix-object; \
       set -ex; \
       cargo test; \
@@ -158,7 +165,7 @@ unit-tests:
     cargo test -p gix-protocol --features blocking-client
     cargo test -p gix-protocol --features async-client
     cargo test -p gix-protocol
-    cargo test -p gix
+    cargo test -p gix --no-default-features
     cargo test -p gix --features async-network-client
     cargo test -p gix --features blocking-network-client
     cargo test -p gix --features regex

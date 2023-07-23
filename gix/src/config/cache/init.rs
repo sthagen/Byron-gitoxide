@@ -13,6 +13,7 @@ use crate::{
         Cache,
     },
     open,
+    repository::init::setup_objects,
 };
 
 /// Initialization
@@ -268,8 +269,19 @@ impl crate::Repository {
         &mut self,
         config: crate::Config,
     ) -> Result<(), Error> {
+        let (a, b, c) = (
+            self.config.static_pack_cache_limit_bytes,
+            self.config.pack_cache_bytes,
+            self.config.object_cache_bytes,
+        );
         self.config.reread_values_and_clear_caches_replacing_config(config)?;
         self.apply_changed_values();
+        if a != self.config.static_pack_cache_limit_bytes
+            || b != self.config.pack_cache_bytes
+            || c != self.config.object_cache_bytes
+        {
+            setup_objects(&mut self.objects, &self.config);
+        }
         Ok(())
     }
 

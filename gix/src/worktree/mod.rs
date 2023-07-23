@@ -1,6 +1,10 @@
 use std::path::PathBuf;
 
+#[cfg(feature = "worktree-archive")]
+pub use gix_archive as archive;
 pub use gix_worktree::*;
+#[cfg(feature = "worktree-stream")]
+pub use gix_worktree_stream as stream;
 
 use crate::{
     bstr::{BStr, BString},

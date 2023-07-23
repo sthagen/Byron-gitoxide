@@ -5,6 +5,199 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.50.0 (2023-07-22)
+
+### New Features
+
+ - <csr-id-caa8fb9502906fa47546c26bbeb3c546664ad944/> `TreeEntryRefExt` and `TreeEntryExt` to be able to easily attach a repo to it.
+   Also, add `detach()` to types that were missing it.
+ - <csr-id-62cacd4b7a9fc0c0e4c5049f6d0aa7011c8ef923/> `Tree::find_entry()` to easily find an entry in a tree's entries.
+ - <csr-id-c4a1fb1ba461c28ac3ea2482adf5f75721d14706/> add `Repository::archive()` as extra
+   It implements a high-level interface to achieve `git archive` like functionality.
+ - <csr-id-4ee285741e6e1cde3a967980fbf48bab20ddbf68/> optionally make `gix-workspace-stream` available via `Repository::worktree_stream()`
+   That way it's easy to obtain a representation of the worktree
+   in a fully streaming fashion, which is also the basis for
+   `archive`-like functionality.
+
+### New Features (BREAKING)
+
+ - <csr-id-d5e4ee0e6e26ff3feeed1f5aee5bdd0cdc03d1f8/> unify API between `object::tree::Entry` and `object::tree::EntryRef<'_>`
+
+### Bug Fixes (BREAKING)
+
+ - <csr-id-8cad009eafe8e1054a715dc99bb9a884325d5ea5/> `Tree::lookup_entry(_by_path))()` are not mutating anymore; add `Tree::peel_to_entry()` and `peel_to_entry_by_path()`
+   The previous implementation was a crutch that could now be circumvented.
+   
+   The new methods allow to reuse a buffer in case the object isn't used or needed further,
+   possibly saving allocations.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 17 commits contributed to the release over the course of 1 calendar day.
+ - 3 days passed between releases.
+ - 6 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release gix-diff v0.33.1, gix-discover v0.22.1, gix-ignore v0.5.1, gix-bitmap v0.2.6, gix-index v0.21.1, gix-mailmap v0.16.1, gix-negotiate v0.5.1, gix-pack v0.40.1, gix-odb v0.50.1, gix-packetline v0.16.4, gix-transport v0.34.1, gix-protocol v0.36.1, gix-revision v0.18.1, gix-refspec v0.14.1, gix-worktree v0.23.0, gix v0.50.0 ([`0062971`](https://github.com/Byron/gitoxide/commit/00629710dffeb10fda340665530353703cf5d129))
+    - Release gix-tempfile v7.0.2, gix-utils v0.1.5, gix-lock v7.0.2, gix-ref v0.33.1, gix-sec v0.8.4, gix-prompt v0.5.4, gix-url v0.21.1, gix-credentials v0.17.1, gix-diff v0.33.1, gix-discover v0.22.1, gix-ignore v0.5.1, gix-bitmap v0.2.6, gix-index v0.21.1, gix-mailmap v0.16.1, gix-negotiate v0.5.1, gix-pack v0.40.1, gix-odb v0.50.1, gix-packetline v0.16.4, gix-transport v0.34.1, gix-protocol v0.36.1, gix-revision v0.18.1, gix-refspec v0.14.1, gix-worktree v0.23.0, gix v0.50.0 ([`107a64e`](https://github.com/Byron/gitoxide/commit/107a64e734580ad9e2c4142db96394529d8072df))
+    - Release gix-features v0.32.1, gix-actor v0.24.1, gix-validate v0.7.7, gix-object v0.33.1, gix-path v0.8.4, gix-glob v0.10.1, gix-quote v0.4.6, gix-attributes v0.16.0, gix-command v0.2.8, gix-packetline-blocking v0.16.4, gix-filter v0.2.0, gix-fs v0.4.1, gix-chunk v0.4.4, gix-commitgraph v0.18.1, gix-hashtable v0.2.4, gix-revwalk v0.4.1, gix-traverse v0.30.1, gix-worktree-stream v0.2.0, gix-archive v0.2.0, gix-config-value v0.12.5, gix-tempfile v7.0.1, gix-utils v0.1.5, gix-lock v7.0.2, gix-ref v0.33.1, gix-sec v0.8.4, gix-prompt v0.5.4, gix-url v0.21.1, gix-credentials v0.17.1, gix-diff v0.33.1, gix-discover v0.22.1, gix-ignore v0.5.1, gix-bitmap v0.2.6, gix-index v0.21.1, gix-mailmap v0.16.1, gix-negotiate v0.5.1, gix-pack v0.40.1, gix-odb v0.50.1, gix-packetline v0.16.4, gix-transport v0.34.1, gix-protocol v0.36.1, gix-revision v0.18.1, gix-refspec v0.14.1, gix-worktree v0.23.0, gix v0.50.0, safety bump 5 crates ([`16295b5`](https://github.com/Byron/gitoxide/commit/16295b58e2581d2e8b8b762816f52baabe871c75))
+    - Prepare more changelogs ([`c4cc5f2`](https://github.com/Byron/gitoxide/commit/c4cc5f261d29f712a101033a18293a97a9d4ae85))
+    - Release gix-date v0.7.1, gix-hash v0.11.4, gix-trace v0.1.3, gix-features v0.32.0, gix-actor v0.24.0, gix-validate v0.7.7, gix-object v0.33.0, gix-path v0.8.4, gix-glob v0.10.0, gix-quote v0.4.6, gix-attributes v0.15.0, gix-command v0.2.7, gix-packetline-blocking v0.16.3, gix-filter v0.1.0, gix-fs v0.4.0, gix-chunk v0.4.4, gix-commitgraph v0.18.0, gix-hashtable v0.2.4, gix-revwalk v0.4.0, gix-traverse v0.30.0, gix-worktree-stream v0.2.0, gix-archive v0.2.0, gix-config-value v0.12.4, gix-tempfile v7.0.1, gix-utils v0.1.5, gix-lock v7.0.2, gix-ref v0.33.0, gix-sec v0.8.4, gix-prompt v0.5.3, gix-url v0.21.0, gix-credentials v0.17.0, gix-diff v0.33.0, gix-discover v0.22.0, gix-ignore v0.5.0, gix-bitmap v0.2.6, gix-index v0.21.0, gix-mailmap v0.16.0, gix-negotiate v0.5.0, gix-pack v0.40.0, gix-odb v0.50.0, gix-packetline v0.16.4, gix-transport v0.34.0, gix-protocol v0.36.0, gix-revision v0.18.0, gix-refspec v0.14.0, gix-worktree v0.22.0, gix v0.49.1 ([`5cb3589`](https://github.com/Byron/gitoxide/commit/5cb3589b74fc5376e02cbfe151e71344e1c417fe))
+    - Update changelogs prior to release ([`2fc66b5`](https://github.com/Byron/gitoxide/commit/2fc66b55097ed494b72d1af939ba5561f71fde97))
+    - Merge branch 'improvements-for-crates-index' ([`3f914e8`](https://github.com/Byron/gitoxide/commit/3f914e8840afc59441c3c463bdc89c53136d583e))
+    - `TreeEntryRefExt` and `TreeEntryExt` to be able to easily attach a repo to it. ([`caa8fb9`](https://github.com/Byron/gitoxide/commit/caa8fb9502906fa47546c26bbeb3c546664ad944))
+    - `Tree::find_entry()` to easily find an entry in a tree's entries. ([`62cacd4`](https://github.com/Byron/gitoxide/commit/62cacd4b7a9fc0c0e4c5049f6d0aa7011c8ef923))
+    - `Tree::lookup_entry(_by_path))()` are not mutating anymore; add `Tree::peel_to_entry()` and `peel_to_entry_by_path()` ([`8cad009`](https://github.com/Byron/gitoxide/commit/8cad009eafe8e1054a715dc99bb9a884325d5ea5))
+    - Unify API between `object::tree::Entry` and `object::tree::EntryRef<'_>` ([`d5e4ee0`](https://github.com/Byron/gitoxide/commit/d5e4ee0e6e26ff3feeed1f5aee5bdd0cdc03d1f8))
+    - J fmt ([`57cab40`](https://github.com/Byron/gitoxide/commit/57cab40f5cb437cc5b0a2c1fc5ae0f91f98bbbcc))
+    - Merge branch 'gix-archive' ([`1dda48b`](https://github.com/Byron/gitoxide/commit/1dda48ba2fccb93ebac00fe3460e923af43c86ce))
+    - Change archive implementation to require the seek bound. ([`61aed0e`](https://github.com/Byron/gitoxide/commit/61aed0e955974f65f4fea042cbae68ea8a2cc2f5))
+    - Add `Repository::archive()` as extra ([`c4a1fb1`](https://github.com/Byron/gitoxide/commit/c4a1fb1ba461c28ac3ea2482adf5f75721d14706))
+    - Optionally make `gix-workspace-stream` available via `Repository::worktree_stream()` ([`4ee2857`](https://github.com/Byron/gitoxide/commit/4ee285741e6e1cde3a967980fbf48bab20ddbf68))
+    - Update license field following SPDX 2.1 license expression standard ([`9064ea3`](https://github.com/Byron/gitoxide/commit/9064ea31fae4dc59a56bdd3a06c0ddc990ee689e))
+</details>
+
+## 0.49.1 (2023-07-19)
+
+A maintenance release without user-facing changes.
+
+### Bug Fixes (BREAKING)
+
+ - <csr-id-8cad009eafe8e1054a715dc99bb9a884325d5ea5/> `Tree::lookup_entry(_by_path))()` are not mutating anymore; add `Tree::peel_to_entry()` and `peel_to_entry_by_path()`
+   The previous implementation was a crutch that could now be circumvented.
+   
+   The new methods allow to reuse a buffer in case the object isn't used or needed further,
+   possibly saving allocations.
+
+### New Features (BREAKING)
+
+ - <csr-id-d5e4ee0e6e26ff3feeed1f5aee5bdd0cdc03d1f8/> unify API between `object::tree::Entry` and `object::tree::EntryRef<'_>`
+
+### New Features
+
+ - <csr-id-caa8fb9502906fa47546c26bbeb3c546664ad944/> `TreeEntryRefExt` and `TreeEntryExt` to be able to easily attach a repo to it.
+   Also, add `detach()` to types that were missing it.
+ - <csr-id-62cacd4b7a9fc0c0e4c5049f6d0aa7011c8ef923/> `Tree::find_entry()` to easily find an entry in a tree's entries.
+ - <csr-id-c4a1fb1ba461c28ac3ea2482adf5f75721d14706/> add `Repository::archive()` as extra
+   It implements a high-level interface to achieve `git archive` like functionality.
+ - <csr-id-4ee285741e6e1cde3a967980fbf48bab20ddbf68/> optionally make `gix-workspace-stream` available via `Repository::worktree_stream()`
+   That way it's easy to obtain a representation of the worktree
+   in a fully streaming fashion, which is also the basis for
+   `archive`-like functionality.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 4 commits contributed to the release.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release gix-prompt v0.5.3, gix v0.49.1, cargo-smart-release v0.20.0 ([`f069852`](https://github.com/Byron/gitoxide/commit/f0698522940c9ba4d45db5a44dce9f21ca29cb4e))
+    - Prepare changelogs prior to release ([`849f508`](https://github.com/Byron/gitoxide/commit/849f5081313c4a44bdaef6848758d0d9a5d1598b))
+    - Merge branch 'smart-release-stability' ([`8629f56`](https://github.com/Byron/gitoxide/commit/8629f569cd5917b6c0c3fd928fde021e7976ee85))
+    - Update git2 API mapping and be clear what stability means as well. ([`64cd396`](https://github.com/Byron/gitoxide/commit/64cd396ab05959e1f843f7ccd53ac5d4585584ad))
+</details>
+
+## 0.49.0 (2023-07-19)
+
+<csr-id-c548780e6ea49453ecdb45b11bf4c5781b105e6b/>
+
+### New Features
+
+ - <csr-id-980c2ba591dce7fc787c418aed85078c19e2d6d4/> Make `EntryMode` available from `gix::object::tree`.
+   Previously one had to go through `gix::objs::tree` which wasn't symmetric
+   with `gix::object::Kind`.
+ - <csr-id-d4a8f8cf6d8b059978719ea314fc8a4bfe26c60d/> Add `Id::header()` and `Id::try_header()` as syblings to `::object()` and `::try_object()`.
+   With the new header related functions one can obtain information about an object more quickly.
+ - <csr-id-b73435b3bf334d5be2931c2ea6a597a9dd51b783/> `Repository::header()` and `::try_header()` to learn about objects, quickly
+   Accessing just the headers of an object is much faster than accessing the entire
+   object. Previously, this method was only available on the `objects` field, now it's
+   available through `Repository` directly.
+ - <csr-id-c05eb2204620a5ff5e04b766009c873a14ae0f9e/> top-level examples that represent fully-fledged command-line applications.
+   Please note that these are just examples, which aren't necessarily
+   production ready in terms of quality or performance.
+ - <csr-id-8cc106aa430d39ac9967dcfb3d293725fc76cb79/> checkouts when cloning now respect attributes and use filters.
+ - <csr-id-8993b777cd0331e7260d7d7d1f820afc79a34b19/> add `Repository::filter_pipeline()` to obtain a primitive to handle data conversions.
+   It's fully configured as git would, and can be used to convert data from git or to git.
+
+### Bug Fixes
+
+ - <csr-id-47ca8465e04bdd13fe2ebfc6f012f8191e3f7896/> properly re-initialize object caches after their configuration changes.
+
+### Refactor (BREAKING)
+
+ - <csr-id-c548780e6ea49453ecdb45b11bf4c5781b105e6b/> move error structs into `repository` module where appropriate.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 28 commits contributed to the release over the course of 11 calendar days.
+ - 19 days passed between releases.
+ - 8 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 1 unique issue was worked on: [#925](https://github.com/Byron/gitoxide/issues/925)
+
+### Thanks Clippy
+
+<csr-read-only-do-not-edit/>
+
+[Clippy](https://github.com/rust-lang/rust-clippy) helped 1 time to make code idiomatic. 
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#925](https://github.com/Byron/gitoxide/issues/925)**
+    - Remove all copies of repo-initialization files and rework them to be our own. ([`5ac2269`](https://github.com/Byron/gitoxide/commit/5ac22699936dbc5c09c5eefd28b75d48271b286b))
+ * **Uncategorized**
+    - Release gix-filter v0.1.0, gix-ignore v0.5.0, gix-revwalk v0.4.0, gix-traverse v0.30.0, gix-index v0.21.0, gix-mailmap v0.16.0, gix-negotiate v0.5.0, gix-pack v0.40.0, gix-odb v0.50.0, gix-transport v0.34.0, gix-protocol v0.36.0, gix-revision v0.18.0, gix-refspec v0.14.0, gix-worktree v0.22.0, gix v0.49.0 ([`4aca8c2`](https://github.com/Byron/gitoxide/commit/4aca8c2ae2ec588fb65ec4faa0c07c19d219569f))
+    - Release gix-features v0.32.0, gix-actor v0.24.0, gix-glob v0.10.0, gix-attributes v0.15.0, gix-commitgraph v0.18.0, gix-config-value v0.12.4, gix-fs v0.4.0, gix-object v0.33.0, gix-ref v0.33.0, gix-config v0.26.0, gix-command v0.2.7, gix-url v0.21.0, gix-credentials v0.17.0, gix-diff v0.33.0, gix-discover v0.22.0, gix-filter v0.1.0, gix-ignore v0.5.0, gix-revwalk v0.4.0, gix-traverse v0.30.0, gix-index v0.21.0, gix-mailmap v0.16.0, gix-negotiate v0.5.0, gix-pack v0.40.0, gix-odb v0.50.0, gix-transport v0.34.0, gix-protocol v0.36.0, gix-revision v0.18.0, gix-refspec v0.14.0, gix-worktree v0.22.0, gix v0.49.0 ([`68ae3ff`](https://github.com/Byron/gitoxide/commit/68ae3ff9d642ec56f088a6a682a073dc16f4e8ca))
+    - Adjust package versions (by cargo-smart-release) ([`c70e54f`](https://github.com/Byron/gitoxide/commit/c70e54f163c312c87753a506eeaad462e8579bfb))
+    - Prepare changelogs prior to release ([`e4dded0`](https://github.com/Byron/gitoxide/commit/e4dded05138562f9737a7dcfb60570c55769486d))
+    - Just fmt ([`a063c62`](https://github.com/Byron/gitoxide/commit/a063c62e3a30006d837b267e2ce74e70e48b4fb6))
+    - Merge branch 'adjustments-for-crates-index' ([`b82868d`](https://github.com/Byron/gitoxide/commit/b82868d5688d8d4849c47ed3d209a96ee59e69b3))
+    - Make `EntryMode` available from `gix::object::tree`. ([`980c2ba`](https://github.com/Byron/gitoxide/commit/980c2ba591dce7fc787c418aed85078c19e2d6d4))
+    - Add `Id::header()` and `Id::try_header()` as syblings to `::object()` and `::try_object()`. ([`d4a8f8c`](https://github.com/Byron/gitoxide/commit/d4a8f8cf6d8b059978719ea314fc8a4bfe26c60d))
+    - `Repository::header()` and `::try_header()` to learn about objects, quickly ([`b73435b`](https://github.com/Byron/gitoxide/commit/b73435b3bf334d5be2931c2ea6a597a9dd51b783))
+    - Properly re-initialize object caches after their configuration changes. ([`47ca846`](https://github.com/Byron/gitoxide/commit/47ca8465e04bdd13fe2ebfc6f012f8191e3f7896))
+    - Top-level examples that represent fully-fledged command-line applications. ([`c05eb22`](https://github.com/Byron/gitoxide/commit/c05eb2204620a5ff5e04b766009c873a14ae0f9e))
+    - Cargo fmt ([`6121b8f`](https://github.com/Byron/gitoxide/commit/6121b8f6a7da7f263c6e066155f053a1d7c81477))
+    - `git log` example include empty parents and paths ([`bd59bbe`](https://github.com/Byron/gitoxide/commit/bd59bbebddf804a4dd0872127dcc31b5c3b29c2f))
+    - `git log` example now accepts multiple paths. ([`0df9f70`](https://github.com/Byron/gitoxide/commit/0df9f707987c8001c4ca81faf69033c679a75fd5))
+    - `git log` example filter for min/max parents ([`01e9c29`](https://github.com/Byron/gitoxide/commit/01e9c29bf7106b30d8e3e8c71b37eff77bcc38b5))
+    - `git log` example iterator now properly lazy ([`8a6f1e8`](https://github.com/Byron/gitoxide/commit/8a6f1e89fa4d736a2c902be55413887e14885957))
+    - `git log` example now shows merge parents ([`5cbb6a7`](https://github.com/Byron/gitoxide/commit/5cbb6a72c34d926a2782569d8370e54d4c63ab34))
+    - A `git log` example ([`03b3423`](https://github.com/Byron/gitoxide/commit/03b342306c5effac5e8aa92a349385e59785c0b7))
+    - A `git ls-tree` example ([`6f4b431`](https://github.com/Byron/gitoxide/commit/6f4b43101f7b46e38c2f61c2f859347085d8214f))
+    - Thanks clippy ([`3ef32af`](https://github.com/Byron/gitoxide/commit/3ef32af9bf477cbc60d24da8bb3f15d20976e9e0))
+    - Merge branch 'unique-templates' ([`cbb0db8`](https://github.com/Byron/gitoxide/commit/cbb0db80ccc5c29c92f7abd8af2a03c67d86fc2b))
+    - Adapt journey tests to changes in init templates ([`6297d22`](https://github.com/Byron/gitoxide/commit/6297d2201abb97ec999986a7a19b9ddb02114e24))
+    - Merge branch 'integrate-filtering' ([`b19a56d`](https://github.com/Byron/gitoxide/commit/b19a56dcfa9bea86332a84aa4e8fad445e7d1724))
+    - Checkouts when cloning now respect attributes and use filters. ([`8cc106a`](https://github.com/Byron/gitoxide/commit/8cc106aa430d39ac9967dcfb3d293725fc76cb79))
+    - Add `Repository::filter_pipeline()` to obtain a primitive to handle data conversions. ([`8993b77`](https://github.com/Byron/gitoxide/commit/8993b777cd0331e7260d7d7d1f820afc79a34b19))
+    - Move error structs into `repository` module where appropriate. ([`c548780`](https://github.com/Byron/gitoxide/commit/c548780e6ea49453ecdb45b11bf4c5781b105e6b))
+    - Add keys required to deal with worktree conversions and filters. ([`3fbd7b0`](https://github.com/Byron/gitoxide/commit/3fbd7b0c864cf2f1a38ae24e85d47b0b26b271a7))
+</details>
+
 ## 0.48.0 (2023-06-29)
 
 <csr-id-fb63f3f07f0f9545be5942bcb66b06040fbc7fe9/>
@@ -29,7 +222,7 @@ The main feature of this release is support dates prior to the UNIX epoch. Note 
 
 <csr-read-only-do-not-edit/>
 
- - 14 commits contributed to the release over the course of 6 calendar days.
+ - 15 commits contributed to the release over the course of 6 calendar days.
  - 6 days passed between releases.
  - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -41,6 +234,7 @@ The main feature of this release is support dates prior to the UNIX epoch. Note 
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release gix-transport v0.33.1, gix v0.48.0 ([`f27ca12`](https://github.com/Byron/gitoxide/commit/f27ca128c5f109ad02e4e1a12dc14e93b07bbfcf))
     - Release gix-lock v7.0.1, gix v0.48.0 ([`5ce81ef`](https://github.com/Byron/gitoxide/commit/5ce81ef16210f0b0b72dfd5710a064ccda96ac1c))
     - Release gix-glob v0.9.1, gix-attributes v0.14.1, gix-config-value v0.12.3, gix-ref v0.32.1, gix-sec v0.8.3, gix-config v0.25.1, gix-url v0.20.1, gix-credentials v0.16.1, gix-discover v0.21.1, gix-ignore v0.4.1, gix-pack v0.39.1, gix-odb v0.49.1, gix-worktree v0.21.1, gix v0.48.0 ([`69c6a36`](https://github.com/Byron/gitoxide/commit/69c6a36ba14cbef129deebda9fd8870005fefa17))
     - Release gix-features v0.31.1, gix-path v0.8.3, gix v0.48.0 ([`9ca3464`](https://github.com/Byron/gitoxide/commit/9ca346462806671fbc49643a87cea25ab0da3be8))

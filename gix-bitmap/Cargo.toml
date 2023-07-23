@@ -1,8 +1,8 @@
 [package]
 name = "gix-bitmap"
-version = "0.2.5"
+version = "0.2.6"
 repository = "https://github.com/Byron/gitoxide"
-license = "MIT/Apache-2.0"
+license = "MIT OR Apache-2.0"
 description = "A WIP crate of the gitoxide project dedicated implementing the standard git bitmap format"
 authors = ["Sebastian Thiel <sebastian.thiel@icloud.com>"]
 edition = "2021"

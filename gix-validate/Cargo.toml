@@ -1,8 +1,8 @@
 [package]
 name = "gix-validate"
-version = "0.7.6"
+version = "0.7.7"
 repository = "https://github.com/Byron/gitoxide"
-license = "MIT/Apache-2.0"
+license = "MIT OR Apache-2.0"
 description = "Validation functions for various kinds of names in git"
 authors = ["Sebastian Thiel <sebastian.thiel@icloud.com>"]
 edition = "2021"
