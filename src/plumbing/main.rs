@@ -129,7 +129,7 @@ pub fn main() -> Result<()> {
     let auto_verbose = !progress && !args.no_verbose;
 
     let should_interrupt = Arc::new(AtomicBool::new(false));
-    gix::interrupt::init_handler({
+    gix::interrupt::init_handler(1, {
         let should_interrupt = Arc::clone(&should_interrupt);
         move || should_interrupt.store(true, Ordering::SeqCst)
     })?;
@@ -175,7 +175,9 @@ pub fn main() -> Result<()> {
                                 gix::worktree::archive::Format::InternalTransientNonPersistable
                             }
                             crate::plumbing::options::archive::Format::Tar => gix::worktree::archive::Format::Tar,
-                            crate::plumbing::options::archive::Format::TarGz => gix::worktree::archive::Format::TarGz,
+                            crate::plumbing::options::archive::Format::TarGz => {
+                                gix::worktree::archive::Format::TarGz { compression_level }
+                            }
                             crate::plumbing::options::archive::Format::Zip => {
                                 gix::worktree::archive::Format::Zip { compression_level }
                             }
@@ -877,6 +879,17 @@ pub fn main() -> Result<()> {
             ),
         },
         Subcommands::Commit(cmd) => match cmd {
+            commit::Subcommands::Verify { rev_spec } => prepare_and_run(
+                "commit-verify",
+                trace,
+                auto_verbose,
+                progress,
+                progress_keep_open,
+                None,
+                move |_progress, _out, _err| {
+                    core::repository::commit::verify(repository(Mode::Lenient)?, rev_spec.as_deref())
+                },
+            ),
             commit::Subcommands::Describe {
                 annotated_tags,
                 all_refs,

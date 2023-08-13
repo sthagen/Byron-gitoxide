@@ -1,3 +1,4 @@
+#!/bin/bash
 set -eu -o pipefail
 
 function tick () {
@@ -349,4 +350,23 @@ function optimize_repo() {
     commit commit-on-b1
     optimize_repo
   )
+)
+
+git init unborn
+(cd unborn
+  git symbolic-ref refs/heads/existing-unborn-symbolic refs/heads/main
+  git symbolic-ref refs/heads/existing-unborn-symbolic-other refs/heads/other
+)
+
+git init one-commit-with-symref
+(cd one-commit-with-symref
+  touch content && git add content && git commit -m "init"
+  git checkout -b branch
+  git symbolic-ref refs/heads/symbolic refs/heads/branch
+  git checkout main
+)
+
+git clone one-commit-with-symref one-commit-with-symref-missing-branch
+(cd one-commit-with-symref-missing-branch
+  git branch valid-locally
 )

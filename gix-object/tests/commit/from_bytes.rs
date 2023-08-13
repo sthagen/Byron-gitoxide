@@ -161,6 +161,32 @@ fn pre_epoch() -> crate::Result {
 }
 
 #[test]
+fn double_dash_special_time_offset() -> crate::Result {
+    let signature = || SignatureRef {
+        name: "name".into(),
+        email: "name@example.com".into(),
+        time: Time {
+            seconds: 1288373970,
+            offset: -252000,
+            sign: Sign::Minus,
+        },
+    };
+    assert_eq!(
+        CommitRef::from_bytes(&fixture_name("commit", "double-dash-date-offset.txt"))?,
+        CommitRef {
+            tree: b"0a851d7a2a66084ab10516c406a405d147e974ad".as_bstr(),
+            parents: SmallVec::from(vec![b"31350f4f0f459485eff2131517e3450cf251f6fa".as_bstr()]),
+            author: signature(),
+            committer: signature(),
+            encoding: None,
+            message: "msg\n".into(),
+            extra_headers: vec![]
+        }
+    );
+    Ok(())
+}
+
+#[test]
 fn with_trailer() -> crate::Result {
     let kim = SignatureRef {
         name: "Kim Altintop".into(),
@@ -268,23 +294,11 @@ fn merge() -> crate::Result {
     Ok(())
 }
 
-const OTHER_SIGNATURE: &[u8; 455] = b"-----BEGIN PGP SIGNATURE-----
-
-wsBcBAABCAAQBQJeqxW4CRBK7hj4Ov3rIwAAdHIIAFD98qgN/k8ybukCLf6kpzvi
-5V8gf6BflONXc/oIDySurW7kfS9/r6jOgu08UN8KlQx4Q4g8yY7PROABhwGI70B3
-+mHPFcParQf5FBDDZ3GNNpJdlaI9eqzEnFk8AmHmyKHfuGLoclXUObXQ3oe3fmT7
-QdTC7JTyk/bPnZ9HQKw7depa3+7Kw4wv4DG8QcW3BG6B9bcE15qaWmOiq0ryRXsv
-k7D0LqGSXjU5wrQrKnemC7nWhmQsqaXDe89XXmliClCAx4/bepPiXK0eT/DNIKUr
-iyBBl69jASy41Ug/BlFJbw4+ItkShpXwkJKuBBV/JExChmvbxYWaS7QnyYC9UO0=
-=HLmy
------END PGP SIGNATURE-----
-";
-
 #[test]
 fn newline_right_after_signature_multiline_header() -> crate::Result {
     let fixture = fixture_name("commit", "signed-whitespace.txt");
     let commit = CommitRef::from_bytes(&fixture)?;
-    let pgp_sig = OTHER_SIGNATURE.as_bstr();
+    let pgp_sig = crate::commit::OTHER_SIGNATURE.as_bstr();
     assert_eq!(commit.extra_headers[0].1.as_ref(), pgp_sig);
     assert_eq!(commit.extra_headers().pgp_signature(), Some(pgp_sig));
     assert_eq!(commit.extra_headers().find("gpgsig"), Some(pgp_sig));
