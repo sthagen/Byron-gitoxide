@@ -4,10 +4,12 @@ mod config;
 mod filter;
 mod object;
 mod open;
+mod pathspec;
 mod reference;
 mod remote;
 mod shallow;
 mod state;
+mod submodule;
 mod worktree;
 
 #[test]

@@ -8,6 +8,7 @@ use crate::{
     bstr::BStr,
     config,
     config::{
+        boolean,
         cache::util::{ApplyLeniency, ApplyLeniencyDefault, ApplyLeniencyDefaultValue},
         checkout_options,
         tree::{gitoxide, Checkout, Core, Key},
@@ -74,12 +75,11 @@ impl Cache {
         const DEFAULT: bool = true;
         self.resolved
             .boolean_by_key("core.commitGraph")
-            .map(|res| {
+            .map_or(Ok(DEFAULT), |res| {
                 Core::COMMIT_GRAPH
                     .enrich_error(res)
                     .with_lenient_default_value(self.lenient_config, DEFAULT)
             })
-            .unwrap_or(Ok(DEFAULT))
     }
 
     pub(crate) fn diff_renames(
@@ -144,42 +144,30 @@ impl Cache {
         res.transpose().with_leniency(self.lenient_config)
     }
 
+    pub(crate) fn fs_capabilities(&self) -> Result<gix_fs::Capabilities, boolean::Error> {
+        Ok(gix_fs::Capabilities {
+            precompose_unicode: boolean(self, "core.precomposeUnicode", &Core::PRECOMPOSE_UNICODE, false)?,
+            ignore_case: boolean(self, "core.ignoreCase", &Core::IGNORE_CASE, false)?,
+            executable_bit: boolean(self, "core.fileMode", &Core::FILE_MODE, true)?,
+            symlink: boolean(self, "core.symlinks", &Core::SYMLINKS, true)?,
+        })
+    }
+
     /// Collect everything needed to checkout files into a worktree.
     /// Note that some of the options being returned will be defaulted so safe settings, the caller might have to override them
     /// depending on the use-case.
     pub(crate) fn checkout_options(
         &self,
         repo: &Repository,
-        attributes_source: gix_worktree::cache::state::attributes::Source,
-    ) -> Result<gix_worktree::checkout::Options, checkout_options::Error> {
-        fn boolean(
-            me: &Cache,
-            full_key: &str,
-            key: &'static config::tree::keys::Boolean,
-            default: bool,
-        ) -> Result<bool, checkout_options::Error> {
-            debug_assert_eq!(
-                full_key,
-                key.logical_name(),
-                "BUG: key name and hardcoded name must match"
-            );
-            Ok(me
-                .apply_leniency(me.resolved.boolean_by_key(full_key).map(|v| key.enrich_error(v)))?
-                .unwrap_or(default))
-        }
-
+        attributes_source: gix_worktree::stack::state::attributes::Source,
+    ) -> Result<gix_worktree_state::checkout::Options, checkout_options::Error> {
         let git_dir = repo.git_dir();
         let thread_limit = self.apply_leniency(
             self.resolved
                 .integer_filter_by_key("checkout.workers", &mut self.filter_config_section.clone())
                 .map(|value| Checkout::WORKERS.try_from_workers(value)),
         )?;
-        let capabilities = gix_fs::Capabilities {
-            precompose_unicode: boolean(self, "core.precomposeUnicode", &Core::PRECOMPOSE_UNICODE, false)?,
-            ignore_case: boolean(self, "core.ignoreCase", &Core::IGNORE_CASE, false)?,
-            executable_bit: boolean(self, "core.fileMode", &Core::FILE_MODE, true)?,
-            symlink: boolean(self, "core.symlinks", &Core::SYMLINKS, true)?,
-        };
+        let capabilities = self.fs_capabilities()?;
         let filters = {
             let collection = Default::default();
             let mut filters = gix_filter::Pipeline::new(&collection, filter::Pipeline::options(repo)?);
@@ -200,7 +188,7 @@ impl Cache {
         } else {
             gix_filter::driver::apply::Delay::Forbid
         };
-        Ok(gix_worktree::checkout::Options {
+        Ok(gix_worktree_state::checkout::Options {
             filter_process_delay,
             filters,
             attributes: self
@@ -230,14 +218,14 @@ impl Cache {
         &self,
         git_dir: &std::path::Path,
         overrides: Option<gix_ignore::Search>,
-        source: gix_worktree::cache::state::ignore::Source,
+        source: gix_worktree::stack::state::ignore::Source,
         buf: &mut Vec<u8>,
-    ) -> Result<gix_worktree::cache::state::Ignore, config::exclude_stack::Error> {
+    ) -> Result<gix_worktree::stack::state::Ignore, config::exclude_stack::Error> {
         let excludes_file = match self.excludes_file().transpose()? {
             Some(user_path) => Some(user_path),
             None => self.xdg_config_path("ignore")?,
         };
-        Ok(gix_worktree::cache::state::Ignore::new(
+        Ok(gix_worktree::stack::state::Ignore::new(
             overrides.unwrap_or_default(),
             gix_ignore::Search::from_git_dir(git_dir, excludes_file, buf)?,
             None,
@@ -248,9 +236,9 @@ impl Cache {
     pub(crate) fn assemble_attribute_globals(
         &self,
         git_dir: &std::path::Path,
-        source: gix_worktree::cache::state::attributes::Source,
+        source: gix_worktree::stack::state::attributes::Source,
         attributes: crate::open::permissions::Attributes,
-    ) -> Result<(gix_worktree::cache::state::Attributes, Vec<u8>), config::attribute_stack::Error> {
+    ) -> Result<(gix_worktree::stack::state::Attributes, Vec<u8>), config::attribute_stack::Error> {
         let configured_or_user_attributes = match self
             .trusted_file_path("core", None, Core::ATTRIBUTES_FILE.name)
             .transpose()?
@@ -276,13 +264,40 @@ impl Cache {
         let info_attributes_path = git_dir.join("info").join("attributes");
         let mut buf = Vec::new();
         let mut collection = gix_attributes::search::MetadataCollection::default();
-        let state = gix_worktree::cache::state::Attributes::new(
+        let state = gix_worktree::stack::state::Attributes::new(
             gix_attributes::Search::new_globals(attribute_files, &mut buf, &mut collection)?,
             Some(info_attributes_path),
             source,
             collection,
         );
         Ok((state, buf))
+    }
+
+    pub(crate) fn pathspec_defaults(
+        &self,
+    ) -> Result<gix_pathspec::Defaults, gix_pathspec::defaults::from_environment::Error> {
+        let res = gix_pathspec::Defaults::from_environment(|name| {
+            let key = [
+                &gitoxide::Pathspec::ICASE,
+                &gitoxide::Pathspec::GLOB,
+                &gitoxide::Pathspec::NOGLOB,
+                &gitoxide::Pathspec::LITERAL,
+            ]
+            .iter()
+            .find_map(|key| (key.environment_override().expect("set") == name).then_some(key))
+            .expect("we must know all possible input variable names");
+
+            let val = self
+                .resolved
+                .string("gitoxide", Some("pathspec".into()), key.name())
+                .map(gix_path::from_bstr)?;
+            Some(val.into_owned().into())
+        });
+        if res.is_err() && self.lenient_config {
+            Ok(gix_pathspec::Defaults::default())
+        } else {
+            res
+        }
     }
 
     pub(crate) fn xdg_config_path(
@@ -316,4 +331,20 @@ impl Cache {
     pub(crate) fn home_dir(&self) -> Option<PathBuf> {
         gix_path::env::home_dir().and_then(|path| self.environment.home.check_opt(path))
     }
+}
+
+fn boolean(
+    me: &Cache,
+    full_key: &str,
+    key: &'static config::tree::keys::Boolean,
+    default: bool,
+) -> Result<bool, boolean::Error> {
+    debug_assert_eq!(
+        full_key,
+        key.logical_name(),
+        "BUG: key name and hardcoded name must match"
+    );
+    Ok(me
+        .apply_leniency(me.resolved.boolean_by_key(full_key).map(|v| key.enrich_error(v)))?
+        .unwrap_or(default))
 }

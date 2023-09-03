@@ -56,17 +56,13 @@
 //!
 //! ### `libgit2` API to `gix`
 //!
-//! This section is a 'striving to be complete' mapping from `libgit2` APIs to the respective methods in `gix`.
+//! This doc-aliases are used to help finding methods under a possibly changed name. Just search in the docs.
+//! Entering `git2` into the search field will also surface all methods with such annotations.
 //!
-//! * [`git2::Repository::open()`](https://docs.rs/git2/*/git2/struct.Repository.html#method.open) ➡ [`gix::open()`](https://docs.rs/gix/*/gix/fn.open.html)
-//! * [`git2::Repository::open_bare()`](https://docs.rs/git2/*/git2/struct.Repository.html#method.open_bare) ➡ ❌
-//! * [`git2::Repository::open_from_env()`](https://docs.rs/git2/*/git2/struct.Repository.html#method.open_from_env) ➡ [`gix::ThreadSafeRepository::open_with_environment_overrides()`](https://docs.rs/gix/*/gix/struct.ThreadSafeRepository.html#method.open_with_environment_overrides)
-//! * [`git2::Repository::open_ext()`](https://docs.rs/git2/*/git2/struct.Repository.html#method.open_ext) ➡ [`gix::open_opts()`](https://docs.rs/gix/*/gix/fn.open_opts.html)
-//! * [`git2::Repository::revparse()`](https://docs.rs/git2/*/git2/struct.Repository.html#method.revparse) ➡ [`gix::Repository::rev_parse()`](https://docs.rs/gix/*/gix/struct.Repository.html#method.rev_parse)
-//! * [`git2::Repository::revparse_single()`](https://docs.rs/git2/*/git2/struct.Repository.html#method.revparse_single) ➡ [`gix::Repository::rev_parse_single()`](https://docs.rs/gix/*/gix/struct.Repository.html#method.rev_parse_single)
-//! * [`git2::Repository::revwalk()`](https://docs.rs/git2/*/git2/struct.Repository.html#method.revwalk) ➡ [`gix::Repository::rev_walk()`](https://docs.rs/gix/*/gix/struct.Repository.html#method.rev_walk)
-//! * [`git2::build::CheckoutBuilder::disable_filters()](https://docs.rs/git2/0.17.2/git2/build/struct.CheckoutBuilder.html#method.disable_filters) ➡ ❌ *(filters are always applied during checkouts)*
-//! * [`git2::Odb::read_header()`](https://docs.rs/git2/0.17.2/git2/struct.Odb.html#method.read_header) ➡ [`gix::Repository::find_header()`](https://docs.rs/gix/*/gix/struct.Repository.html#method.find_header)
+//! What follows is a list of methods you might be missing, along with workarounds if available.
+//! * [`git2::Repository::open_bare()`](https://docs.rs/git2/*/git2/struct.Repository.html#method.open_bare) ➡ ❌ - use [`open()`] and discard it is not bare.
+//! * [`git2::build::CheckoutBuilder::disable_filters()](https://docs.rs/git2/*/git2/build/struct.CheckoutBuilder.html#method.disable_filters) ➡ ❌ *(filters are always applied during checkouts)*
+//! * [`git2::Repository::submodule_status()`](https://docs.rs/git2/*/git2/struct.Repository.html#method.submodule_status) ➡ [`Submodule::state()`] - status provides more information and conveniences though, and an actual worktree status isn't performed.
 //!
 //! ## Feature Flags
 #![cfg_attr(
@@ -75,6 +71,7 @@
 )]
 #![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 #![deny(missing_docs, rust_2018_idioms, unsafe_code)]
+#![allow(clippy::result_large_err)]
 
 // Re-exports to make this a potential one-stop shop crate avoiding people from having to reference various crates themselves.
 // This also means that their major version changes affect our major version, but that's alright as we directly expose their
@@ -120,6 +117,8 @@ mod ext;
 ///
 pub mod prelude;
 
+mod attribute_stack;
+
 ///
 pub mod path;
 
@@ -130,10 +129,10 @@ pub type OdbHandle = gix_odb::Handle;
 /// A way to access git configuration
 pub(crate) type Config = OwnShared<gix_config::File<'static>>;
 
-///
 mod types;
 pub use types::{
-    Commit, Head, Id, Object, ObjectDetached, Reference, Remote, Repository, Tag, ThreadSafeRepository, Tree, Worktree,
+    AttributeStack, Commit, Head, Id, Object, ObjectDetached, Pathspec, Reference, Remote, Repository, Submodule, Tag,
+    ThreadSafeRepository, Tree, Worktree,
 };
 
 ///
@@ -142,8 +141,10 @@ pub mod commit;
 pub mod head;
 pub mod id;
 pub mod object;
+pub mod pathspec;
 pub mod reference;
 pub mod repository;
+pub mod submodule;
 pub mod tag;
 
 ///
@@ -229,12 +230,14 @@ fn open_opts_with_git_binary_config() -> open::Options {
 
 /// See [`ThreadSafeRepository::open()`], but returns a [`Repository`] instead.
 #[allow(clippy::result_large_err)]
+#[doc(alias = "git2")]
 pub fn open(directory: impl Into<std::path::PathBuf>) -> Result<Repository, open::Error> {
     ThreadSafeRepository::open(directory).map(Into::into)
 }
 
 /// See [`ThreadSafeRepository::open_opts()`], but returns a [`Repository`] instead.
 #[allow(clippy::result_large_err)]
+#[doc(alias = "open_ext", alias = "git2")]
 pub fn open_opts(directory: impl Into<std::path::PathBuf>, options: open::Options) -> Result<Repository, open::Error> {
     ThreadSafeRepository::open_opts(directory, options).map(Into::into)
 }

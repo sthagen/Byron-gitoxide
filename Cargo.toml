@@ -5,15 +5,15 @@ repository = "https://github.com/Byron/gitoxide"
 authors = ["Sebastian Thiel <sebastian.thiel@icloud.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
-version = "0.29.0"
+version = "0.30.0"
 default-run = "gix"
 include = ["src/**/*", "LICENSE-*", "README.md", "CHANGELOG.md"]
 resolver = "2"
 
 [[bin]]
 name = "ein"
-doc = false
 path = "src/ein.rs"
+doc = false
 test = false
 doctest = false
 
@@ -162,9 +162,9 @@ gitoxide-core-async-client = ["gitoxide-core/async-client", "futures-lite"]
 [dependencies]
 anyhow = "1.0.42"
 
-gitoxide-core = { version = "^0.31.0", path = "gitoxide-core" }
-gix-features = { version = "^0.32.1", path = "gix-features" }
-gix = { version = "^0.51.0", path = "gix", default-features = false }
+gitoxide-core = { version = "^0.32.0", path = "gitoxide-core" }
+gix-features = { version = "^0.33.0", path = "gix-features" }
+gix = { version = "^0.53.0", path = "gix", default-features = false }
 time = "0.3.23"
 
 clap = { version = "4.1.1", features = ["derive", "cargo"] }
@@ -183,6 +183,10 @@ tracing = { version = "0.1.37", optional = true }
 owo-colors = "3.5.0"
 tabled = { version = "0.10.0", default-features = false }
 
+# Avoid pre-compiled binaries, see https://github.com/serde-rs/serde/issues/2538 and https://github.com/serde-rs/serde/pull/2590
+serde_derive = ">=1.0.185"
+
+once_cell = "1.18.0"
 document-features = { version = "0.2.0", optional = true }
 
 [profile.dev.package]
@@ -234,6 +238,8 @@ members = [
     "gix-index",
     "gix-bitmap",
     "gix-worktree",
+    "gix-worktree-state",
+    "gix-status",
     "gix-revision",
     "gix-packetline",
     "gix-packetline-blocking",
@@ -275,14 +281,15 @@ members = [
 
     "gix-diff/tests",
     "gix-pack/tests",
+    "gix-odb/tests",
+    "gix-worktree-state/tests",
+    "gix-status/tests",
+    "gix-worktree/tests",
     "gix-index/tests",
     "gix-ref/tests",
     "gix-config/tests",
     "gix-traverse/tests",
 ]
-exclude = ["cargo-smart-release/tests/fixtures/tri-depth-workspace/a",
-           "cargo-smart-release/tests/fixtures/tri-depth-workspace/b",
-           "cargo-smart-release/tests/fixtures/tri-depth-workspace/c"]
 
 [package.metadata.docs.rs]
 features = ["document-features", "max"]

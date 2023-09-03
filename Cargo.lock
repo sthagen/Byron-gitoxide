@@ -31,9 +31,9 @@ dependencies = [
 
 [[package]]
 name = "aho-corasick"
-version = "1.0.2"
+version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43f6cb1bf222025340178f382c426f13757b2960e89779dfcb319c32542a5a41"
+checksum = "6748e8def348ed4d14996fa801f4122cd763fff530258cdc03f64b25f89d3a5a"
 dependencies = [
  "memchr",
 ]
@@ -258,7 +258,7 @@ checksum = "a564d521dd56509c4c47480d00b80ee55f7e385ae48db5744c67ad50c92d2ebf"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.26",
+ "syn 2.0.29",
 ]
 
 [[package]]
@@ -266,17 +266,6 @@ name = "atomic-waker"
 version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1181e1e0d1fce796a03db1ae795d67167da795f9cf4a39c37589e85ef57f26d3"
-
-[[package]]
-name = "atty"
-version = "0.2.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9b39be18770d11421cdb1b9947a45dd3f37e93092cbf377614828a319d5fee8"
-dependencies = [
- "hermit-abi 0.1.19",
- "libc",
- "winapi",
-]
 
 [[package]]
 name = "autocfg"
@@ -481,7 +470,7 @@ dependencies = [
  "heck",
  "proc-macro2",
  "quote",
- "syn 2.0.26",
+ "syn 2.0.29",
 ]
 
 [[package]]
@@ -910,6 +899,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7360491ce676a36bf9bb3c56c1aa791658183a54d2744120f27285738d90465a"
 
 [[package]]
+name = "faster-hex"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e9042d281a5eec0f2387f8c3ea6c4514e2cf2732c90a85aaf383b761ee3b290d"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "fastrand"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -938,9 +936,9 @@ dependencies = [
 
 [[package]]
 name = "flate2"
-version = "1.0.26"
+version = "1.0.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b9429470923de8e8cbd4d2dc513535400b4b3fef0319fb5c4e1f520a7bef743"
+checksum = "c6c98ee8095e9d1dcbf2fcc6d95acccb90d1c81db1e44725c6a984b1dbdfb010"
 dependencies = [
  "crc32fast",
  "libz-ng-sys",
@@ -991,6 +989,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42703706b716c37f96a77aea830392ad231f44c9e9a67872fa5548707e11b11c"
 
 [[package]]
+name = "futures"
+version = "0.3.28"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "23342abe12aba583913b2e62f22225ff9c950774065e4bfb61a19cd9770fec40"
+dependencies = [
+ "futures-channel",
+ "futures-core",
+ "futures-executor",
+ "futures-io",
+ "futures-sink",
+ "futures-task",
+ "futures-util",
+]
+
+[[package]]
 name = "futures-channel"
 version = "0.3.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1005,6 +1018,17 @@ name = "futures-core"
 version = "0.3.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4bca583b7e26f571124fe5b7561d49cb2868d79116cfa0eefce955557c6fee8c"
+
+[[package]]
+name = "futures-executor"
+version = "0.3.28"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ccecee823288125bd88b4d7f565c9e58e41858e47ab72e8ea2d64e93624386e0"
+dependencies = [
+ "futures-core",
+ "futures-task",
+ "futures-util",
+]
 
 [[package]]
 name = "futures-io"
@@ -1035,7 +1059,7 @@ checksum = "89ca545a94061b6365f2c7355b4b32bd20df3ff95f02da9329b34ccc3bd6ee72"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.26",
+ "syn 2.0.29",
 ]
 
 [[package]]
@@ -1056,9 +1080,11 @@ version = "0.3.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "26b01e40b772d54cf6c6d721c1d1abd0647a0106a12ecaa1c186273392a69533"
 dependencies = [
+ "futures-channel",
  "futures-core",
  "futures-io",
  "futures-macro",
+ "futures-sink",
  "futures-task",
  "memchr",
  "pin-project-lite",
@@ -1097,7 +1123,7 @@ checksum = "b6c80984affa11d98d1b88b66ac8853f143217b399d3c74116778ff8fdb4ed2e"
 
 [[package]]
 name = "gitoxide"
-version = "0.29.0"
+version = "0.30.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -1107,10 +1133,12 @@ dependencies = [
  "futures-lite",
  "gitoxide-core",
  "gix",
- "gix-features 0.32.1",
+ "gix-features 0.33.0",
  "is-terminal",
+ "once_cell",
  "owo-colors",
- "prodash 25.0.1",
+ "prodash 25.0.2",
+ "serde_derive",
  "tabled",
  "time",
  "tracing",
@@ -1120,7 +1148,7 @@ dependencies = [
 
 [[package]]
 name = "gitoxide-core"
-version = "0.31.0"
+version = "0.32.0"
 dependencies = [
  "anyhow",
  "async-io",
@@ -1157,42 +1185,44 @@ dependencies = [
 
 [[package]]
 name = "gix"
-version = "0.51.0"
+version = "0.53.0"
 dependencies = [
  "anyhow",
  "async-std",
  "document-features",
- "gix-actor 0.24.2",
+ "gix-actor 0.25.0",
  "gix-archive",
- "gix-attributes 0.16.0",
+ "gix-attributes 0.17.0",
  "gix-commitgraph",
  "gix-config",
  "gix-credentials",
- "gix-date 0.7.2",
+ "gix-date 0.7.4",
  "gix-diff",
  "gix-discover 0.23.0",
- "gix-features 0.32.1",
+ "gix-features 0.33.0",
  "gix-filter",
- "gix-fs 0.4.1",
- "gix-glob 0.10.2",
- "gix-hash 0.11.4",
- "gix-hashtable 0.2.4",
- "gix-ignore 0.5.1",
- "gix-index 0.22.0",
- "gix-lock 7.0.2",
+ "gix-fs 0.5.0",
+ "gix-glob 0.11.0",
+ "gix-hash 0.12.0",
+ "gix-hashtable 0.3.0",
+ "gix-ignore 0.6.0",
+ "gix-index 0.23.1",
+ "gix-lock 8.0.0",
  "gix-mailmap",
  "gix-negotiate",
- "gix-object 0.34.0",
+ "gix-object 0.35.0",
  "gix-odb",
  "gix-pack",
- "gix-path 0.8.4",
+ "gix-path 0.9.0",
+ "gix-pathspec",
  "gix-prompt",
  "gix-protocol",
- "gix-ref 0.34.0",
+ "gix-ref 0.35.0",
  "gix-refspec",
  "gix-revision",
- "gix-sec 0.8.4",
- "gix-tempfile 7.0.2",
+ "gix-sec 0.9.0",
+ "gix-submodule",
+ "gix-tempfile 8.0.0",
  "gix-testtools",
  "gix-trace 0.1.3",
  "gix-transport",
@@ -1200,13 +1230,14 @@ dependencies = [
  "gix-url",
  "gix-utils 0.1.5",
  "gix-validate 0.8.0",
- "gix-worktree 0.24.0",
+ "gix-worktree 0.25.0",
+ "gix-worktree-state",
  "gix-worktree-stream",
  "is_ci",
  "log",
  "once_cell",
  "parking_lot",
- "prodash 25.0.1",
+ "prodash 25.0.2",
  "regex",
  "reqwest",
  "serde",
@@ -1234,20 +1265,20 @@ dependencies = [
 
 [[package]]
 name = "gix-actor"
-version = "0.24.2"
+version = "0.25.0"
 dependencies = [
  "bstr",
  "btoi",
  "document-features",
- "gix-date 0.7.2",
- "gix-features 0.32.1",
- "gix-hash 0.11.4",
+ "gix-date 0.7.4",
+ "gix-features 0.33.0",
+ "gix-hash 0.12.0",
  "gix-testtools",
  "itoa",
- "nom",
  "pretty_assertions",
  "serde",
  "thiserror",
+ "winnow",
 ]
 
 [[package]]
@@ -1257,15 +1288,15 @@ dependencies = [
  "bstr",
  "document-features",
  "flate2",
- "gix-attributes 0.16.0",
- "gix-date 0.7.2",
+ "gix-attributes 0.17.0",
+ "gix-date 0.7.4",
  "gix-filter",
- "gix-hash 0.11.4",
- "gix-object 0.34.0",
+ "gix-hash 0.12.0",
+ "gix-object 0.35.0",
  "gix-odb",
- "gix-path 0.8.4",
+ "gix-path 0.9.0",
  "gix-testtools",
- "gix-worktree 0.24.0",
+ "gix-worktree 0.25.0",
  "gix-worktree-stream",
  "tar",
  "thiserror",
@@ -1292,14 +1323,14 @@ dependencies = [
 
 [[package]]
 name = "gix-attributes"
-version = "0.16.0"
+version = "0.17.0"
 dependencies = [
  "bstr",
  "document-features",
- "gix-fs 0.4.1",
- "gix-glob 0.10.2",
- "gix-path 0.8.4",
- "gix-quote 0.4.6",
+ "gix-fs 0.5.0",
+ "gix-glob 0.11.0",
+ "gix-path 0.9.0",
+ "gix-quote 0.4.7",
  "gix-testtools",
  "kstring",
  "log",
@@ -1320,7 +1351,7 @@ dependencies = [
 
 [[package]]
 name = "gix-bitmap"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "gix-testtools",
  "thiserror",
@@ -1335,7 +1366,7 @@ dependencies = [
 
 [[package]]
 name = "gix-command"
-version = "0.2.8"
+version = "0.2.9"
 dependencies = [
  "bstr",
  "gix-testtools",
@@ -1343,14 +1374,14 @@ dependencies = [
 
 [[package]]
 name = "gix-commitgraph"
-version = "0.18.2"
+version = "0.19.0"
 dependencies = [
  "bstr",
  "document-features",
  "gix-chunk",
- "gix-date 0.7.2",
- "gix-features 0.32.1",
- "gix-hash 0.11.4",
+ "gix-date 0.7.4",
+ "gix-features 0.33.0",
+ "gix-hash 0.12.0",
  "gix-testtools",
  "memmap2 0.7.1",
  "serde",
@@ -1359,17 +1390,17 @@ dependencies = [
 
 [[package]]
 name = "gix-config"
-version = "0.27.0"
+version = "0.28.0"
 dependencies = [
  "bstr",
  "criterion",
  "document-features",
  "gix-config-value",
- "gix-features 0.32.1",
- "gix-glob 0.10.2",
- "gix-path 0.8.4",
- "gix-ref 0.34.0",
- "gix-sec 0.8.4",
+ "gix-features 0.33.0",
+ "gix-glob 0.11.0",
+ "gix-path 0.9.0",
+ "gix-ref 0.35.0",
+ "gix-sec 0.9.0",
  "log",
  "memchr",
  "once_cell",
@@ -1385,26 +1416,23 @@ name = "gix-config-tests"
 version = "0.0.0"
 dependencies = [
  "bstr",
- "criterion",
  "gix",
  "gix-config",
- "gix-path 0.8.4",
- "gix-ref 0.34.0",
- "gix-sec 0.8.4",
+ "gix-path 0.9.0",
+ "gix-ref 0.35.0",
+ "gix-sec 0.9.0",
  "gix-testtools",
- "serde_derive",
  "serial_test",
- "tempfile",
 ]
 
 [[package]]
 name = "gix-config-value"
-version = "0.12.5"
+version = "0.13.0"
 dependencies = [
  "bitflags 2.3.3",
  "bstr",
  "document-features",
- "gix-path 0.8.4",
+ "gix-path 0.9.0",
  "libc",
  "serde",
  "thiserror",
@@ -1412,15 +1440,15 @@ dependencies = [
 
 [[package]]
 name = "gix-credentials"
-version = "0.17.1"
+version = "0.18.0"
 dependencies = [
  "bstr",
  "document-features",
  "gix-command",
  "gix-config-value",
- "gix-path 0.8.4",
+ "gix-path 0.9.0",
  "gix-prompt",
- "gix-sec 0.8.4",
+ "gix-sec 0.9.0",
  "gix-testtools",
  "gix-url",
  "serde",
@@ -1441,11 +1469,11 @@ dependencies = [
 
 [[package]]
 name = "gix-date"
-version = "0.7.2"
+version = "0.7.4"
 dependencies = [
  "bstr",
  "document-features",
- "gix-hash 0.11.4",
+ "gix-hash 0.12.0",
  "gix-testtools",
  "itoa",
  "once_cell",
@@ -1458,9 +1486,10 @@ dependencies = [
 name = "gix-diff"
 version = "0.34.0"
 dependencies = [
+ "document-features",
  "getrandom",
- "gix-hash 0.11.4",
- "gix-object 0.34.0",
+ "gix-hash 0.12.0",
+ "gix-object 0.35.0",
  "imara-diff",
  "serde",
  "thiserror",
@@ -1471,8 +1500,8 @@ name = "gix-diff-tests"
 version = "0.0.0"
 dependencies = [
  "gix-diff",
- "gix-hash 0.11.4",
- "gix-object 0.34.0",
+ "gix-hash 0.12.0",
+ "gix-object 0.35.0",
  "gix-odb",
  "gix-testtools",
  "gix-traverse 0.31.0",
@@ -1500,10 +1529,10 @@ dependencies = [
  "bstr",
  "defer",
  "dunce",
- "gix-hash 0.11.4",
- "gix-path 0.8.4",
- "gix-ref 0.34.0",
- "gix-sec 0.8.4",
+ "gix-hash 0.12.0",
+ "gix-path 0.9.0",
+ "gix-ref 0.35.0",
+ "gix-sec 0.9.0",
  "gix-testtools",
  "is_ci",
  "serial_test",
@@ -1526,7 +1555,7 @@ dependencies = [
 
 [[package]]
 name = "gix-features"
-version = "0.32.1"
+version = "0.33.0"
 dependencies = [
  "bstr",
  "bytes",
@@ -1535,13 +1564,13 @@ dependencies = [
  "crossbeam-channel",
  "document-features",
  "flate2",
- "gix-hash 0.11.4",
+ "gix-hash 0.12.0",
  "gix-trace 0.1.3",
  "jwalk",
  "libc",
  "once_cell",
  "parking_lot",
- "prodash 25.0.1",
+ "prodash 25.0.2",
  "sha1",
  "sha1_smol",
  "thiserror",
@@ -1558,16 +1587,16 @@ version = "0.3.0"
 dependencies = [
  "bstr",
  "encoding_rs",
- "gix-attributes 0.16.0",
+ "gix-attributes 0.17.0",
  "gix-command",
- "gix-hash 0.11.4",
- "gix-object 0.34.0",
+ "gix-hash 0.12.0",
+ "gix-object 0.35.0",
  "gix-packetline-blocking",
- "gix-path 0.8.4",
- "gix-quote 0.4.6",
+ "gix-path 0.9.0",
+ "gix-quote 0.4.7",
  "gix-testtools",
  "gix-trace 0.1.3",
- "gix-worktree 0.24.0",
+ "gix-worktree 0.25.0",
  "once_cell",
  "smallvec",
  "thiserror",
@@ -1584,9 +1613,9 @@ dependencies = [
 
 [[package]]
 name = "gix-fs"
-version = "0.4.1"
+version = "0.5.0"
 dependencies = [
- "gix-features 0.32.1",
+ "gix-features 0.33.0",
  "tempfile",
 ]
 
@@ -1604,13 +1633,13 @@ dependencies = [
 
 [[package]]
 name = "gix-glob"
-version = "0.10.2"
+version = "0.11.0"
 dependencies = [
  "bitflags 2.3.3",
  "bstr",
  "document-features",
- "gix-features 0.32.1",
- "gix-path 0.8.4",
+ "gix-features 0.33.0",
+ "gix-path 0.9.0",
  "gix-testtools",
  "serde",
 ]
@@ -1627,12 +1656,12 @@ dependencies = [
 
 [[package]]
 name = "gix-hash"
-version = "0.11.4"
+version = "0.12.0"
 dependencies = [
  "document-features",
- "gix-features 0.32.1",
+ "faster-hex",
+ "gix-features 0.33.0",
  "gix-testtools",
- "hex",
  "serde",
  "thiserror",
 ]
@@ -1650,9 +1679,9 @@ dependencies = [
 
 [[package]]
 name = "gix-hashtable"
-version = "0.2.4"
+version = "0.3.0"
 dependencies = [
- "gix-hash 0.11.4",
+ "gix-hash 0.12.0",
  "hashbrown 0.14.0",
  "parking_lot",
 ]
@@ -1671,13 +1700,13 @@ dependencies = [
 
 [[package]]
 name = "gix-ignore"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "bstr",
  "document-features",
- "gix-fs 0.4.1",
- "gix-glob 0.10.2",
- "gix-path 0.8.4",
+ "gix-fs 0.5.0",
+ "gix-glob 0.11.0",
+ "gix-path 0.9.0",
  "gix-testtools",
  "serde",
  "unicode-bom",
@@ -1707,19 +1736,19 @@ dependencies = [
 
 [[package]]
 name = "gix-index"
-version = "0.22.0"
+version = "0.23.1"
 dependencies = [
  "bitflags 2.3.3",
  "bstr",
  "btoi",
  "document-features",
  "filetime",
- "gix-bitmap 0.2.6",
- "gix-features 0.32.1",
- "gix-fs 0.4.1",
- "gix-hash 0.11.4",
- "gix-lock 7.0.2",
- "gix-object 0.34.0",
+ "gix-bitmap 0.2.7",
+ "gix-features 0.33.0",
+ "gix-fs 0.5.0",
+ "gix-hash 0.12.0",
+ "gix-lock 8.0.0",
+ "gix-object 0.35.0",
  "gix-traverse 0.31.0",
  "itoa",
  "memmap2 0.7.1",
@@ -1735,9 +1764,9 @@ dependencies = [
  "bstr",
  "filetime",
  "gix",
- "gix-features 0.32.1",
- "gix-hash 0.11.4",
- "gix-index 0.22.0",
+ "gix-features 0.33.0",
+ "gix-hash 0.12.0",
+ "gix-index 0.23.1",
  "gix-testtools",
 ]
 
@@ -1758,9 +1787,9 @@ dependencies = [
 
 [[package]]
 name = "gix-lock"
-version = "7.0.2"
+version = "8.0.0"
 dependencies = [
- "gix-tempfile 7.0.2",
+ "gix-tempfile 8.0.0",
  "gix-utils 0.1.5",
  "tempfile",
  "thiserror",
@@ -1768,12 +1797,12 @@ dependencies = [
 
 [[package]]
 name = "gix-mailmap"
-version = "0.16.1"
+version = "0.17.0"
 dependencies = [
  "bstr",
  "document-features",
- "gix-actor 0.24.2",
- "gix-date 0.7.2",
+ "gix-actor 0.25.0",
+ "gix-date 0.7.4",
  "gix-testtools",
  "serde",
  "thiserror",
@@ -1785,11 +1814,11 @@ version = "0.6.0"
 dependencies = [
  "bitflags 2.3.3",
  "gix-commitgraph",
- "gix-date 0.7.2",
- "gix-hash 0.11.4",
- "gix-object 0.34.0",
+ "gix-date 0.7.4",
+ "gix-hash 0.12.0",
+ "gix-object 0.35.0",
  "gix-odb",
- "gix-ref 0.34.0",
+ "gix-ref 0.35.0",
  "gix-revwalk",
  "gix-testtools",
  "smallvec",
@@ -1821,24 +1850,24 @@ dependencies = [
 
 [[package]]
 name = "gix-object"
-version = "0.34.0"
+version = "0.35.0"
 dependencies = [
  "bstr",
  "btoi",
+ "criterion",
  "document-features",
- "gix-actor 0.24.2",
- "gix-date 0.7.2",
- "gix-features 0.32.1",
- "gix-hash 0.11.4",
+ "gix-actor 0.25.0",
+ "gix-date 0.7.4",
+ "gix-features 0.33.0",
+ "gix-hash 0.12.0",
  "gix-testtools",
  "gix-validate 0.8.0",
- "hex",
  "itoa",
- "nom",
  "pretty_assertions",
  "serde",
  "smallvec",
  "thiserror",
+ "winnow",
 ]
 
 [[package]]
@@ -1846,24 +1875,35 @@ name = "gix-odb"
 version = "0.51.0"
 dependencies = [
  "arc-swap",
- "crossbeam-channel",
  "document-features",
- "filetime",
- "gix-actor 0.24.2",
- "gix-date 0.7.2",
- "gix-features 0.32.1",
- "gix-hash 0.11.4",
- "gix-object 0.34.0",
+ "gix-date 0.7.4",
+ "gix-features 0.33.0",
+ "gix-hash 0.12.0",
+ "gix-object 0.35.0",
  "gix-pack",
- "gix-path 0.8.4",
- "gix-quote 0.4.6",
- "gix-testtools",
- "maplit",
+ "gix-path 0.9.0",
+ "gix-quote 0.4.7",
  "parking_lot",
- "pretty_assertions",
  "serde",
  "tempfile",
  "thiserror",
+]
+
+[[package]]
+name = "gix-odb-tests"
+version = "0.0.0"
+dependencies = [
+ "filetime",
+ "gix-actor 0.25.0",
+ "gix-date 0.7.4",
+ "gix-features 0.33.0",
+ "gix-hash 0.12.0",
+ "gix-object 0.35.0",
+ "gix-odb",
+ "gix-pack",
+ "gix-testtools",
+ "maplit",
+ "pretty_assertions",
 ]
 
 [[package]]
@@ -1874,12 +1914,12 @@ dependencies = [
  "document-features",
  "gix-chunk",
  "gix-diff",
- "gix-features 0.32.1",
- "gix-hash 0.11.4",
- "gix-hashtable 0.2.4",
- "gix-object 0.34.0",
- "gix-path 0.8.4",
- "gix-tempfile 7.0.2",
+ "gix-features 0.33.0",
+ "gix-hash 0.12.0",
+ "gix-hashtable 0.3.0",
+ "gix-object 0.35.0",
+ "gix-path 0.9.0",
+ "gix-tempfile 8.0.0",
  "gix-testtools",
  "gix-traverse 0.31.0",
  "memmap2 0.7.1",
@@ -1892,33 +1932,32 @@ dependencies = [
 
 [[package]]
 name = "gix-pack-tests"
-version = "0.30.1"
+version = "0.0.0"
 dependencies = [
  "bstr",
- "gix-features 0.32.1",
- "gix-hash 0.11.4",
- "gix-object 0.34.0",
+ "gix-features 0.33.0",
+ "gix-hash 0.12.0",
+ "gix-object 0.35.0",
  "gix-odb",
  "gix-pack",
  "gix-testtools",
  "gix-traverse 0.31.0",
  "maplit",
  "memmap2 0.7.1",
- "tempfile",
 ]
 
 [[package]]
 name = "gix-packetline"
-version = "0.16.4"
+version = "0.16.5"
 dependencies = [
  "async-std",
  "bstr",
  "document-features",
+ "faster-hex",
  "futures-io",
  "futures-lite",
- "gix-hash 0.11.4",
+ "gix-hash 0.12.0",
  "gix-odb",
- "hex",
  "maybe-async",
  "pin-project-lite",
  "serde",
@@ -1927,11 +1966,11 @@ dependencies = [
 
 [[package]]
 name = "gix-packetline-blocking"
-version = "0.16.4"
+version = "0.16.5"
 dependencies = [
  "bstr",
  "document-features",
- "hex",
+ "faster-hex",
  "serde",
  "thiserror",
 ]
@@ -1951,7 +1990,7 @@ dependencies = [
 
 [[package]]
 name = "gix-path"
-version = "0.8.4"
+version = "0.9.0"
 dependencies = [
  "bstr",
  "gix-trace 0.1.3",
@@ -1967,16 +2006,19 @@ version = "0.1.0"
 dependencies = [
  "bitflags 2.3.3",
  "bstr",
- "gix-attributes 0.16.0",
- "gix-glob 0.10.2",
+ "gix-attributes 0.17.0",
+ "gix-config-value",
+ "gix-glob 0.11.0",
+ "gix-path 0.9.0",
  "gix-testtools",
  "once_cell",
+ "serial_test",
  "thiserror",
 ]
 
 [[package]]
 name = "gix-prompt"
-version = "0.5.5"
+version = "0.6.0"
 dependencies = [
  "expectrl",
  "gix-command",
@@ -1990,7 +2032,7 @@ dependencies = [
 
 [[package]]
 name = "gix-protocol"
-version = "0.37.0"
+version = "0.38.0"
 dependencies = [
  "async-std",
  "async-trait",
@@ -2000,9 +2042,9 @@ dependencies = [
  "futures-io",
  "futures-lite",
  "gix-credentials",
- "gix-date 0.7.2",
- "gix-features 0.32.1",
- "gix-hash 0.11.4",
+ "gix-date 0.7.4",
+ "gix-features 0.33.0",
+ "gix-hash 0.12.0",
  "gix-packetline",
  "gix-testtools",
  "gix-transport",
@@ -2025,7 +2067,7 @@ dependencies = [
 
 [[package]]
 name = "gix-quote"
-version = "0.4.6"
+version = "0.4.7"
 dependencies = [
  "bstr",
  "btoi",
@@ -2058,54 +2100,50 @@ dependencies = [
 
 [[package]]
 name = "gix-ref"
-version = "0.34.0"
+version = "0.35.0"
 dependencies = [
  "document-features",
- "gix-actor 0.24.2",
- "gix-date 0.7.2",
- "gix-features 0.32.1",
- "gix-fs 0.4.1",
- "gix-hash 0.11.4",
- "gix-lock 7.0.2",
- "gix-object 0.34.0",
- "gix-path 0.8.4",
- "gix-tempfile 7.0.2",
+ "gix-actor 0.25.0",
+ "gix-date 0.7.4",
+ "gix-features 0.33.0",
+ "gix-fs 0.5.0",
+ "gix-hash 0.12.0",
+ "gix-lock 8.0.0",
+ "gix-object 0.35.0",
+ "gix-path 0.9.0",
+ "gix-tempfile 8.0.0",
  "gix-testtools",
- "gix-utils 0.1.5",
  "gix-validate 0.8.0",
  "memmap2 0.7.1",
- "nom",
  "serde",
- "tempfile",
  "thiserror",
+ "winnow",
 ]
 
 [[package]]
 name = "gix-ref-tests"
 version = "0.0.0"
 dependencies = [
- "gix-actor 0.24.2",
- "gix-date 0.7.2",
+ "gix-actor 0.25.0",
+ "gix-date 0.7.4",
  "gix-discover 0.23.0",
- "gix-features 0.32.1",
- "gix-fs 0.4.1",
- "gix-hash 0.11.4",
- "gix-lock 7.0.2",
- "gix-object 0.34.0",
+ "gix-features 0.33.0",
+ "gix-fs 0.5.0",
+ "gix-hash 0.12.0",
+ "gix-lock 8.0.0",
+ "gix-object 0.35.0",
  "gix-odb",
- "gix-ref 0.34.0",
+ "gix-ref 0.35.0",
  "gix-testtools",
  "gix-validate 0.8.0",
- "gix-worktree 0.24.0",
- "tempfile",
 ]
 
 [[package]]
 name = "gix-refspec"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "bstr",
- "gix-hash 0.11.4",
+ "gix-hash 0.12.0",
  "gix-revision",
  "gix-testtools",
  "gix-validate 0.8.0",
@@ -2115,31 +2153,32 @@ dependencies = [
 
 [[package]]
 name = "gix-revision"
-version = "0.19.0"
+version = "0.20.0"
 dependencies = [
  "bstr",
  "document-features",
  "gix-commitgraph",
- "gix-date 0.7.2",
- "gix-hash 0.11.4",
- "gix-hashtable 0.2.4",
- "gix-object 0.34.0",
+ "gix-date 0.7.4",
+ "gix-hash 0.12.0",
+ "gix-hashtable 0.3.0",
+ "gix-object 0.35.0",
  "gix-odb",
  "gix-revwalk",
  "gix-testtools",
+ "gix-trace 0.1.3",
  "serde",
  "thiserror",
 ]
 
 [[package]]
 name = "gix-revwalk"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "gix-commitgraph",
- "gix-date 0.7.2",
- "gix-hash 0.11.4",
- "gix-hashtable 0.2.4",
- "gix-object 0.34.0",
+ "gix-date 0.7.4",
+ "gix-hash 0.12.0",
+ "gix-hashtable 0.3.0",
+ "gix-object 0.35.0",
  "smallvec",
  "thiserror",
 ]
@@ -2158,11 +2197,11 @@ dependencies = [
 
 [[package]]
 name = "gix-sec"
-version = "0.8.4"
+version = "0.9.0"
 dependencies = [
  "bitflags 2.3.3",
  "document-features",
- "gix-path 0.8.4",
+ "gix-path 0.9.0",
  "libc",
  "serde",
  "tempfile",
@@ -2174,13 +2213,44 @@ name = "gix-sequencer"
 version = "0.0.0"
 
 [[package]]
-name = "gix-submodule"
+name = "gix-status"
 version = "0.1.0"
 dependencies = [
  "bstr",
+ "filetime",
+ "gix-features 0.33.0",
+ "gix-fs 0.5.0",
+ "gix-hash 0.12.0",
+ "gix-index 0.23.1",
+ "gix-object 0.35.0",
+ "gix-path 0.9.0",
+ "thiserror",
+]
+
+[[package]]
+name = "gix-status-tests"
+version = "0.0.0"
+dependencies = [
+ "bstr",
+ "filetime",
+ "gix-features 0.33.0",
+ "gix-fs 0.5.0",
+ "gix-hash 0.12.0",
+ "gix-index 0.23.1",
+ "gix-object 0.35.0",
+ "gix-status",
+ "gix-testtools",
+]
+
+[[package]]
+name = "gix-submodule"
+version = "0.2.0"
+dependencies = [
+ "bstr",
  "gix-config",
- "gix-features 0.32.1",
- "gix-path 0.8.4",
+ "gix-features 0.33.0",
+ "gix-path 0.9.0",
+ "gix-pathspec",
  "gix-refspec",
  "gix-testtools",
  "gix-url",
@@ -2202,11 +2272,11 @@ dependencies = [
 
 [[package]]
 name = "gix-tempfile"
-version = "7.0.2"
+version = "8.0.0"
 dependencies = [
  "dashmap",
  "document-features",
- "gix-fs 0.4.1",
+ "gix-fs 0.5.0",
  "libc",
  "once_cell",
  "parking_lot",
@@ -2224,18 +2294,18 @@ dependencies = [
  "fastrand 2.0.0",
  "fs_extra",
  "gix-discover 0.18.1",
- "gix-fs 0.4.1",
+ "gix-fs 0.5.0",
  "gix-ignore 0.2.0",
  "gix-lock 5.0.1",
- "gix-tempfile 7.0.2",
+ "gix-tempfile 8.0.0",
  "gix-worktree 0.17.1",
  "io-close",
  "is_ci",
- "nom",
  "once_cell",
  "parking_lot",
  "tar",
  "tempfile",
+ "winnow",
  "xz2",
 ]
 
@@ -2259,7 +2329,7 @@ dependencies = [
 
 [[package]]
 name = "gix-transport"
-version = "0.34.2"
+version = "0.35.0"
 dependencies = [
  "async-std",
  "async-trait",
@@ -2272,12 +2342,12 @@ dependencies = [
  "futures-lite",
  "gix-command",
  "gix-credentials",
- "gix-features 0.32.1",
- "gix-hash 0.11.4",
+ "gix-features 0.33.0",
+ "gix-hash 0.12.0",
  "gix-pack",
  "gix-packetline",
- "gix-quote 0.4.6",
- "gix-sec 0.8.4",
+ "gix-quote 0.4.7",
+ "gix-sec 0.9.0",
  "gix-url",
  "maybe-async",
  "pin-project-lite",
@@ -2303,10 +2373,10 @@ name = "gix-traverse"
 version = "0.31.0"
 dependencies = [
  "gix-commitgraph",
- "gix-date 0.7.2",
- "gix-hash 0.11.4",
- "gix-hashtable 0.2.4",
- "gix-object 0.34.0",
+ "gix-date 0.7.4",
+ "gix-hash 0.12.0",
+ "gix-hashtable 0.3.0",
+ "gix-object 0.35.0",
  "gix-revwalk",
  "smallvec",
  "thiserror",
@@ -2317,8 +2387,8 @@ name = "gix-traverse-tests"
 version = "0.0.0"
 dependencies = [
  "gix-commitgraph",
- "gix-hash 0.11.4",
- "gix-object 0.34.0",
+ "gix-hash 0.12.0",
+ "gix-object 0.35.0",
  "gix-odb",
  "gix-testtools",
  "gix-traverse 0.31.0",
@@ -2330,13 +2400,15 @@ version = "0.0.0"
 
 [[package]]
 name = "gix-url"
-version = "0.21.1"
+version = "0.22.0"
 dependencies = [
  "bstr",
  "document-features",
- "gix-features 0.32.1",
- "gix-path 0.8.4",
+ "gix-features 0.33.0",
+ "gix-path 0.9.0",
+ "gix-testtools",
  "home",
+ "libtest-mimic",
  "serde",
  "thiserror",
  "url",
@@ -2400,29 +2472,56 @@ dependencies = [
 
 [[package]]
 name = "gix-worktree"
-version = "0.24.0"
+version = "0.25.0"
 dependencies = [
  "bstr",
  "document-features",
- "filetime",
- "gix-attributes 0.16.0",
- "gix-features 0.32.1",
- "gix-filter",
- "gix-fs 0.4.1",
- "gix-glob 0.10.2",
- "gix-hash 0.11.4",
- "gix-ignore 0.5.1",
- "gix-index 0.22.0",
- "gix-object 0.34.0",
- "gix-odb",
- "gix-path 0.8.4",
- "gix-testtools",
- "io-close",
- "once_cell",
+ "gix-attributes 0.17.0",
+ "gix-features 0.33.0",
+ "gix-fs 0.5.0",
+ "gix-glob 0.11.0",
+ "gix-hash 0.12.0",
+ "gix-ignore 0.6.0",
+ "gix-index 0.23.1",
+ "gix-object 0.35.0",
+ "gix-path 0.9.0",
  "serde",
- "symlink",
- "tempfile",
+]
+
+[[package]]
+name = "gix-worktree-state"
+version = "0.2.0"
+dependencies = [
+ "bstr",
+ "gix-features 0.33.0",
+ "gix-filter",
+ "gix-fs 0.5.0",
+ "gix-glob 0.11.0",
+ "gix-hash 0.12.0",
+ "gix-index 0.23.1",
+ "gix-object 0.35.0",
+ "gix-path 0.9.0",
+ "gix-worktree 0.25.0",
+ "io-close",
  "thiserror",
+]
+
+[[package]]
+name = "gix-worktree-state-tests"
+version = "0.0.0"
+dependencies = [
+ "gix-discover 0.23.0",
+ "gix-features 0.33.0",
+ "gix-filter",
+ "gix-fs 0.5.0",
+ "gix-hash 0.12.0",
+ "gix-index 0.23.1",
+ "gix-object 0.35.0",
+ "gix-odb",
+ "gix-testtools",
+ "gix-worktree-state",
+ "once_cell",
+ "symlink",
  "walkdir",
 ]
 
@@ -2430,19 +2529,40 @@ dependencies = [
 name = "gix-worktree-stream"
 version = "0.3.0"
 dependencies = [
- "gix-attributes 0.16.0",
- "gix-features 0.32.1",
+ "gix-attributes 0.17.0",
+ "gix-features 0.33.0",
  "gix-filter",
- "gix-fs 0.4.1",
- "gix-hash 0.11.4",
- "gix-object 0.34.0",
+ "gix-fs 0.5.0",
+ "gix-hash 0.12.0",
+ "gix-object 0.35.0",
  "gix-odb",
- "gix-path 0.8.4",
+ "gix-path 0.9.0",
  "gix-testtools",
  "gix-traverse 0.31.0",
- "gix-worktree 0.24.0",
+ "gix-worktree 0.25.0",
  "parking_lot",
  "thiserror",
+]
+
+[[package]]
+name = "gix-worktree-tests"
+version = "0.0.0"
+dependencies = [
+ "bstr",
+ "gix-attributes 0.17.0",
+ "gix-discover 0.23.0",
+ "gix-features 0.33.0",
+ "gix-fs 0.5.0",
+ "gix-glob 0.11.0",
+ "gix-hash 0.12.0",
+ "gix-ignore 0.6.0",
+ "gix-index 0.23.1",
+ "gix-object 0.35.0",
+ "gix-odb",
+ "gix-path 0.9.0",
+ "gix-testtools",
+ "gix-worktree 0.25.0",
+ "symlink",
 ]
 
 [[package]]
@@ -2512,15 +2632,6 @@ name = "heck"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "95505c38b4572b2d910cecb0281560f54b440a19336cbbcb27bf6ce6adc6f5a8"
-
-[[package]]
-name = "hermit-abi"
-version = "0.1.19"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62b467343b94ba476dcb2500d242dadbb39557df889310ac77c5d99100aaac33"
-dependencies = [
- "libc",
-]
 
 [[package]]
 name = "hermit-abi"
@@ -2717,7 +2828,7 @@ version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eae7b9aee968036d54dce06cebaefd919e4472e753296daccd6d344e3e2df0c2"
 dependencies = [
- "hermit-abi 0.3.2",
+ "hermit-abi",
  "libc",
  "windows-sys",
 ]
@@ -2731,7 +2842,7 @@ dependencies = [
  "socket2 0.5.3",
  "widestring",
  "windows-sys",
- "winreg 0.50.0",
+ "winreg",
 ]
 
 [[package]]
@@ -2755,7 +2866,7 @@ version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cb0889898416213fab133e1d33a0e5858a48177452750691bde3666d0fdbaf8b"
 dependencies = [
- "hermit-abi 0.3.2",
+ "hermit-abi",
  "rustix 0.38.4",
  "windows-sys",
 ]
@@ -2868,10 +2979,21 @@ dependencies = [
 ]
 
 [[package]]
-name = "libz-ng-sys"
-version = "1.1.9"
+name = "libtest-mimic"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2468756f34903b582fe7154dc1ffdebd89d0562c4a43b53c621bb0f1b1043ccb"
+checksum = "6d8de370f98a6cb8a4606618e53e802f93b094ddec0f96988eaec2c27e6e9ce7"
+dependencies = [
+ "clap",
+ "termcolor",
+ "threadpool",
+]
+
+[[package]]
+name = "libz-ng-sys"
+version = "1.1.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3dd9f43e75536a46ee0f92b758f6b63846e594e86638c61a9251338a65baea63"
 dependencies = [
  "cmake",
  "libc",
@@ -2879,9 +3001,9 @@ dependencies = [
 
 [[package]]
 name = "libz-sys"
-version = "1.1.9"
+version = "1.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "56ee889ecc9568871456d42f603d6a0ce59ff328d291063a45cbdf0036baf6db"
+checksum = "d97137b25e321a73eef1418d1d5d2eda4d77e12813f8e6dead84bc52c5870a7b"
 dependencies = [
  "cc",
  "cmake",
@@ -2984,9 +3106,9 @@ dependencies = [
 
 [[package]]
 name = "memchr"
-version = "2.5.0"
+version = "2.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2dffe52ecf27772e601905b7522cb4ef790d2cc203488bbd0e2fe85fcb74566d"
+checksum = "76fc44e2588d5b436dbc3c6cf62aef290f90dab6235744a93dfe1cc18f451e2c"
 
 [[package]]
 name = "memmap2"
@@ -3133,7 +3255,7 @@ version = "1.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4161fcb6d602d4d2081af7c3a45852d875a03dd337a6bfdd6e06407b61342a43"
 dependencies = [
- "hermit-abi 0.3.2",
+ "hermit-abi",
  "libc",
 ]
 
@@ -3201,7 +3323,7 @@ checksum = "a948666b637a0f465e8564c73e89d4dde00d72d4d473cc972f390fc3dcee7d9c"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.26",
+ "syn 2.0.29",
 ]
 
 [[package]]
@@ -3381,18 +3503,18 @@ checksum = "9516b775656bc3e8985e19cd4b8c0c0de045095074e453d2c0a513b5f978392d"
 
 [[package]]
 name = "prodash"
-version = "25.0.1"
+version = "25.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c236e70b7f9b9ea00d33c69f63ec1ae6e9ae96118923cd37bd4e9c7396f0b107"
+checksum = "1d67eb4220992a4a052a4bb03cf776e493ecb1a3a36bab551804153d63486af7"
 dependencies = [
  "async-io",
- "atty",
  "bytesize",
  "crosstermion",
  "futures-core",
  "futures-lite",
  "human_format",
  "humantime",
+ "is-terminal",
  "log",
  "parking_lot",
  "ratatui",
@@ -3541,9 +3663,9 @@ checksum = "e5ea92a5b6195c6ef2a0295ea818b312502c6fc94dde986c5553242e18fd4ce2"
 
 [[package]]
 name = "reqwest"
-version = "0.11.18"
+version = "0.11.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cde824a14b7c14f85caff81225f411faacc04a2013f41670f41443742b1c1c55"
+checksum = "20b9b67e2ca7dd9e9f9285b759de30ff538aab981abaaf7bc9bd90b84a0126c3"
 dependencies = [
  "base64",
  "bytes",
@@ -3579,7 +3701,7 @@ dependencies = [
  "wasm-bindgen-futures",
  "web-sys",
  "webpki-roots",
- "winreg 0.10.1",
+ "winreg",
 ]
 
 [[package]]
@@ -3656,9 +3778,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.21.5"
+version = "0.21.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79ea77c539259495ce8ca47f53e66ae0330a8819f67e23ac96ca02f50e7b7d36"
+checksum = "1d1feddffcfcc0b33f5c6ce9a29e341e4cd59c3f78e7ee45f4a40c038b1d6cbb"
 dependencies = [
  "log",
  "ring",
@@ -3677,9 +3799,9 @@ dependencies = [
 
 [[package]]
 name = "rustls-webpki"
-version = "0.101.1"
+version = "0.101.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15f36a6828982f422756984e47912a7a51dcbc2a197aa791158f8ca61cd8204e"
+checksum = "7d93931baf2d282fff8d3a532bbfd7653f734643161b87e3e01e59a04439bf0d"
 dependencies = [
  "ring",
  "untrusted",
@@ -3750,22 +3872,22 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.171"
+version = "1.0.185"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30e27d1e4fd7659406c492fd6cfaf2066ba8773de45ca75e855590f856dc34a9"
+checksum = "be9b6f69f1dfd54c3b568ffa45c310d6973a5e5148fd40cf515acaf38cf5bc31"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.171"
+version = "1.0.185"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "389894603bd18c46fa56231694f8d827779c0951a667087194cf9de94ed24682"
+checksum = "dc59dfdcbad1437773485e0367fea4b090a2e0a16d9ffc46af47764536a298ec"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.26",
+ "syn 2.0.29",
 ]
 
 [[package]]
@@ -3798,7 +3920,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0e56dd856803e253c8f298af3f4d7eb0ae5e23a737252cd90bb4f3b435033b2d"
 dependencies = [
  "dashmap",
+ "futures",
  "lazy_static",
+ "log",
  "parking_lot",
  "serial_test_derive",
 ]
@@ -3811,7 +3935,7 @@ checksum = "91d129178576168c589c9ec973feedf7d3126c01ac2bf08795109aa35b69fb8f"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.26",
+ "syn 2.0.29",
 ]
 
 [[package]]
@@ -3955,9 +4079,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.26"
+version = "2.0.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "45c3457aacde3c65315de5031ec191ce46604304d2446e803d71ade03308d970"
+checksum = "c324c494eba9d92503e6f1ef2e6df781e78f6a7705a0202d9801b198807d518a"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4039,7 +4163,7 @@ checksum = "090198534930841fab3a5d1bb637cde49e339654e606195f8d9c76eeb081dc96"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.26",
+ "syn 2.0.29",
 ]
 
 [[package]]
@@ -4050,6 +4174,15 @@ checksum = "3fdd6f064ccff2d6567adcb3873ca630700f00b5ad3f060c25b5dcfd9a4ce152"
 dependencies = [
  "cfg-if",
  "once_cell",
+]
+
+[[package]]
+name = "threadpool"
+version = "1.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d050e60b33d41c19108b32cea32164033a9013fe3b46cbd4457559bfbf77afaa"
+dependencies = [
+ "num_cpus",
 ]
 
 [[package]]
@@ -4183,7 +4316,7 @@ checksum = "5f4f31f56159e98206da9efd823404b79b6ef3143b4a7ab76e67b1751b25a4ab"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.26",
+ "syn 2.0.29",
 ]
 
 [[package]]
@@ -4450,7 +4583,7 @@ dependencies = [
  "once_cell",
  "proc-macro2",
  "quote",
- "syn 2.0.26",
+ "syn 2.0.29",
  "wasm-bindgen-shared",
 ]
 
@@ -4484,7 +4617,7 @@ checksum = "54681b18a46765f095758388f2d0cf16eb8d4169b639ab575a8f5693af210c7b"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.26",
+ "syn 2.0.29",
  "wasm-bindgen-backend",
  "wasm-bindgen-shared",
 ]
@@ -4506,23 +4639,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "webpki"
-version = "0.22.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f095d78192e208183081cc07bc5515ef55216397af48b873e5edcd72637fa1bd"
-dependencies = [
- "ring",
- "untrusted",
-]
-
-[[package]]
 name = "webpki-roots"
-version = "0.22.6"
+version = "0.25.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b6c71e40d7d2c34a5106301fb632274ca37242cd0c9d3e64dbece371a40a2d87"
-dependencies = [
- "webpki",
-]
+checksum = "14247bb57be4f377dfb94c72830b8ce8fc6beac03cf4bf7b9732eadd414123fc"
 
 [[package]]
 name = "widestring"
@@ -4704,20 +4824,11 @@ checksum = "1a515f5799fe4961cb532f983ce2b23082366b898e52ffbce459c86f67c8378a"
 
 [[package]]
 name = "winnow"
-version = "0.5.1"
+version = "0.5.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "25b5872fa2e10bd067ae946f927e726d7d603eaeb6e02fa6a350e0722d2b8c11"
+checksum = "d09770118a7eb1ccaf4a594a221334119a44a814fcb0d31c5b85e83e97227a97"
 dependencies = [
  "memchr",
-]
-
-[[package]]
-name = "winreg"
-version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80d0f4e272c85def139476380b12f9ac60926689dd2e01d4923222f40580869d"
-dependencies = [
- "winapi",
 ]
 
 [[package]]

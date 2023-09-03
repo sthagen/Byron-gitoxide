@@ -10,23 +10,21 @@ use std::{
 use anyhow::{Context, Result};
 use clap::Parser;
 use gitoxide_core as core;
-use gitoxide_core::pack::verify;
-use gix::bstr::io::BufReadExt;
+use gitoxide_core::{pack::verify, repository::PathsOrPatterns};
+use gix::bstr::{io::BufReadExt, BString};
 
-use crate::{
-    plumbing::{
-        options::{
-            attributes, commit, commitgraph, config, credential, exclude, free, index, mailmap, odb, revision, tree,
-            Args, Subcommands,
-        },
-        show_progress,
+use crate::plumbing::{
+    options::{
+        attributes, commit, commitgraph, config, credential, exclude, free, index, mailmap, odb, revision, tree, Args,
+        Subcommands,
     },
-    shared::pretty::prepare_and_run,
+    show_progress,
 };
+use gitoxide::shared::pretty::prepare_and_run;
 
 #[cfg(feature = "gitoxide-core-async-client")]
 pub mod async_util {
-    use crate::shared::ProgressRange;
+    use gitoxide::shared::ProgressRange;
 
     #[cfg(not(feature = "prodash-render-line"))]
     compile_error!("BUG: Need at least a line renderer in async mode");
@@ -39,7 +37,7 @@ pub mod async_util {
         Option<prodash::render::line::JoinHandle>,
         gix_features::progress::DoOrDiscard<prodash::tree::Item>,
     ) {
-        use crate::shared::{self, STANDARD_RANGE};
+        use gitoxide::shared::{self, STANDARD_RANGE};
         shared::init_env_logger();
 
         if verbose {
@@ -135,6 +133,20 @@ pub fn main() -> Result<()> {
     })?;
 
     match cmd {
+        Subcommands::Submodule(platform) => match platform
+            .cmds
+            .unwrap_or(crate::plumbing::options::submodule::Subcommands::List)
+        {
+            crate::plumbing::options::submodule::Subcommands::List => prepare_and_run(
+                "submodule-list",
+                trace,
+                verbose,
+                progress,
+                progress_keep_open,
+                None,
+                move |_progress, out, _err| core::repository::submodule::list(repository(Mode::Lenient)?, out, format),
+            ),
+        },
         #[cfg(feature = "gitoxide-core-tools-archive")]
         Subcommands::Archive(crate::plumbing::options::archive::Platform {
             format,
@@ -433,6 +445,7 @@ pub fn main() -> Result<()> {
                 free::index::Subcommands::FromList {
                     force,
                     index_output_path,
+                    skip_hash,
                     file,
                 } => prepare_and_run(
                     "index-from-list",
@@ -441,7 +454,9 @@ pub fn main() -> Result<()> {
                     progress,
                     progress_keep_open,
                     None,
-                    move |_progress, _out, _err| core::repository::index::from_list(file, index_output_path, force),
+                    move |_progress, _out, _err| {
+                        core::repository::index::from_list(file, index_output_path, force, skip_hash)
+                    },
                 ),
                 free::index::Subcommands::CheckoutExclusive {
                     directory,
@@ -473,7 +488,7 @@ pub fn main() -> Result<()> {
                     },
                 ),
                 free::index::Subcommands::Info { no_details } => prepare_and_run(
-                    "index-entries",
+                    "index-info",
                     trace,
                     verbose,
                     progress,
@@ -1018,7 +1033,7 @@ pub fn main() -> Result<()> {
             ),
         },
         Subcommands::Attributes(cmd) => match cmd {
-            attributes::Subcommands::Query { statistics, pathspecs } => prepare_and_run(
+            attributes::Subcommands::Query { statistics, pathspec } => prepare_and_run(
                 "attributes-query",
                 trace,
                 verbose,
@@ -1026,19 +1041,17 @@ pub fn main() -> Result<()> {
                 progress_keep_open,
                 None,
                 move |_progress, out, err| {
-                    use gix::bstr::ByteSlice;
+                    let repo = repository(Mode::Strict)?;
+                    let pathspecs = if pathspec.is_empty() {
+                        PathsOrPatterns::Paths(Box::new(
+                            stdin_or_bail()?.byte_lines().filter_map(Result::ok).map(BString::from),
+                        ))
+                    } else {
+                        PathsOrPatterns::Patterns(pathspec)
+                    };
                     core::repository::attributes::query(
-                        repository(Mode::Strict)?,
-                        if pathspecs.is_empty() {
-                            Box::new(
-                                stdin_or_bail()?
-                                    .byte_lines()
-                                    .filter_map(Result::ok)
-                                    .filter_map(|line| gix::path::Spec::from_bytes(line.as_bstr())),
-                            ) as Box<dyn Iterator<Item = gix::path::Spec>>
-                        } else {
-                            Box::new(pathspecs.into_iter())
-                        },
+                        repo,
+                        pathspecs,
                         out,
                         err,
                         core::repository::attributes::query::Options { format, statistics },
@@ -1053,15 +1066,11 @@ pub fn main() -> Result<()> {
                 progress_keep_open,
                 None,
                 move |progress, out, err| {
-                    use gix::bstr::ByteSlice;
                     core::repository::attributes::validate_baseline(
                         repository(Mode::StrictWithGitInstallConfig)?,
-                        stdin_or_bail().ok().map(|stdin| {
-                            stdin
-                                .byte_lines()
-                                .filter_map(Result::ok)
-                                .filter_map(|line| gix::path::Spec::from_bytes(line.as_bstr()))
-                        }),
+                        stdin_or_bail()
+                            .ok()
+                            .map(|stdin| stdin.byte_lines().filter_map(Result::ok).map(gix::bstr::BString::from)),
                         progress,
                         out,
                         err,
@@ -1078,7 +1087,7 @@ pub fn main() -> Result<()> {
             exclude::Subcommands::Query {
                 statistics,
                 patterns,
-                pathspecs,
+                pathspec,
                 show_ignore_patterns,
             } => prepare_and_run(
                 "exclude-query",
@@ -1088,19 +1097,17 @@ pub fn main() -> Result<()> {
                 progress_keep_open,
                 None,
                 move |_progress, out, err| {
-                    use gix::bstr::ByteSlice;
+                    let repo = repository(Mode::Strict)?;
+                    let pathspecs = if pathspec.is_empty() {
+                        PathsOrPatterns::Paths(Box::new(
+                            stdin_or_bail()?.byte_lines().filter_map(Result::ok).map(BString::from),
+                        ))
+                    } else {
+                        PathsOrPatterns::Patterns(pathspec)
+                    };
                     core::repository::exclude::query(
-                        repository(Mode::Strict)?,
-                        if pathspecs.is_empty() {
-                            Box::new(
-                                stdin_or_bail()?
-                                    .byte_lines()
-                                    .filter_map(Result::ok)
-                                    .filter_map(|line| gix::path::Spec::from_bytes(line.as_bstr())),
-                            ) as Box<dyn Iterator<Item = gix::path::Spec>>
-                        } else {
-                            Box::new(pathspecs.into_iter())
-                        },
+                        repo,
+                        pathspecs,
                         out,
                         err,
                         core::repository::exclude::query::Options {
@@ -1115,9 +1122,12 @@ pub fn main() -> Result<()> {
         },
         Subcommands::Index(cmd) => match cmd {
             index::Subcommands::Entries {
+                format: entry_format,
                 no_attributes,
                 attributes_from_index,
                 statistics,
+                recurse_submodules,
+                pathspec,
             } => prepare_and_run(
                 "index-entries",
                 trace,
@@ -1127,11 +1137,16 @@ pub fn main() -> Result<()> {
                 None,
                 move |_progress, out, err| {
                     core::repository::index::entries(
-                        repository(Mode::LenientWithGitInstallConfig)?,
+                        repository(Mode::Lenient)?,
+                        pathspec,
                         out,
                         err,
                         core::repository::index::entries::Options {
                             format,
+                            simple: match entry_format {
+                                index::entries::Format::Simple => true,
+                                index::entries::Format::Rich => false,
+                            },
                             attributes: if no_attributes {
                                 None
                             } else {
@@ -1141,6 +1156,7 @@ pub fn main() -> Result<()> {
                                     core::repository::index::entries::Attributes::WorktreeAndIndex
                                 })
                             },
+                            recurse_submodules,
                             statistics,
                         },
                     )
@@ -1149,6 +1165,7 @@ pub fn main() -> Result<()> {
             index::Subcommands::FromTree {
                 force,
                 index_output_path,
+                skip_hash,
                 spec,
             } => prepare_and_run(
                 "index-from-tree",
@@ -1158,7 +1175,13 @@ pub fn main() -> Result<()> {
                 progress_keep_open,
                 None,
                 move |_progress, _out, _err| {
-                    core::repository::index::from_tree(spec, index_output_path, force, repository(Mode::Strict)?)
+                    core::repository::index::from_tree(
+                        repository(Mode::Strict)?,
+                        spec,
+                        index_output_path,
+                        force,
+                        skip_hash,
+                    )
                 },
             ),
         },

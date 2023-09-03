@@ -1,9 +1,10 @@
 use super::*;
 
 mod section_headers {
+    use winnow::prelude::*;
+
     use super::section_header;
     use crate::parse::tests::util::{fully_consumed, section_header as parsed_section_header};
-    use winnow::prelude::*;
 
     #[test]
     fn no_subsection() {
@@ -61,7 +62,7 @@ mod section_headers {
     fn backslashes_in_subsections_do_not_escape_newlines_or_tabs() {
         assert_eq!(
             section_header.parse_peek(br#"[hello "single \ \\ \t \n \0"]"#).unwrap(),
-            fully_consumed(parsed_section_header("hello", (" ", r#"single  \ t n 0"#)))
+            fully_consumed(parsed_section_header("hello", (" ", r"single  \ t n 0")))
         );
     }
 
@@ -116,6 +117,7 @@ mod section_headers {
 
 mod sub_section {
     use std::borrow::Cow;
+
     use winnow::prelude::*;
 
     use super::sub_section;
@@ -754,6 +756,7 @@ mod value_no_continuation {
     }
 
     #[test]
+    #[allow(clippy::needless_raw_string_hashes)]
     fn trans_escaped_comment_marker_not_consumed() {
         let mut events = section::Events::default();
         assert_eq!(value_impl(br##"hello"#"world; a"##, &mut events).unwrap().0, b"; a");
@@ -774,7 +777,7 @@ mod value_no_continuation {
 
     #[test]
     fn invalid_escape() {
-        assert!(value_impl(br#"\x"#, &mut Default::default()).is_err());
+        assert!(value_impl(br"\x", &mut Default::default()).is_err());
     }
 
     #[test]
@@ -784,7 +787,7 @@ mod value_no_continuation {
 
     #[test]
     fn incomplete_escape() {
-        assert!(value_impl(br#"hello world\"#, &mut Default::default()).is_err());
+        assert!(value_impl(br"hello world\", &mut Default::default()).is_err());
     }
 }
 
@@ -808,7 +811,14 @@ mod key_value_pair {
     fn nonascii_is_allowed_for_values_but_not_for_keys() {
         let mut node = ParseNode::SectionHeader;
         let mut vec = Default::default();
-        assert!(key_value("你好".as_bytes(), &mut node, &mut vec).is_err());
+        assert!(
+            key_value("你好".as_bytes(), &mut node, &mut vec).is_ok(),
+            "Verifying `is_ok` because bad keys get ignored, the caller parser handles this as error"
+        );
+        assert_eq!(vec, into_events(vec![]));
+
+        let mut node = ParseNode::SectionHeader;
+        let mut vec = Default::default();
         assert!(key_value("a = 你好 ".as_bytes(), &mut node, &mut vec).is_ok());
         assert_eq!(
             vec,
@@ -852,9 +862,10 @@ mod key_value_pair {
 }
 
 mod comment {
+    use winnow::prelude::*;
+
     use super::comment;
     use crate::parse::tests::util::{comment as parsed_comment, fully_consumed};
-    use winnow::prelude::*;
 
     #[test]
     fn semicolon() {

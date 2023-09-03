@@ -6,7 +6,7 @@ use std::{
     },
 };
 
-use gix::{bstr::BStr, odb::FindExt};
+use gix::bstr::BStr;
 use itertools::Itertools;
 use smallvec::SmallVec;
 
@@ -101,8 +101,8 @@ pub fn spawn_tree_delta_threads<'scope>(
                             repo.index_or_load_from_head().map_err(Into::into).and_then(|index| {
                                 repo.attributes(
                                     &index,
-                                    gix::worktree::cache::state::attributes::Source::IdMapping,
-                                    gix::worktree::cache::state::ignore::Source::IdMapping,
+                                    gix::worktree::stack::state::attributes::Source::IdMapping,
+                                    gix::worktree::stack::state::ignore::Source::IdMapping,
                                     None,
                                 )
                                 .map_err(Into::into)
@@ -182,11 +182,7 @@ pub fn spawn_tree_delta_threads<'scope>(
                                                 (true, true) => {
                                                     files.modified += 1;
                                                     if let Some((attrs, matches)) = attributes.as_mut() {
-                                                        let entry = attrs.at_entry(
-                                                            change.location,
-                                                            Some(false),
-                                                            |id, buf| repo.objects.find_blob(id, buf),
-                                                        )?;
+                                                        let entry = attrs.at_entry(change.location, Some(false))?;
                                                         let is_text_file = if entry.matching_attributes(matches) {
                                                             let attrs: SmallVec<[_; 2]> =
                                                                 matches.iter_selected().collect();

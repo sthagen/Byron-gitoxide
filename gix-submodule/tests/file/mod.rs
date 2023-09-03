@@ -1,10 +1,156 @@
 fn submodule(bytes: &str) -> gix_submodule::File {
-    gix_submodule::File::from_bytes(bytes.as_bytes(), None).expect("valid module")
+    gix_submodule::File::from_bytes(bytes.as_bytes(), None, &Default::default()).expect("valid module")
+}
+
+mod is_active_platform {
+    use std::str::FromStr;
+
+    use bstr::{BStr, ByteSlice};
+
+    fn multi_modules() -> crate::Result<gix_submodule::File> {
+        let modules = gix_testtools::scripted_fixture_read_only("basic.sh")?
+            .join("multiple")
+            .join(".gitmodules");
+        Ok(gix_submodule::File::from_bytes(
+            std::fs::read(&modules)?.as_slice(),
+            modules,
+            &Default::default(),
+        )?)
+    }
+
+    fn assume_valid_active_state<'a>(
+        module: &'a gix_submodule::File,
+        config: &'a gix_config::File<'static>,
+        defaults: gix_pathspec::Defaults,
+    ) -> crate::Result<Vec<(&'a str, bool)>> {
+        assume_valid_active_state_with_attrs(module, config, defaults, |_, _, _, _| {
+            unreachable!("shouldn't be called")
+        })
+    }
+
+    fn assume_valid_active_state_with_attrs<'a>(
+        module: &'a gix_submodule::File,
+        config: &'a gix_config::File<'static>,
+        defaults: gix_pathspec::Defaults,
+        mut attributes: impl FnMut(
+                &BStr,
+                gix_pathspec::attributes::glob::pattern::Case,
+                bool,
+                &mut gix_pathspec::attributes::search::Outcome,
+            ) -> bool
+            + 'a,
+    ) -> crate::Result<Vec<(&'a str, bool)>> {
+        let mut platform = module.is_active_platform(config, defaults)?;
+        Ok(module
+            .names()
+            .map(|name| {
+                (
+                    name.to_str().expect("valid"),
+                    platform.is_active(config, name, &mut attributes).expect("valid"),
+                )
+            })
+            .collect())
+    }
+
+    #[test]
+    fn without_any_additional_settings_all_are_inactive_if_they_have_a_url() -> crate::Result {
+        let module = multi_modules()?;
+        assert_eq!(
+            assume_valid_active_state(&module, &Default::default(), Default::default())?,
+            &[
+                ("submodule", false),
+                ("a/b", false),
+                (".a/..c", false),
+                ("a/d\\", false),
+                ("a\\e", false)
+            ]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn submodules_with_active_config_are_considered_active_or_inactive() -> crate::Result {
+        let module = multi_modules()?;
+        assert_eq!(
+            assume_valid_active_state(
+                &module,
+                &gix_config::File::from_str(
+                    "[submodule.submodule]\n active = 0\n url = set \n[submodule \"a/b\"]\n active = false \n url = set \n[submodule \".a/..c\"] active = 1"
+                )?,
+                Default::default()
+            )?,
+            &[
+                ("submodule", false),
+                ("a/b", false),
+                (".a/..c", true),
+                ("a/d\\", false),
+                ("a\\e", false)
+            ]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn submodules_with_active_config_override_pathspecs() -> crate::Result {
+        let module = multi_modules()?;
+        assert_eq!(
+            assume_valid_active_state(
+                &module,
+                &gix_config::File::from_str(
+                    "[submodule.submodule]\n active = 0\n[submodule]\n active = *\n[submodule]\n active = :!a*"
+                )?,
+                Default::default()
+            )?,
+            &[
+                ("submodule", false),
+                ("a/b", false),
+                (".a/..c", true),
+                ("a/d\\", false),
+                ("a\\e", false)
+            ]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn pathspecs_matter_even_if_they_do_not_match() -> crate::Result {
+        let module = multi_modules()?;
+        assert_eq!(
+            assume_valid_active_state(
+                &module,
+                &gix_config::File::from_str("[submodule]\n active = submodule ")?,
+                Default::default()
+            )?,
+            &[
+                ("submodule", true),
+                ("a/b", false),
+                (".a/..c", false),
+                ("a/d\\", false),
+                ("a\\e", false)
+            ]
+        );
+        assert_eq!(
+            assume_valid_active_state(
+                &module,
+                &gix_config::File::from_str("[submodule]\n active = :!submodule ")?,
+                Default::default()
+            )?,
+            &[
+                ("submodule", false),
+                ("a/b", true),
+                (".a/..c", true),
+                ("a/d\\", true),
+                ("a\\e", true)
+            ]
+        );
+        Ok(())
+    }
 }
 
 mod path {
-    use crate::file::submodule;
     use gix_submodule::config::path::Error;
+
+    use crate::file::submodule;
 
     fn submodule_path(value: &str) -> Error {
         let module = submodule(&format!("[submodule.a]\npath = {value}"));
@@ -44,8 +190,9 @@ mod path {
 }
 
 mod url {
-    use crate::file::submodule;
     use gix_submodule::config::url::Error;
+
+    use crate::file::submodule;
 
     fn submodule_url(value: &str) -> Error {
         let module = submodule(&format!("[submodule.a]\nurl = {value}"));
@@ -77,10 +224,11 @@ mod url {
 }
 
 mod update {
-    use crate::file::submodule;
-    use gix_submodule::config::update::Error;
-    use gix_submodule::config::Update;
     use std::str::FromStr;
+
+    use gix_submodule::config::{update::Error, Update};
+
+    use crate::file::submodule;
 
     fn submodule_update(value: &str) -> Error {
         let module = submodule(&format!("[submodule.a]\nupdate = {value}"));
@@ -110,12 +258,18 @@ mod update {
     fn valid_in_overrides() -> crate::Result {
         let mut module = submodule("[submodule.a]\n update = merge");
         let repo_config = gix_config::File::from_str("[submodule.a]\n update = !dangerous")?;
+        let prev_names = module.names().map(ToOwned::to_owned).collect::<Vec<_>>();
         module.append_submodule_overrides(&repo_config);
 
         assert_eq!(
             module.update("a".into())?.expect("present"),
             Update::Command("dangerous".into()),
             "overridden values are picked up and make commands possible - these are local"
+        );
+        assert_eq!(
+            module.names().map(ToOwned::to_owned).collect::<Vec<_>>(),
+            prev_names,
+            "Appending more configuration sections doesn't affect name listing"
         );
         Ok(())
     }
@@ -135,8 +289,9 @@ mod update {
 }
 
 mod fetch_recurse {
-    use crate::file::submodule;
     use gix_submodule::config::FetchRecurse;
+
+    use crate::file::submodule;
 
     #[test]
     fn default() {
@@ -180,8 +335,9 @@ mod fetch_recurse {
 }
 
 mod ignore {
-    use crate::file::submodule;
     use gix_submodule::config::Ignore;
+
+    use crate::file::submodule;
 
     #[test]
     fn default() {
@@ -218,8 +374,9 @@ mod ignore {
 }
 
 mod branch {
-    use crate::file::submodule;
     use gix_submodule::config::Branch;
+
+    use crate::file::submodule;
 
     #[test]
     fn valid() -> crate::Result {
@@ -228,6 +385,10 @@ mod branch {
             ("", Branch::Name("HEAD".into())),
             ("master", Branch::Name("master".into())),
             ("feature/a", Branch::Name("feature/a".into())),
+            (
+                "abcde12345abcde12345abcde12345abcde12345",
+                Branch::Name("abcde12345abcde12345abcde12345abcde12345".into()),
+            ),
         ] {
             let module = submodule(&format!("[submodule.a]\n branch = {valid}"));
             assert_eq!(module.branch("a".into())?.expect("present"), expected);
@@ -260,8 +421,9 @@ fn shallow() -> crate::Result {
 }
 
 mod append_submodule_overrides {
-    use crate::file::submodule;
     use std::str::FromStr;
+
+    use crate::file::submodule;
 
     #[test]
     fn last_of_multiple_values_wins() -> crate::Result {

@@ -101,8 +101,8 @@ pub mod pretty {
         enable: bool,
         reverse_lines: bool,
         progress: &gix::progress::prodash::tree::Root,
-    ) -> anyhow::Result<tracing::subscriber::DefaultGuard> {
-        Ok(if enable {
+    ) -> anyhow::Result<()> {
+        if enable {
             let processor = tracing_forest::Printer::new().formatter({
                 let progress = std::sync::Mutex::new(progress.add_child("tracing"));
                 move |tree: &tracing_forest::tree::Tree| -> Result<String, std::fmt::Error> {
@@ -124,10 +124,11 @@ pub mod pretty {
             });
             use tracing_subscriber::layer::SubscriberExt;
             let subscriber = tracing_subscriber::Registry::default().with(tracing_forest::ForestLayer::from(processor));
-            tracing::subscriber::set_default(subscriber)
+            tracing::subscriber::set_global_default(subscriber)?;
         } else {
-            tracing::subscriber::set_default(tracing_subscriber::Registry::default())
-        })
+            tracing::subscriber::set_global_default(tracing_subscriber::Registry::default())?;
+        }
+        Ok(())
     }
 
     #[cfg(not(feature = "small"))]
@@ -158,7 +159,7 @@ pub mod pretty {
                 use crate::shared::{self, STANDARD_RANGE};
                 let progress = shared::progress_tree();
                 let sub_progress = progress.add_child(name);
-                let _trace = init_tracing(trace, false, &progress)?;
+                init_tracing(trace, false, &progress)?;
 
                 let handle = shared::setup_line_renderer_range(&progress, range.into().unwrap_or(STANDARD_RANGE));
 
@@ -348,12 +349,36 @@ mod clap {
     #[derive(Clone)]
     pub struct AsPathSpec;
 
+    static PATHSPEC_DEFAULTS: once_cell::sync::Lazy<gix::pathspec::Defaults> = once_cell::sync::Lazy::new(|| {
+        gix::pathspec::Defaults::from_environment(|n| std::env::var_os(n)).unwrap_or_default()
+    });
+
     impl TypedValueParser for AsPathSpec {
-        type Value = gix::path::Spec;
+        type Value = gix::pathspec::Pattern;
 
         fn parse_ref(&self, cmd: &Command, arg: Option<&Arg>, value: &OsStr) -> Result<Self::Value, Error> {
             OsStringValueParser::new()
-                .try_map(|arg| gix::path::Spec::try_from(arg.as_os_str()))
+                .try_map(|arg| {
+                    let arg: &std::path::Path = arg.as_os_str().as_ref();
+                    gix::pathspec::parse(gix::path::into_bstr(arg).as_ref(), *PATHSPEC_DEFAULTS)
+                })
+                .parse_ref(cmd, arg, value)
+        }
+    }
+
+    #[derive(Clone)]
+    pub struct CheckPathSpec;
+
+    impl TypedValueParser for CheckPathSpec {
+        type Value = BString;
+
+        fn parse_ref(&self, cmd: &Command, arg: Option<&Arg>, value: &OsStr) -> Result<Self::Value, Error> {
+            OsStringValueParser::new()
+                .try_map(|arg| -> Result<_, gix::pathspec::parse::Error> {
+                    let arg = gix::path::into_bstr(std::path::PathBuf::from(arg));
+                    gix::pathspec::parse(arg.as_ref(), Default::default())?;
+                    Ok(arg.into_owned())
+                })
                 .parse_ref(cmd, arg, value)
         }
     }
@@ -384,4 +409,4 @@ mod clap {
         }
     }
 }
-pub use self::clap::{AsBString, AsHashKind, AsOutputFormat, AsPartialRefName, AsPathSpec, AsTime};
+pub use self::clap::{AsBString, AsHashKind, AsOutputFormat, AsPartialRefName, AsPathSpec, AsTime, CheckPathSpec};

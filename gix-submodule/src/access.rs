@@ -1,10 +1,14 @@
-use crate::config::{Branch, FetchRecurse, Ignore, Update};
-use crate::{config, File};
-use bstr::BStr;
-use std::borrow::Cow;
-use std::path::Path;
+use std::{borrow::Cow, collections::HashSet, path::Path};
 
-/// Access
+use bstr::BStr;
+
+use crate::{
+    config,
+    config::{Branch, FetchRecurse, Ignore, Update},
+    File, IsActivePlatform,
+};
+
+/// High-Level Access
 ///
 /// Note that all methods perform validation of the requested value and report issues right away.
 /// If a bypass is needed, use [`config()`](File::config()) for direct access.
@@ -26,11 +30,68 @@ impl File {
     ///
     /// Note that these exact names have to be used for querying submodule values.
     pub fn names(&self) -> impl Iterator<Item = &BStr> {
+        let mut seen = HashSet::<&BStr>::default();
         self.config
             .sections_by_name("submodule")
             .into_iter()
             .flatten()
-            .filter_map(|s| s.header().subsection_name())
+            .filter_map(move |s| {
+                s.header()
+                    .subsection_name()
+                    .filter(|_| s.meta().source == crate::init::META_MARKER)
+                    .filter(|name| seen.insert(*name))
+            })
+    }
+
+    /// Similar to [Self::is_active_platform()], but automatically applies it to each name to learn if a submodule is active or not.
+    pub fn names_and_active_state<'a>(
+        &'a self,
+        config: &'a gix_config::File<'static>,
+        defaults: gix_pathspec::Defaults,
+        mut attributes: impl FnMut(
+                &BStr,
+                gix_pathspec::attributes::glob::pattern::Case,
+                bool,
+                &mut gix_pathspec::attributes::search::Outcome,
+            ) -> bool
+            + 'a,
+    ) -> Result<
+        impl Iterator<Item = (&BStr, Result<bool, gix_config::value::Error>)> + 'a,
+        crate::is_active_platform::Error,
+    > {
+        let mut platform = self.is_active_platform(config, defaults)?;
+        let iter = self
+            .names()
+            .map(move |name| (name, platform.is_active(config, name, &mut attributes)));
+        Ok(iter)
+    }
+
+    /// Return a platform which allows to check if a submodule name is active or inactive.
+    /// Use `defaults` for parsing the pathspecs used to later match on names via `submodule.active` configuration retrieved from `config`.
+    ///
+    /// All `submodule.active` pathspecs are considered to be top-level specs and match the name of submodules, which are active
+    /// on inclusive match.
+    /// The full algorithm is described as [hierarchy of rules](https://git-scm.com/docs/gitsubmodules#_active_submodules).
+    pub fn is_active_platform(
+        &self,
+        config: &gix_config::File<'_>,
+        defaults: gix_pathspec::Defaults,
+    ) -> Result<IsActivePlatform, crate::is_active_platform::Error> {
+        let search = config
+            .strings_by_key("submodule.active")
+            .map(|patterns| -> Result<_, crate::is_active_platform::Error> {
+                let patterns = patterns
+                    .into_iter()
+                    .map(|pattern| gix_pathspec::parse(&pattern, defaults))
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok(gix_pathspec::Search::from_specs(
+                    patterns,
+                    None,
+                    std::path::Path::new(""),
+                )?)
+            })
+            .transpose()?;
+        Ok(IsActivePlatform { search })
     }
 
     /// Given the `relative_path` (as seen from the root of the worktree) of a submodule with possibly platform-specific
@@ -43,7 +104,10 @@ impl File {
             .filter_map(|n| self.path(n).ok().map(|p| (n, p)))
             .find_map(|(n, p)| (p == relative_path).then_some(n))
     }
+}
 
+/// Per-Submodule Access
+impl File {
     /// Return the path relative to the root directory of the working tree at which the submodule is expected to be checked out.
     /// It's an error if the path doesn't exist as it's the only way to associate a path in the index with additional submodule
     /// information, like the URL to fetch from.

@@ -1,10 +1,11 @@
-use std::{cell::RefCell, path::PathBuf};
+use std::{cell::RefCell, path::PathBuf, rc::Rc};
 
 use gix_hash::ObjectId;
 
-use crate::{head, remote};
+use crate::{bstr::BString, head, remote};
 
 /// A worktree checkout containing the files of the repository in consumable form.
+#[derive(Debug, Clone)]
 pub struct Worktree<'repo> {
     pub(crate) parent: &'repo Repository,
     /// The root path of the checkout.
@@ -138,6 +139,7 @@ pub struct Repository {
     /// Particularly useful when following linked worktrees and instantiating new equally configured worktree repositories.
     pub(crate) options: crate::open::Options,
     pub(crate) index: crate::worktree::IndexStorage,
+    pub(crate) modules: crate::submodule::ModulesFileStorage,
     pub(crate) shallow_commits: crate::shallow::CommitsStorage,
 }
 
@@ -148,6 +150,9 @@ pub struct Repository {
 ///
 /// Note that this type purposefully isn't very useful until it is converted into a thread-local repository with `to_thread_local()`,
 /// it's merely meant to be able to exist in a `Sync` context.
+///
+/// Note that it can also cheaply be cloned, and it will retain references to all contained resources.
+#[derive(Clone)]
 pub struct ThreadSafeRepository {
     /// A store for references to point at objects
     pub refs: crate::RefStore,
@@ -162,6 +167,7 @@ pub struct ThreadSafeRepository {
     pub(crate) linked_worktree_options: crate::open::Options,
     /// The index of this instances worktree.
     pub(crate) index: crate::worktree::IndexStorage,
+    pub(crate) modules: crate::submodule::ModulesFileStorage,
     pub(crate) shallow_commits: crate::shallow::CommitsStorage,
 }
 
@@ -190,4 +196,32 @@ pub struct Remote<'repo> {
     // /// Delete tags that don't exist on the remote anymore, equivalent to pruning the refspec `refs/tags/*:refs/tags/*`.
     // pub(crate) prune_tags: bool,
     pub(crate) repo: &'repo Repository,
+}
+
+/// A utility to make matching against pathspecs simple.
+///
+/// Note that to perform pathspec matching, attribute access might need to be provided. For that, we use our own
+/// and argue that the implementation is only going to incur costs for it when a pathspec matches *and* has attributes.
+/// Should this potential duplication of effort to maintain attribute state be unacceptable, the user may fall back
+/// to the underlying plumbing.
+#[derive(Clone)]
+pub struct Pathspec<'repo> {
+    pub(crate) repo: &'repo Repository,
+    /// The cache to power attribute access. It's only initialized if we have a pattern with attributes.
+    pub(crate) stack: Option<gix_worktree::Stack>,
+    /// The prepared search to use for checking matches.
+    pub(crate) search: gix_pathspec::Search,
+}
+
+/// A stand-in for the submodule of a particular name.
+#[derive(Clone)]
+pub struct Submodule<'repo> {
+    pub(crate) state: Rc<crate::submodule::SharedState<'repo>>,
+    pub(crate) name: BString,
+}
+
+/// A utility to access `.gitattributes` and `.gitignore` information efficiently.
+pub struct AttributeStack<'repo> {
+    pub(crate) repo: &'repo Repository,
+    pub(crate) inner: gix_worktree::Stack,
 }

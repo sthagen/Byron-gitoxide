@@ -13,7 +13,7 @@ pub mod pipeline {
         #[error("Could not create index from tree at HEAD^{{tree}}")]
         TreeTraverse(#[from] gix_traverse::tree::breadthfirst::Error),
         #[error(transparent)]
-        BareAttributes(#[from] crate::repository::attributes::Error),
+        BareAttributes(#[from] crate::config::attribute_stack::Error),
         #[error(transparent)]
         WorktreeIndex(#[from] crate::worktree::open_index::Error),
         #[error(transparent)]
@@ -49,16 +49,16 @@ impl Repository {
                 },
                 Ok,
             )?)?;
-            let cache = self.attributes_only(&index, gix_worktree::cache::state::attributes::Source::IdMapping)?;
+            let cache = self.attributes_only(&index, gix_worktree::stack::state::attributes::Source::IdMapping)?;
             (cache, IndexPersistedOrInMemory::InMemory(index))
         } else {
             let index = self.index()?;
             let cache = self.attributes_only(
                 &index,
-                gix_worktree::cache::state::attributes::Source::WorktreeThenIdMapping,
+                gix_worktree::stack::state::attributes::Source::WorktreeThenIdMapping,
             )?;
             (cache, IndexPersistedOrInMemory::Persisted(index))
         };
-        Ok((filter::Pipeline::new(self, cache)?, index))
+        Ok((filter::Pipeline::new(self, cache.detach())?, index))
     }
 }

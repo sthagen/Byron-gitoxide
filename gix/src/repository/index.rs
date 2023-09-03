@@ -16,16 +16,27 @@ impl crate::Repository {
             .map(|value| crate::config::tree::Index::THREADS.try_into_index_threads(value))
             .transpose()
             .with_lenient_default(self.config.lenient_config)?;
-        gix_index::File::at(
+        let skip_hash = self
+            .config
+            .resolved
+            .boolean("index", None, "skipHash")
+            .map(|res| crate::config::tree::Index::SKIP_HASH.enrich_error(res))
+            .transpose()
+            .with_lenient_default(self.config.lenient_config)?
+            .unwrap_or_default();
+
+        let index = gix_index::File::at(
             self.index_path(),
             self.object_hash(),
+            skip_hash,
             gix_index::decode::Options {
                 thread_limit,
                 min_extension_block_in_bytes_for_threading: 0,
                 expected_checksum: None,
             },
-        )
-        .map_err(Into::into)
+        )?;
+
+        Ok(index)
     }
 
     /// Return a shared worktree index which is updated automatically if the in-memory snapshot has become stale as the underlying file
@@ -33,29 +44,35 @@ impl crate::Repository {
     ///
     /// The index file is shared across all clones of this repository.
     pub fn index(&self) -> Result<worktree::Index, worktree::open_index::Error> {
-        self.index
-            .recent_snapshot(
-                || self.index_path().metadata().and_then(|m| m.modified()).ok(),
-                || {
-                    self.open_index().map(Some).or_else(|err| match err {
-                        worktree::open_index::Error::IndexFile(gix_index::file::init::Error::Io(err))
-                            if err.kind() == std::io::ErrorKind::NotFound =>
-                        {
-                            Ok(None)
-                        }
-                        err => Err(err),
-                    })
-                },
-            )
-            .and_then(|opt| match opt {
-                Some(index) => Ok(index),
-                None => Err(worktree::open_index::Error::IndexFile(
-                    gix_index::file::init::Error::Io(std::io::Error::new(
-                        std::io::ErrorKind::NotFound,
-                        format!("Could not find index file at {:?} for opening.", self.index_path()),
-                    )),
+        self.try_index().and_then(|opt| match opt {
+            Some(index) => Ok(index),
+            None => Err(worktree::open_index::Error::IndexFile(
+                gix_index::file::init::Error::Io(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    format!("Could not find index file at {:?} for opening.", self.index_path()),
                 )),
-            })
+            )),
+        })
+    }
+
+    /// Return a shared worktree index which is updated automatically if the in-memory snapshot has become stale as the underlying file
+    /// on disk has changed, or `None` if no such file exists.
+    ///
+    /// The index file is shared across all clones of this repository.
+    pub fn try_index(&self) -> Result<Option<worktree::Index>, worktree::open_index::Error> {
+        self.index.recent_snapshot(
+            || self.index_path().metadata().and_then(|m| m.modified()).ok(),
+            || {
+                self.open_index().map(Some).or_else(|err| match err {
+                    worktree::open_index::Error::IndexFile(gix_index::file::init::Error::Io(err))
+                        if err.kind() == std::io::ErrorKind::NotFound =>
+                    {
+                        Ok(None)
+                    }
+                    err => Err(err),
+                })
+            },
+        )
     }
 
     /// Open the persisted worktree index or generate it from the current `HEAD^{tree}` to live in-memory only.
@@ -69,13 +86,12 @@ impl crate::Repository {
     pub fn index_or_load_from_head(
         &self,
     ) -> Result<IndexPersistedOrInMemory, crate::repository::index_or_load_from_head::Error> {
-        Ok(match self.index() {
-            Ok(index) => IndexPersistedOrInMemory::Persisted(index),
-            Err(worktree::open_index::Error::IndexFile(_)) => {
+        Ok(match self.try_index()? {
+            Some(index) => IndexPersistedOrInMemory::Persisted(index),
+            None => {
                 let tree = self.head_commit()?.tree_id()?;
                 IndexPersistedOrInMemory::InMemory(self.index_from_tree(&tree)?)
             }
-            Err(err) => return Err(err.into()),
         })
     }
 

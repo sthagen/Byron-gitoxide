@@ -361,8 +361,9 @@ Check out the [performance discussion][gix-traverse-performance] as well.
     * [ ] check for match
 
 ### gix-pathspec
-* [x] parse
-* [ ] matching of paths
+* [x] parse single
+* [ ] parse file line by line (with or without quoting, NUL and LF/CRLF line separation) (see `--pathspec-from-file` and `--pathspec-file-nul`)
+* [ ] matching of paths with git-attributes support
 
 ### gix-refspec
 * [x] parse
@@ -452,28 +453,36 @@ Make it the best-performing implementation and the most convenient one.
 ### gix-glob
 * [x] parse pattern
 * [x] a type for pattern matching of paths and non-paths, optionally case-insensitively.
+ 
+### gix-status
+* [x] differences between index and worktree to turn index into worktree
+* [ ] differences between tree and index to turn tree into index
+* [ ] untracked files
+* [ ] fast answer to 'is it dirty'.
+* 
+### gix-worktree-state
+* handle the working **tree/checkout**
+    - [x] checkout an index of files, executables and symlinks just as fast as git
+        - [x] forbid symlinks in directories
+        - [ ] handle submodules
+        - [ ] handle sparse directories
+        - [ ] handle sparse index
+        - [x] linear scaling with multi-threading up to IO saturation
+    - supported attributes to affect working tree and index contents
+        - [x] eol
+        - [x] working-tree-encoding
+        - …more
+    - **filtering**
+        - [x] `text`
+        - [x] `ident`
+        - [x] filter processes
+        - [x] single-invocation clean/smudge filters
+* access to per-path information, like `.gitignore` and `.gitattributes` in a manner well suited for efficient lookups
+    * [x] _exclude_ information
+    * [x] attributes
 
 ### gix-worktree
-* handle the working **tree/checkout**
-  - [x] checkout an index of files, executables and symlinks just as fast as git
-     - [x] forbid symlinks in directories
-     - [ ] handle submodules
-     - [ ] handle sparse directories
-     - [ ] handle sparse index
-     - [x] linear scaling with multi-threading up to IO saturation
-  - supported attributes to affect working tree and index contents
-     - [ ] eol
-     - [ ] working-tree-encoding
-     - …more
-  - **filtering** 
-     - [ ] `text`
-     - [ ] `ident`
-     - [ ] filter processes
-     - [ ] single-invocation clean/smudge filters
-* manage multiple worktrees
-* access to per-path information, like `.gitignore` and `.gitattributes` in a manner well suited for efficient lookups
-  * [x] _exclude_ information
-  * [ ] attributes
+* [x] A stack to to efficiently generate attribute lists for matching paths against.
  
 ### gix-revision
 * [x] `describe()` (similar to `git name-rev`)
@@ -486,9 +495,10 @@ Make it the best-performing implementation and the most convenient one.
 * [x] primitives to help with graph traversal, along with commit-graph acceleration.
  
 ### gix-submodule
-* [ ] read `.gitmodule` files, access all their fields, and apply overrides
-* CRUD for submodules
-* try to handle with all the nifty interactions and be a little more comfortable than what git offers, lay a foundation for smarter git submodules.
+* [x] read `.gitmodule` files, access all their fields, and apply overrides
+* [x] check if a submodule is 'active'
+* [ ] CRUD for submodules
+* [ ] try to handle with all the nifty interactions and be a little more comfortable than what git offers, lay a foundation for smarter git submodules.
 
 ### gix-bitmap
 
@@ -619,7 +629,7 @@ See its [README.md](https://github.com/Byron/gitoxide/blob/main/gix-lock/README.
       * [x] run `git credential` directly
       * [x] use credential helper configuration and to obtain credentials with `gix_credentials::helper::Cascade`
     * **config**
-      * [ ] facilities to apply the [url-match](https://git-scm.com/docs/gix-config#Documentation/gix-config.txt-httplturlgt) algorithm and to
+      * [ ] facilities to apply the [url-match](https://git-scm.com/docs/git-config#Documentation/git-config.txt-httplturlgt) algorithm and to
             [normalize urls](https://github.com/git/git/blob/be1a02a17ede4082a86dfbfee0f54f345e8b43ac/urlmatch.c#L109:L109) before comparison.
     * **traverse** 
       * [x] commit graphs
@@ -712,20 +722,20 @@ See its [README.md](https://github.com/Byron/gitoxide/blob/main/gix-lock/README.
     * **config**
        * [x] read the primitive types `boolean`, `integer`, `string`
        * [x] read and interpolate trusted paths
-       * [x] low-level API for more elaborate access to all details of `gix-config` files
+       * [x] low-level API for more elaborate access to all details of `git-config` files
        * [ ] a way to make changes to individual configuration files
     * [x] mailmap   
     * [x] object replacements (`git replace`)
-    * [ ] configuration
+    * [x] read git configuration 
     * [ ] merging
     * [ ] stashing
     * [ ] Use _Commit Graph_ to speed up certain queries
     * [ ] subtree
     * [ ] interactive rebase status/manipulation
     * **submodules**
-       * [ ] handle 'old' form for reading
-       * [ ] list
-       * [ ] traverse recursively
+       * [x] handle 'old' form for reading and detect old form
+       * [x] list
+       * [ ] edit
 * [ ] API documentation
     * [ ] Some examples
 

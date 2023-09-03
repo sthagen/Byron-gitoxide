@@ -37,7 +37,8 @@ impl crate::Repository {
     /// Return the currently set worktree if there is one, acting as platform providing a validated worktree base path.
     ///
     /// Note that there would be `None` if this repository is `bare` and the parent [`Repository`][crate::Repository] was instantiated without
-    /// registered worktree in the current working dir.
+    /// registered worktree in the current working dir, even if no `.git` file or directory exists.
+    /// It's merely based on configuration, see [Worktree::dot_git_exists()] for a way to perform more validation.
     pub fn worktree(&self) -> Option<Worktree<'_>> {
         self.work_dir().map(|path| Worktree { parent: self, path })
     }
@@ -74,7 +75,9 @@ impl crate::Repository {
         // TODO(perf): when loading a non-HEAD tree, we effectively traverse the tree twice. This is usually fast though, and sharing
         //             an object cache between the copies of the ODB handles isn't trivial and needs a lock.
         let index = self.index_from_tree(&id)?;
-        let mut cache = self.attributes_only(&index, gix_worktree::cache::state::attributes::Source::IdMapping)?;
+        let mut cache = self
+            .attributes_only(&index, gix_worktree::stack::state::attributes::Source::IdMapping)?
+            .detach();
         let pipeline =
             gix_filter::Pipeline::new(cache.attributes_collection(), crate::filter::Pipeline::options(self)?);
         let objects = self.objects.clone().into_arc().expect("TBD error handling");

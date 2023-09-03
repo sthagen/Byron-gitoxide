@@ -105,9 +105,10 @@ impl ThreadSafeRepository {
     /// Note that this will read various `GIT_*` environment variables to check for overrides, and is probably most useful when implementing
     /// custom hooks.
     // TODO: tests, with hooks, GIT_QUARANTINE for ref-log and transaction control (needs gix-sec support to remove write access in gix-ref)
-    // TODO: The following vars should end up as overrides of the respective configuration values (see gix-config).
+    // TODO: The following vars should end up as overrides of the respective configuration values (see git-config).
     //       GIT_PROXY_SSL_CERT, GIT_PROXY_SSL_KEY, GIT_PROXY_SSL_CERT_PASSWORD_PROTECTED.
     //       GIT_PROXY_SSL_CAINFO, GIT_SSL_CIPHER_LIST, GIT_HTTP_MAX_REQUESTS, GIT_CURL_FTP_NO_EPSV,
+    #[doc(alias = "open_from_env", alias = "git2")]
     pub fn open_with_environment_overrides(
         fallback_directory: impl Into<PathBuf>,
         trust_map: gix_sec::trust::Mapping<Options>,
@@ -216,7 +217,13 @@ impl ThreadSafeRepository {
         )?;
 
         if bail_if_untrusted && git_dir_trust != gix_sec::Trust::Full {
-            check_safe_directories(&git_dir, git_install_dir.as_deref(), home.as_deref(), &config)?;
+            check_safe_directories(
+                &git_dir,
+                git_install_dir.as_deref(),
+                current_dir,
+                home.as_deref(),
+                &config,
+            )?;
         }
 
         // core.worktree might be used to overwrite the worktree directory
@@ -285,6 +292,7 @@ impl ThreadSafeRepository {
             linked_worktree_options: options,
             index: gix_fs::SharedFileSnapshotMut::new().into(),
             shallow_commits: gix_fs::SharedFileSnapshotMut::new().into(),
+            modules: gix_fs::SharedFileSnapshotMut::new().into(),
         })
     }
 }
@@ -321,11 +329,12 @@ fn replacement_objects_refs_prefix(
 fn check_safe_directories(
     git_dir: &std::path::Path,
     git_install_dir: Option<&std::path::Path>,
+    current_dir: &std::path::Path,
     home: Option<&std::path::Path>,
     config: &config::Cache,
 ) -> Result<(), Error> {
     let mut is_safe = false;
-    let git_dir = match gix_path::realpath(git_dir) {
+    let git_dir = match gix_path::realpath_opts(git_dir, current_dir, gix_path::realpath::MAX_SYMLINKS) {
         Ok(p) => p,
         Err(_) => git_dir.to_owned(),
     };

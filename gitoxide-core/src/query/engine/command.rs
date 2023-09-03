@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use anyhow::Context;
+use anyhow::{bail, Context};
 use gix::{bstr::ByteSlice, prelude::ObjectIdExt, Progress};
 use rusqlite::{params, OptionalExtension};
 
@@ -17,11 +17,27 @@ impl query::Engine {
         mut progress: impl gix::Progress,
     ) -> anyhow::Result<()> {
         match cmd {
-            Command::TracePath { mut spec } => {
-                if let Some(prefix) = self.repo.prefix() {
-                    spec.apply_prefix(&prefix?);
-                };
-                let relpath = spec.items().next().expect("spec has at least one item");
+            Command::TracePath { spec } => {
+                let is_excluded = spec.is_excluded();
+                // Just to get the normalized version of the path with everything auto-configured.
+                let relpath = self
+                    .repo
+                    .pathspec(
+                        Some(spec.to_bstring()),
+                        false,
+                        &gix::index::State::new(self.repo.object_hash()),
+                        gix::worktree::stack::state::attributes::Source::WorktreeThenIdMapping
+                            .adjust_for_bare(self.repo.is_bare()),
+                    )?
+                    .search()
+                    .patterns()
+                    .next()
+                    .expect("exactly one")
+                    .path()
+                    .to_owned();
+                if relpath.is_empty() || is_excluded {
+                    bail!("Invalid pathspec {spec} - path must not be empty, not be excluded, and wildcards are taken literally")
+                }
                 let file_id: usize = self
                     .con
                     .query_row(
@@ -30,7 +46,7 @@ impl query::Engine {
                         |r| r.get(0),
                     )
                     .optional()?
-                    .context("Path not found anywhere in recorded history")?;
+                    .with_context(|| format!("Path '{relpath}' not found anywhere in recorded history"))?;
 
                 let mut by_file_id = self
                     .con

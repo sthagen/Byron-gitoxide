@@ -1,5 +1,9 @@
 name: ci
 
+env:
+  CARGO_TERM_COLOR: always
+  CLICOLOR: 1
+
 on:
   push:
     branches: [ main ]
@@ -133,8 +137,6 @@ jobs:
         run: vcpkg install  zlib:x64-windows-static-md
       - name: "Installation from crates.io: gitoxide"
         run: cargo +${{ matrix.rust }} install --target ${{ matrix.target }} --target-dir install-artifacts --debug --force gitoxide
-      - name: "Installation from crates.io: cargo-smart-release"
-        run: cargo +${{ matrix.rust }} install --target ${{ matrix.target }} --target-dir install-artifacts --debug --force cargo-smart-release
 
   lint:
     runs-on: ubuntu-latest
@@ -188,7 +190,7 @@ jobs:
       - name: Install Rust
         run: rustup update stable && rustup default stable && rustup target add ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
-      - run: set +x; for name in gix-actor gix-attributes gix-bitmap gix-chunk gix-command gix-commitgraph gix-date gix-glob gix-hash gix-hashtable gix-mailmap gix-object gix-packetline gix-path gix-pathspec gix-quote gix-refspec gix-revision gix-traverse gix-validate; do (cd $name && cargo build --target ${{ matrix.target }}); done
+      - run: set +x; for name in gix-actor gix-attributes gix-bitmap gix-chunk gix-command gix-commitgraph gix-date gix-glob gix-hash gix-hashtable gix-mailmap gix-object gix-packetline gix-path gix-quote gix-refspec gix-revision gix-traverse gix-validate; do (cd $name && cargo build --target ${{ matrix.target }}); done
         name: crates without feature toggles
       - run: set +x; for feature in progress fs-walkdir-parallel parallel io-pipe crc32 zlib zlib-rust-backend fast-sha1 rustsha1 cache-efficiency-debug; do (cd gix-features && cargo build --features $feature --target ${{ matrix.target }}); done
         name: features of gix-features

@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use anyhow::{Context as AnyhowContext, Result};
+use gix::bstr::BString;
 
 pub fn init(directory: Option<PathBuf>) -> Result<gix::discover::repository::Path> {
     gix::create::into(
@@ -9,6 +10,11 @@ pub fn init(directory: Option<PathBuf>) -> Result<gix::discover::repository::Pat
         gix::create::Options::default(),
     )
     .with_context(|| "Repository initialization failed")
+}
+
+pub enum PathsOrPatterns {
+    Paths(Box<dyn std::iter::Iterator<Item = BString>>),
+    Patterns(Vec<BString>),
 }
 
 #[cfg(feature = "archive")]
@@ -27,11 +33,13 @@ pub mod fetch;
 pub use clone::function::clone;
 #[cfg(feature = "blocking-client")]
 pub use fetch::function::fetch;
+
 pub mod commitgraph;
 pub mod index;
 pub mod mailmap;
 pub mod odb;
 pub mod remote;
 pub mod revision;
+pub mod submodule;
 pub mod tree;
 pub mod verify;
