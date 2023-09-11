@@ -158,26 +158,30 @@ pub(crate) mod function {
                 // Note that we intentionally ignore `_case` so that we act like git does, attribute matching case is determined
                 // by the repository, not the pathspec.
                 let entry_is_excluded = pathspec
-                    .pattern_matching_relative_path(entry.path(&index), Some(false), |rela_path, _case, is_dir, out| {
-                        cache
-                            .as_mut()
-                            .map(|(attrs, cache)| {
-                                match last_match {
-                                    // The user wants the attributes for display, so the match happened already.
-                                    Some(matched) => {
-                                        attrs.copy_into(cache.attributes_collection(), out);
-                                        matched
+                    .pattern_matching_relative_path(
+                        entry.path(&index),
+                        Some(false),
+                        &mut |rela_path, _case, is_dir, out| {
+                            cache
+                                .as_mut()
+                                .map(|(attrs, cache)| {
+                                    match last_match {
+                                        // The user wants the attributes for display, so the match happened already.
+                                        Some(matched) => {
+                                            attrs.copy_into(cache.attributes_collection(), out);
+                                            matched
+                                        }
+                                        // The user doesn't want attributes, so we set the cache position on demand only
+                                        None => cache
+                                            .at_entry(rela_path, Some(is_dir))
+                                            .ok()
+                                            .map(|platform| platform.matching_attributes(out))
+                                            .unwrap_or_default(),
                                     }
-                                    // The user doesn't want attributes, so we set the cache position on demand only
-                                    None => cache
-                                        .at_entry(rela_path, Some(is_dir))
-                                        .ok()
-                                        .map(|platform| platform.matching_attributes(out))
-                                        .unwrap_or_default(),
-                                }
-                            })
-                            .unwrap_or_default()
-                    })
+                                })
+                                .unwrap_or_default()
+                        },
+                    )
                     .map_or(true, |m| m.is_excluded());
 
                 let entry_is_submodule = entry.mode.is_submodule();
@@ -290,7 +294,13 @@ pub(crate) mod function {
         Ok((pathspec.into_parts().0, index, cache))
     }
 
-    #[cfg_attr(feature = "serde", derive(serde::Serialize))]
+    #[cfg(feature = "serde")]
+    #[derive(serde::Serialize)]
+    struct AttrsForSerde {
+        is_excluded: bool,
+        attributes: Vec<String>,
+    }
+
     struct Attrs {
         is_excluded: bool,
         attributes: Vec<gix::attrs::Assignment>,
@@ -327,7 +337,7 @@ pub(crate) mod function {
             flags: u32,
             mode: u32,
             path: std::borrow::Cow<'a, str>,
-            meta: Option<Attrs>,
+            meta: Option<AttrsForSerde>,
         }
 
         serde_json::to_writer(
@@ -344,7 +354,14 @@ pub(crate) mod function {
                     path.extend_from_slice(entry.path(index));
                     path.to_string().into()
                 },
-                meta: attrs,
+                meta: attrs.map(|attrs| AttrsForSerde {
+                    is_excluded: attrs.is_excluded,
+                    attributes: attrs
+                        .attributes
+                        .into_iter()
+                        .map(|attr| attr.as_ref().to_string())
+                        .collect(),
+                }),
             },
         )?;
 

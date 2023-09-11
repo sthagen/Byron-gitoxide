@@ -22,6 +22,7 @@ pub enum Error {
 }
 
 ///
+#[cfg(feature = "revision")]
 pub mod describe {
     use std::borrow::Cow;
 
@@ -197,14 +198,14 @@ pub mod describe {
         /// to save ~40% of time.
         pub fn try_resolve(&self) -> Result<Option<Resolution<'repo>>, Error> {
             // TODO: dirty suffix with respective dirty-detection
-            let mut graph = gix_revision::Graph::new(
+            let mut graph = gix_revwalk::Graph::new(
                 |id, buf| {
                     self.repo
                         .objects
                         .try_find(id, buf)
                         .map(|r| r.and_then(gix_object::Data::try_into_commit_iter))
                 },
-                gix_commitgraph::Graph::from_info_dir(self.repo.objects.store_ref().path().join("info")).ok(),
+                gix_commitgraph::Graph::from_info_dir(self.repo.objects.store_ref().path().join("info").as_ref()).ok(),
             );
             let outcome = gix_revision::describe(
                 &self.id,

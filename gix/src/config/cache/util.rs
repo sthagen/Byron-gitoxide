@@ -3,7 +3,6 @@ use super::Error;
 use crate::{
     config,
     config::tree::{gitoxide, Core},
-    revision::spec::parse::ObjectKindHint,
 };
 
 pub(crate) fn interpolate_context<'a>(
@@ -103,10 +102,11 @@ pub(crate) fn parse_core_abbrev(
         .flatten())
 }
 
+#[cfg(feature = "revision")]
 pub(crate) fn disambiguate_hint(
     config: &gix_config::File<'static>,
     lenient_config: bool,
-) -> Result<Option<ObjectKindHint>, config::key::GenericErrorWithValue> {
+) -> Result<Option<crate::revision::spec::parse::ObjectKindHint>, config::key::GenericErrorWithValue> {
     match config.string_by_key("core.disambiguate") {
         None => Ok(None),
         Some(value) => Core::DISAMBIGUATE
@@ -118,6 +118,10 @@ pub(crate) fn disambiguate_hint(
 // TODO: Use a specialization here once trait specialization is stabilized. Would be perfect here for `T: Default`.
 pub trait ApplyLeniency {
     fn with_leniency(self, is_lenient: bool) -> Self;
+}
+
+pub trait IgnoreEmptyPath {
+    fn ignore_empty(self) -> Self;
 }
 
 pub trait ApplyLeniencyDefault {
@@ -133,6 +137,16 @@ impl<T, E> ApplyLeniency for Result<Option<T>, E> {
         match self {
             Ok(v) => Ok(v),
             Err(_) if is_lenient => Ok(None),
+            Err(err) => Err(err),
+        }
+    }
+}
+
+impl IgnoreEmptyPath for Result<Option<std::borrow::Cow<'_, std::path::Path>>, gix_config::path::interpolate::Error> {
+    fn ignore_empty(self) -> Self {
+        match self {
+            Ok(maybe_path) => Ok(maybe_path),
+            Err(gix_config::path::interpolate::Error::Missing { .. }) => Ok(None),
             Err(err) => Err(err),
         }
     }

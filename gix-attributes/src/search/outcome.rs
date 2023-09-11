@@ -1,6 +1,6 @@
 use bstr::{BString, ByteSlice};
+use byteyarn::Yarn;
 use gix_glob::Pattern;
-use kstring::{KString, KStringRef};
 
 use crate::{
     search::{
@@ -44,16 +44,23 @@ impl Outcome {
     pub fn initialize_with_selection<'a>(
         &mut self,
         collection: &MetadataCollection,
-        attribute_names: impl IntoIterator<Item = impl Into<KStringRef<'a>>>,
+        attribute_names: impl IntoIterator<Item = impl Into<&'a str>>,
+    ) {
+        self.initialize_with_selection_inner(collection, &mut attribute_names.into_iter().map(Into::into))
+    }
+
+    fn initialize_with_selection_inner(
+        &mut self,
+        collection: &MetadataCollection,
+        attribute_names: &mut dyn Iterator<Item = &str>,
     ) {
         self.initialize(collection);
 
         self.selected.clear();
-        self.selected.extend(attribute_names.into_iter().map(|name| {
-            let name = name.into();
+        self.selected.extend(attribute_names.map(|name| {
             (
-                name.to_owned(),
-                collection.name_to_meta.get(name.as_str()).map(|meta| meta.id),
+                Yarn::inlined(name).unwrap_or_else(|| name.to_string().into_boxed_str().into()),
+                collection.name_to_meta.get(name).map(|meta| meta.id),
             )
         }));
         self.reset_remaining();
@@ -308,7 +315,7 @@ impl MetadataCollection {
             None => {
                 let order = AttributeId(self.name_to_meta.len());
                 self.name_to_meta.insert(
-                    KString::from_ref(name),
+                    Yarn::inlined(name).unwrap_or_else(|| name.to_string().into_boxed_str().into()),
                     Metadata {
                         id: order,
                         macro_attributes: Default::default(),
@@ -328,7 +335,10 @@ impl MetadataCollection {
             Some(meta) => meta.id,
             None => {
                 let order = AttributeId(self.name_to_meta.len());
-                self.name_to_meta.insert(KString::from_ref(name), order.into());
+                self.name_to_meta.insert(
+                    Yarn::inlined(name).unwrap_or_else(|| name.to_string().into_boxed_str().into()),
+                    order.into(),
+                );
                 order
             }
         }

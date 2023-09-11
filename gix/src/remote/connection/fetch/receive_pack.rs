@@ -23,7 +23,7 @@ use crate::{
             Shallow, Status,
         },
     },
-    Progress, Repository,
+    Repository,
 };
 
 impl<'remote, 'repo, T> Prepare<'remote, 'repo, T>
@@ -73,11 +73,21 @@ where
     /// - `gitoxide.userAgent` is read to obtain the application user agent for git servers and for HTTP servers as well.
     ///
     #[gix_protocol::maybe_async::maybe_async]
-    pub async fn receive<P>(mut self, mut progress: P, should_interrupt: &AtomicBool) -> Result<Outcome, Error>
+    pub async fn receive<P>(self, mut progress: P, should_interrupt: &AtomicBool) -> Result<Outcome, Error>
     where
-        P: Progress,
+        P: gix_features::progress::NestedProgress,
         P::SubProgress: 'static,
     {
+        self.receive_inner(&mut progress, should_interrupt).await
+    }
+
+    #[gix_protocol::maybe_async::maybe_async]
+    #[allow(clippy::drop_non_drop)]
+    pub(crate) async fn receive_inner(
+        mut self,
+        progress: &mut dyn crate::DynNestedProgress,
+        should_interrupt: &AtomicBool,
+    ) -> Result<Outcome, Error> {
         let _span = gix_trace::coarse!("fetch::Prepare::receive()");
         let mut con = self.con.take().expect("receive() can only be called once");
 
@@ -85,7 +95,6 @@ where
         let protocol_version = handshake.server_protocol_version;
 
         let fetch = gix_protocol::Command::Fetch;
-        let progress = &mut progress;
         let repo = con.remote.repo;
         let fetch_features = {
             let mut f = fetch.default_features(protocol_version, &handshake.capabilities);
@@ -167,7 +176,7 @@ where
                 let mut seen_ack = false;
                 let mut in_vain = 0;
                 let mut common = is_stateless.then(Vec::new);
-                let reader = 'negotiation: loop {
+                let mut reader = 'negotiation: loop {
                     let _round = gix_trace::detail!("negotiate round", round = rounds.len() + 1);
                     progress.step();
                     progress.set_name(format!("negotiate (round {})", rounds.len() + 1));
@@ -193,7 +202,7 @@ where
                                 previous_response_had_at_least_one_in_common: ack_seen,
                             });
                             let is_done = haves_sent != haves_to_send || (seen_ack && in_vain >= 256);
-                            haves_to_send = gix_negotiate::window_size(is_stateless, haves_to_send);
+                            haves_to_send = gix_negotiate::window_size(is_stateless, Some(haves_to_send));
                             is_done
                         }
                         Err(err) => {
@@ -211,7 +220,7 @@ where
                     previous_response = Some(response);
                     if has_pack {
                         progress.step();
-                        progress.set_name("receiving pack");
+                        progress.set_name("receiving pack".into());
                         if !sideband_all {
                             setup_remote_progress(progress, &mut reader, should_interrupt);
                         }
@@ -245,28 +254,34 @@ where
                 };
 
                 let write_pack_bundle = if matches!(self.dry_run, fetch::DryRun::No) {
-                    Some(gix_pack::Bundle::write_to_directory(
-                        #[cfg(feature = "async-network-client")]
-                        {
-                            gix_protocol::futures_lite::io::BlockOn::new(reader)
-                        },
-                        #[cfg(not(feature = "async-network-client"))]
-                        {
-                            reader
-                        },
-                        Some(repo.objects.store_ref().path().join("pack")),
+                    #[cfg(not(feature = "async-network-client"))]
+                    let mut rd = reader;
+                    #[cfg(feature = "async-network-client")]
+                    let mut rd = gix_protocol::futures_lite::io::BlockOn::new(reader);
+                    let res = gix_pack::Bundle::write_to_directory(
+                        &mut rd,
+                        Some(&repo.objects.store_ref().path().join("pack")),
                         progress,
                         should_interrupt,
                         Some(Box::new({
                             let repo = repo.clone();
-                            move |oid, buf| repo.objects.find(oid, buf).ok()
+                            move |oid, buf| repo.objects.find(&oid, buf).ok()
                         })),
                         options,
-                    )?)
+                    )?;
+                    #[cfg(feature = "async-network-client")]
+                    {
+                        reader = rd.into_inner();
+                    }
+                    #[cfg(not(feature = "async-network-client"))]
+                    {
+                        reader = rd;
+                    }
+                    Some(res)
                 } else {
-                    drop(reader);
                     None
                 };
+                drop(reader);
 
                 if matches!(protocol_version, gix_protocol::transport::Protocol::V2) {
                     gix_protocol::indicate_end_of_interaction(&mut con.transport).await.ok();
@@ -372,17 +387,14 @@ fn add_shallow_args(
     Ok((shallow_commits, shallow_lock))
 }
 
-fn setup_remote_progress<P>(
-    progress: &mut P,
+fn setup_remote_progress(
+    progress: &mut dyn crate::DynNestedProgress,
     reader: &mut Box<dyn gix_protocol::transport::client::ExtendedBufRead + Unpin + '_>,
     should_interrupt: &AtomicBool,
-) where
-    P: Progress,
-    P::SubProgress: 'static,
-{
+) {
     use gix_protocol::transport::client::ExtendedBufRead;
     reader.set_progress_handler(Some(Box::new({
-        let mut remote_progress = progress.add_child_with_id("remote", ProgressId::RemoteProgress.into());
+        let mut remote_progress = progress.add_child_with_id("remote".to_string(), ProgressId::RemoteProgress.into());
         // SAFETY: Ugh, so, with current Rust I can't declare lifetimes in the involved traits the way they need to
         //         be and I also can't use scoped threads to pump from local scopes to an Arc version that could be
         //         used here due to the this being called from sync AND async code (and the async version doesn't work

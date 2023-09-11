@@ -16,6 +16,7 @@ pub struct Statistics {
     /// Information about the stack delegate.
     pub delegate: delegate::Statistics,
     /// Information about attributes
+    #[cfg(feature = "attributes")]
     pub attributes: state::attributes::Statistics,
     /// Information about the ignore stack
     pub ignore: state::ignore::Statistics,
@@ -24,6 +25,7 @@ pub struct Statistics {
 #[derive(Clone)]
 pub enum State {
     /// Useful for checkout where directories need creation, but we need to access attributes as well.
+    #[cfg(feature = "attributes")]
     CreateDirectoryAndAttributesStack {
         /// If there is a symlink or a file in our path, try to unlink it before creating the directory.
         unlink_on_collision: bool,
@@ -31,6 +33,7 @@ pub enum State {
         attributes: state::Attributes,
     },
     /// Used when adding files, requiring access to both attributes and ignore information, for example during add operations.
+    #[cfg(feature = "attributes")]
     AttributesAndIgnoreStack {
         /// State to handle attribute information
         attributes: state::Attributes,
@@ -38,6 +41,7 @@ pub enum State {
         ignore: state::Ignore,
     },
     /// Used when only attributes are required, typically with fully virtual worktrees.
+    #[cfg(feature = "attributes")]
     AttributesStack(state::Attributes),
     /// Used when providing worktree status information.
     IgnoreStack(state::Ignore),
@@ -88,7 +92,7 @@ impl Stack {
         &mut self,
         relative: impl AsRef<Path>,
         is_dir: Option<bool>,
-        find: Find,
+        mut find: Find,
     ) -> std::io::Result<Platform<'_>>
     where
         Find: for<'a> FnMut(&oid, &'a mut Vec<u8>) -> Result<gix_object::BlobRef<'a>, E>,
@@ -100,11 +104,12 @@ impl Stack {
             buf: &mut self.buf,
             is_dir: is_dir.unwrap_or(false),
             id_mappings: &self.id_mappings,
-            find,
+            find: &mut |oid, buf| Ok(find(oid, buf).map_err(Box::new)?),
             case: self.case,
             statistics: &mut self.statistics,
         };
-        self.stack.make_relative_path_current(relative, &mut delegate)?;
+        self.stack
+            .make_relative_path_current(relative.as_ref(), &mut delegate)?;
         Ok(Platform { parent: self, is_dir })
     }
 

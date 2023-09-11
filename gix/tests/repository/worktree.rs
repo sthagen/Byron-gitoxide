@@ -34,9 +34,8 @@ fn archive() -> crate::Result {
 mod with_core_worktree_config {
     use std::io::BufRead;
 
-    use crate::repository::worktree::Baseline;
-
     #[test]
+    #[cfg(feature = "index")]
     fn relative() -> crate::Result {
         for (name, is_relative) in [("absolute-worktree", false), ("relative-worktree", true)] {
             let repo = repo(name);
@@ -50,7 +49,7 @@ mod with_core_worktree_config {
             } else {
                 assert_eq!(
                     repo.work_dir().unwrap(),
-                    gix_path::realpath(repo.git_dir().parent().unwrap().parent().unwrap().join("worktree"))?,
+                    gix_path::realpath(&repo.git_dir().parent().unwrap().parent().unwrap().join("worktree"))?,
                     "absolute workdirs are left untouched"
                 );
             }
@@ -61,7 +60,7 @@ mod with_core_worktree_config {
                 "current worktree is based on work-tree dir"
             );
 
-            let baseline = Baseline::collect(repo.git_dir())?;
+            let baseline = crate::repository::worktree::Baseline::collect(repo.git_dir())?;
             assert_eq!(baseline.len(), 1, "git lists the main worktree");
             assert_eq!(
                 baseline[0].root,
@@ -147,6 +146,7 @@ struct Baseline<'a> {
 }
 
 mod baseline {
+    use std::borrow::Cow;
     use std::path::{Path, PathBuf};
 
     use gix::bstr::{BString, ByteSlice};
@@ -178,7 +178,7 @@ mod baseline {
         type Item = Worktree;
 
         fn next(&mut self) -> Option<Self::Item> {
-            let root = gix_path::from_bstr(fields(self.lines.next()?).1).into_owned();
+            let root = gix_path::from_bstr(Cow::Borrowed(fields(self.lines.next()?).1)).into_owned();
             let mut bare = false;
             let mut branch = None;
             let mut peeled = gix_hash::ObjectId::null(gix_hash::Kind::Sha1);

@@ -2,6 +2,7 @@
 use std::{borrow::Cow, path::PathBuf};
 
 use gix_features::threading::OwnShared;
+use gix_macros::momo;
 
 use super::{Error, Options};
 use crate::{
@@ -58,6 +59,7 @@ impl ThreadSafeRepository {
     ///
     /// Note that opening a repository for implementing custom hooks is also handle specifically in
     /// [`open_with_environment_overrides()`][Self::open_with_environment_overrides()].
+    #[momo]
     pub fn open_opts(path: impl Into<PathBuf>, mut options: Options) -> Result<Self, Error> {
         let _span = gix_trace::coarse!("ThreadSafeRepository::open()");
         let (path, kind) = {
@@ -109,6 +111,7 @@ impl ThreadSafeRepository {
     //       GIT_PROXY_SSL_CERT, GIT_PROXY_SSL_KEY, GIT_PROXY_SSL_CERT_PASSWORD_PROTECTED.
     //       GIT_PROXY_SSL_CAINFO, GIT_SSL_CIPHER_LIST, GIT_HTTP_MAX_REQUESTS, GIT_CURL_FTP_NO_EPSV,
     #[doc(alias = "open_from_env", alias = "git2")]
+    #[momo]
     pub fn open_with_environment_overrides(
         fallback_directory: impl Into<PathBuf>,
         trust_map: gix_sec::trust::Mapping<Options>,
@@ -176,7 +179,7 @@ impl ThreadSafeRepository {
         //       This would be something read in later as have to first check for extensions. Also this means
         //       that each worktree, even if accessible through this instance, has to come in its own Repository instance
         //       as it may have its own configuration. That's fine actually.
-        let common_dir = gix_discover::path::from_plain_file(git_dir.join("commondir"))
+        let common_dir = gix_discover::path::from_plain_file(git_dir.join("commondir").as_ref())
             .transpose()?
             .map(|cd| git_dir.join(cd));
         let common_dir_ref = common_dir.as_deref().unwrap_or(&git_dir);
@@ -192,8 +195,10 @@ impl ThreadSafeRepository {
             let reflog = repo_config.reflog.unwrap_or(gix_ref::store::WriteReflog::Disable);
             let object_hash = repo_config.object_hash;
             match &common_dir {
-                Some(common_dir) => crate::RefStore::for_linked_worktree(&git_dir, common_dir, reflog, object_hash),
-                None => crate::RefStore::at(&git_dir, reflog, object_hash),
+                Some(common_dir) => {
+                    crate::RefStore::for_linked_worktree(git_dir.to_owned(), common_dir.into(), reflog, object_hash)
+                }
+                None => crate::RefStore::at(git_dir.to_owned(), reflog, object_hash),
             }
         };
         let head = refs.find("HEAD").ok();
@@ -236,7 +241,7 @@ impl ThreadSafeRepository {
                     .interpolate(interpolate_context(git_install_dir.as_deref(), home.as_deref()))
                     .map_err(config::Error::PathInterpolation)?;
                 worktree_dir = {
-                    gix_path::normalize(git_dir.join(wt_path), current_dir)
+                    gix_path::normalize(git_dir.join(wt_path).into(), current_dir)
                         .and_then(|wt| wt.as_ref().is_dir().then(|| wt.into_owned()))
                 }
             }
@@ -276,7 +281,7 @@ impl ThreadSafeRepository {
         Ok(ThreadSafeRepository {
             objects: OwnShared::new(gix_odb::Store::at_opts(
                 common_dir_ref.join("objects"),
-                replacements,
+                &mut replacements.into_iter(),
                 gix_odb::store::init::Options {
                     slots: object_store_slots,
                     object_hash: config.object_hash,
@@ -290,8 +295,10 @@ impl ThreadSafeRepository {
             config,
             // used when spawning new repositories off this one when following worktrees
             linked_worktree_options: options,
+            #[cfg(feature = "index")]
             index: gix_fs::SharedFileSnapshotMut::new().into(),
             shallow_commits: gix_fs::SharedFileSnapshotMut::new().into(),
+            #[cfg(feature = "attributes")]
             modules: gix_fs::SharedFileSnapshotMut::new().into(),
         })
     }

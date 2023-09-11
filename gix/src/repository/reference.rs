@@ -1,6 +1,7 @@
 use std::convert::TryInto;
 
 use gix_hash::ObjectId;
+use gix_macros::momo;
 use gix_ref::{
     transaction::{Change, LogChange, PreviousValue, RefEdit, RefLog},
     FullName, PartialNameRef, Target,
@@ -14,6 +15,7 @@ impl crate::Repository {
     ///
     /// It will be created with `constraint` which is most commonly to [only create it][PreviousValue::MustNotExist]
     /// or to [force overwriting a possibly existing tag](PreviousValue::Any).
+    #[momo]
     pub fn tag_reference(
         &self,
         name: impl AsRef<str>,
@@ -85,14 +87,27 @@ impl crate::Repository {
         Name: TryInto<FullName, Error = E>,
         gix_validate::reference::name::Error: From<E>,
     {
-        let name = name.try_into().map_err(gix_validate::reference::name::Error::from)?;
-        let id = target.into();
+        self.reference_inner(
+            name.try_into().map_err(gix_validate::reference::name::Error::from)?,
+            target.into(),
+            constraint,
+            log_message.into(),
+        )
+    }
+
+    fn reference_inner(
+        &self,
+        name: FullName,
+        id: ObjectId,
+        constraint: PreviousValue,
+        log_message: BString,
+    ) -> Result<Reference<'_>, reference::edit::Error> {
         let mut edits = self.edit_reference(RefEdit {
             change: Change::Update {
                 log: LogChange {
                     mode: RefLog::AndReference,
                     force_create_reflog: false,
-                    message: log_message.into(),
+                    message: log_message,
                 },
                 expected: constraint,
                 new: Target::Peeled(id),

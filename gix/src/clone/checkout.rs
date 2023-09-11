@@ -26,10 +26,7 @@ pub mod main_worktree {
         #[error(transparent)]
         CheckoutOptions(#[from] crate::config::checkout_options::Error),
         #[error(transparent)]
-        IndexCheckout(
-            #[from]
-            gix_worktree_state::checkout::Error<gix_odb::find::existing_object::Error<gix_odb::store::find::Error>>,
-        ),
+        IndexCheckout(#[from] gix_worktree_state::checkout::Error<gix_odb::find::existing_object::Error>),
         #[error("Failed to reopen object database as Arc (only if thread-safety wasn't compiled in)")]
         OpenArcOdb(#[from] std::io::Error),
         #[error("The HEAD reference could not be located")]
@@ -65,9 +62,21 @@ pub mod main_worktree {
         ///
         /// Note that this is a no-op if the remote was empty, leaving this repository empty as well. This can be validated by checking
         /// if the `head()` of the returned repository is not unborn.
-        pub fn main_worktree(
+        pub fn main_worktree<P>(
             &mut self,
-            mut progress: impl crate::Progress,
+            mut progress: P,
+            should_interrupt: &AtomicBool,
+        ) -> Result<(Repository, gix_worktree_state::checkout::Outcome), Error>
+        where
+            P: gix_features::progress::NestedProgress,
+            P::SubProgress: gix_features::progress::NestedProgress + 'static,
+        {
+            self.main_worktree_inner(&mut progress, should_interrupt)
+        }
+
+        fn main_worktree_inner(
+            &mut self,
+            progress: &mut dyn gix_features::progress::DynNestedProgress,
             should_interrupt: &AtomicBool,
         ) -> Result<(Repository, gix_worktree_state::checkout::Outcome), Error> {
             let _span = gix_trace::coarse!("gix::clone::PrepareCheckout::main_worktree()");
@@ -99,8 +108,8 @@ pub mod main_worktree {
                 .checkout_options(repo, gix_worktree::stack::state::attributes::Source::IdMapping)?;
             opts.destination_is_initially_empty = true;
 
-            let mut files = progress.add_child_with_id("checkout", ProgressId::CheckoutFiles.into());
-            let mut bytes = progress.add_child_with_id("writing", ProgressId::BytesWritten.into());
+            let mut files = progress.add_child_with_id("checkout".to_string(), ProgressId::CheckoutFiles.into());
+            let mut bytes = progress.add_child_with_id("writing".to_string(), ProgressId::BytesWritten.into());
 
             files.init(Some(index.entries().len()), crate::progress::count("files"));
             bytes.init(None, crate::progress::bytes());
@@ -113,8 +122,8 @@ pub mod main_worktree {
                     let objects = repo.objects.clone().into_arc()?;
                     move |oid, buf| objects.find_blob(oid, buf)
                 },
-                &mut files,
-                &mut bytes,
+                &files,
+                &bytes,
                 should_interrupt,
                 opts,
             )?;
