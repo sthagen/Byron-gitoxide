@@ -24,3 +24,11 @@ fn size_in_memory() {
         "size of Repository shouldn't change without us noticing, it's meant to be cloned: should have been below {limit:?}, was {actual_size} (bigger on windows)"
     );
 }
+
+#[test]
+#[cfg(feature = "parallel")]
+fn thread_safe_repository_is_sync() -> crate::Result {
+    fn f<T: Send + Sync + Clone>(_t: T) {}
+    f(crate::util::basic_repo()?.into_sync());
+    Ok(())
+}
