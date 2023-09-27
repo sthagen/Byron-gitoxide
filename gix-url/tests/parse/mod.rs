@@ -1,5 +1,7 @@
-use bstr::ByteSlice;
-use gix_url::Scheme;
+use bstr::{BStr, ByteSlice};
+use gix_url::{testing::TestUrlExtension, Scheme};
+use std::path::Path;
+use std::time::Duration;
 
 fn assert_url(url: &str, expected: gix_url::Url) -> Result<gix_url::Url, crate::Error> {
     let actual = gix_url::parse(url.into())?;
@@ -22,11 +24,8 @@ fn assert_url_roundtrip(url: &str, expected: gix_url::Url) -> crate::Result {
     Ok(())
 }
 
-fn assert_failure(url: &str, expected_err: impl ToString) {
-    assert_eq!(
-        gix_url::parse(url.into()).unwrap_err().to_string(),
-        expected_err.to_string()
-    );
+fn parse<'a>(input: impl Into<&'a BStr>) -> Result<gix_url::Url, gix_url::parse::Error> {
+    gix_url::parse(input.into())
 }
 
 fn url<'a, 'b>(
@@ -36,7 +35,7 @@ fn url<'a, 'b>(
     port: impl Into<Option<u16>>,
     path: &[u8],
 ) -> gix_url::Url {
-    gix_url::Url::from_parts(
+    gix_url::Url::from_parts_unchecked(
         protocol,
         user.into().map(Into::into),
         None,
@@ -45,7 +44,6 @@ fn url<'a, 'b>(
         path.into(),
         false,
     )
-    .unwrap_or_else(|err| panic!("'{}' failed: {err:?}", path.as_bstr()))
 }
 
 fn url_with_pass<'a, 'b>(
@@ -56,7 +54,7 @@ fn url_with_pass<'a, 'b>(
     port: impl Into<Option<u16>>,
     path: &[u8],
 ) -> gix_url::Url {
-    gix_url::Url::from_parts(
+    gix_url::Url::from_parts_unchecked(
         protocol,
         user.into().map(Into::into),
         Some(password.into()),
@@ -65,7 +63,6 @@ fn url_with_pass<'a, 'b>(
         path.into(),
         false,
     )
-    .unwrap_or_else(|err| panic!("'{}' failed: {err:?}", path.as_bstr()))
 }
 
 fn url_alternate<'a, 'b>(
@@ -75,7 +72,7 @@ fn url_alternate<'a, 'b>(
     port: impl Into<Option<u16>>,
     path: &[u8],
 ) -> gix_url::Url {
-    let url = gix_url::Url::from_parts(
+    gix_url::Url::from_parts_unchecked(
         protocol.clone(),
         user.into().map(Into::into),
         None,
@@ -84,9 +81,6 @@ fn url_alternate<'a, 'b>(
         path.into(),
         true,
     )
-    .expect("valid");
-    assert_eq!(url.scheme, protocol);
-    url
 }
 
 mod file;
@@ -141,4 +135,19 @@ mod unknown {
             url(Scheme::Ext("abc".into()), None, "example.com", None, b"/~byron/hello"),
         )
     }
+}
+
+#[test]
+fn fuzzed() {
+    let base = Path::new("tests").join("fixtures").join("fuzzed");
+    let location = base.join(Path::new("very-long").with_extension("url"));
+    let url = std::fs::read(&location).unwrap();
+    let start = std::time::Instant::now();
+    gix_url::parse(url.as_bstr()).ok();
+    assert!(
+        start.elapsed() < Duration::from_millis(100),
+        "URL at '{}' parsed too slowly, took {:.00}s",
+        location.display(),
+        start.elapsed().as_secs_f32()
+    )
 }
