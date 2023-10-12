@@ -1,13 +1,13 @@
 use std::convert::TryFrom;
 
-use crate::{object, Commit, Object, ObjectDetached, Tag, Tree};
+use crate::{object, Blob, Commit, Object, ObjectDetached, Tag, Tree};
 
 impl<'repo> From<Object<'repo>> for ObjectDetached {
     fn from(mut v: Object<'repo>) -> Self {
         ObjectDetached {
             id: v.id,
             kind: v.kind,
-            data: std::mem::take(&mut v.data),
+            data: steal_from_freelist(&mut v.data),
         }
     }
 }
@@ -17,7 +17,7 @@ impl<'repo> From<Commit<'repo>> for ObjectDetached {
         ObjectDetached {
             id: v.id,
             kind: gix_object::Kind::Commit,
-            data: std::mem::take(&mut v.data),
+            data: steal_from_freelist(&mut v.data),
         }
     }
 }
@@ -27,7 +27,27 @@ impl<'repo> From<Tag<'repo>> for ObjectDetached {
         ObjectDetached {
             id: v.id,
             kind: gix_object::Kind::Tag,
-            data: std::mem::take(&mut v.data),
+            data: steal_from_freelist(&mut v.data),
+        }
+    }
+}
+
+impl<'repo> From<Blob<'repo>> for ObjectDetached {
+    fn from(mut v: Blob<'repo>) -> Self {
+        ObjectDetached {
+            id: v.id,
+            kind: gix_object::Kind::Blob,
+            data: steal_from_freelist(&mut v.data),
+        }
+    }
+}
+
+impl<'repo> From<Tree<'repo>> for ObjectDetached {
+    fn from(mut v: Tree<'repo>) -> Self {
+        ObjectDetached {
+            id: v.id,
+            kind: gix_object::Kind::Tree,
+            data: steal_from_freelist(&mut v.data),
         }
     }
 }
@@ -59,11 +79,11 @@ impl<'repo> TryFrom<Object<'repo>> for Commit<'repo> {
     type Error = Object<'repo>;
 
     fn try_from(mut value: Object<'repo>) -> Result<Self, Self::Error> {
-        let handle = value.repo;
+        let repo = value.repo;
         match value.kind {
             object::Kind::Commit => Ok(Commit {
                 id: value.id,
-                repo: handle,
+                repo,
                 data: steal_from_freelist(&mut value.data),
             }),
             _ => Err(value),
@@ -75,11 +95,11 @@ impl<'repo> TryFrom<Object<'repo>> for Tag<'repo> {
     type Error = Object<'repo>;
 
     fn try_from(mut value: Object<'repo>) -> Result<Self, Self::Error> {
-        let handle = value.repo;
+        let repo = value.repo;
         match value.kind {
             object::Kind::Tag => Ok(Tag {
                 id: value.id,
-                repo: handle,
+                repo,
                 data: steal_from_freelist(&mut value.data),
             }),
             _ => Err(value),
@@ -91,11 +111,27 @@ impl<'repo> TryFrom<Object<'repo>> for Tree<'repo> {
     type Error = Object<'repo>;
 
     fn try_from(mut value: Object<'repo>) -> Result<Self, Self::Error> {
-        let handle = value.repo;
+        let repo = value.repo;
         match value.kind {
             object::Kind::Tree => Ok(Tree {
                 id: value.id,
-                repo: handle,
+                repo,
+                data: steal_from_freelist(&mut value.data),
+            }),
+            _ => Err(value),
+        }
+    }
+}
+
+impl<'repo> TryFrom<Object<'repo>> for Blob<'repo> {
+    type Error = Object<'repo>;
+
+    fn try_from(mut value: Object<'repo>) -> Result<Self, Self::Error> {
+        let repo = value.repo;
+        match value.kind {
+            object::Kind::Blob => Ok(Blob {
+                id: value.id,
+                repo,
                 data: steal_from_freelist(&mut value.data),
             }),
             _ => Err(value),

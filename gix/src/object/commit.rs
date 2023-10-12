@@ -20,6 +20,7 @@ mod error {
 
 pub use error::Error;
 
+/// Remove Lifetime
 impl<'repo> Commit<'repo> {
     /// Create an owned instance of this object, copying our data in the process.
     pub fn detached(&self) -> ObjectDetached {
@@ -33,6 +34,13 @@ impl<'repo> Commit<'repo> {
     /// Sever the connection to the `Repository` and turn this instance into a standalone object.
     pub fn detach(self) -> ObjectDetached {
         self.into()
+    }
+
+    /// Retrieve this instance's encoded data, leaving its own data empty.
+    ///
+    /// This method works around the immovability of members of this type.
+    pub fn take_data(&mut self) -> Vec<u8> {
+        std::mem::take(&mut self.data)
     }
 }
 
