@@ -4,13 +4,12 @@ use std::{borrow::Cow, ffi::OsString};
 use gix_sec::Permission;
 
 use super::{interpolate_context, util, Error, StageOne};
-use crate::config::tree::Gitoxide;
 use crate::{
     bstr::BString,
     config,
     config::{
         cache::util::ApplyLeniency,
-        tree::{gitoxide, Core, Http},
+        tree::{gitoxide, Core, Gitoxide, Http},
         Cache,
     },
     open,
@@ -536,6 +535,16 @@ fn apply_environment_overrides(
             git_prefix,
             &[{
                 let key = &config::tree::Ssh::VARIANT;
+                (env(key), key.name)
+            }],
+        ),
+        #[cfg(feature = "blob-diff")]
+        (
+            "diff",
+            None,
+            git_prefix,
+            &[{
+                let key = &config::tree::Diff::EXTERNAL;
                 (env(key), key.name)
             }],
         ),
