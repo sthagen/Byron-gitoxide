@@ -1335,7 +1335,7 @@ dependencies = [
  "gix-pathspec",
  "gix-prompt",
  "gix-protocol",
- "gix-ref 0.39.0",
+ "gix-ref 0.39.1",
  "gix-refspec",
  "gix-revision",
  "gix-revwalk",
@@ -1521,7 +1521,7 @@ dependencies = [
  "gix-features 0.36.1",
  "gix-glob 0.14.1",
  "gix-path 0.10.1",
- "gix-ref 0.39.0",
+ "gix-ref 0.39.1",
  "gix-sec 0.10.1",
  "memchr",
  "once_cell",
@@ -1540,7 +1540,7 @@ dependencies = [
  "gix",
  "gix-config",
  "gix-path 0.10.1",
- "gix-ref 0.39.0",
+ "gix-ref 0.39.1",
  "gix-sec 0.10.1",
  "gix-testtools",
  "serial_test",
@@ -1665,7 +1665,7 @@ dependencies = [
  "dunce",
  "gix-hash 0.13.3",
  "gix-path 0.10.1",
- "gix-ref 0.39.0",
+ "gix-ref 0.39.1",
  "gix-sec 0.10.1",
  "gix-testtools",
  "is_ci",
@@ -2007,7 +2007,7 @@ dependencies = [
  "gix-hash 0.13.3",
  "gix-object 0.39.0",
  "gix-odb",
- "gix-ref 0.39.0",
+ "gix-ref 0.39.1",
  "gix-revwalk",
  "gix-testtools",
  "smallvec",
@@ -2292,7 +2292,7 @@ dependencies = [
 
 [[package]]
 name = "gix-ref"
-version = "0.39.0"
+version = "0.39.1"
 dependencies = [
  "document-features",
  "gix-actor 0.28.1",
@@ -2325,7 +2325,7 @@ dependencies = [
  "gix-lock 11.0.1",
  "gix-object 0.39.0",
  "gix-odb",
- "gix-ref 0.39.0",
+ "gix-ref 0.39.1",
  "gix-testtools",
  "gix-validate 0.8.1",
 ]
