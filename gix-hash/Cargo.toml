@@ -1,13 +1,13 @@
 [package]
 name = "gix-hash"
-version = "0.14.0"
+version = "0.14.1"
 description = "Borrowed and owned git hash digests used to identify git objects"
 authors = ["Sebastian Thiel <sebastian.thiel@icloud.com>"]
 repository = "https://github.com/Byron/gitoxide"
 license = "MIT OR Apache-2.0"
 edition = "2021"
 include = ["src/**/*", "LICENSE-*"]
-rust-version = "1.70"
+rust-version = "1.65"
 
 [lib]
 doctest = false
