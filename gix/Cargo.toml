@@ -3,7 +3,7 @@ name = "gix"
 repository = "https://github.com/Byron/gitoxide"
 description = "Interact with git repositories just like git would"
 license = "MIT OR Apache-2.0"
-version = "0.57.1"
+version = "0.58.0"
 authors = ["Sebastian Thiel <sebastian.thiel@icloud.com>"]
 edition = "2021"
 include = ["src/**/*", "LICENSE-*"]
@@ -141,14 +141,28 @@ blocking-http-transport-reqwest-native-tls = ["blocking-http-transport-reqwest",
 #! The reason these features exist is to allow optimization for compile time and optimize for compatibility by default. This means that some performance options around
 #! SHA1 and ZIP might not compile on all platforms, so it depends on the end-user who compiles the application to chose these based on their needs.
 
-## Activate features that maximize performance, like usage of threads, `zlib-ng` and access to caching in object databases, skipping the ones known to cause compile failures
-## on some platforms.
-max-performance-safe = [
+## Activate features that maximize performance, like using threads, but leave everything else that might affect compatibility out to allow users more fine-grained
+## control over performance features like which `zlib*` implementation to use.
+## No C toolchain is involved.
+max-control = [
     "parallel",
     "pack-cache-lru-static",
     "pack-cache-lru-dynamic",
-    "gix-features/fs-walkdir-parallel"
 ]
+
+## Activate features that maximize performance, like usage of threads, `and access to caching in object databases, skipping the ones known to cause compile failures
+## on some platforms.
+## Note that this configuration still uses a pure Rust zlib implementation which isn't the fastest compared to its C-alternatives.
+## No C toolchain is involved.
+max-performance-safe = [
+    "max-control",
+    "parallel-walkdir"
+]
+
+## If set, walkdir iterators will be multi-threaded which affects the listing of loose objects and references.
+## Note, however, that this will use `rayon` under the hood and spawn threads for each traversal to avoid a global rayon thread pool.
+## Thus this option is more interesting to one-off client applications, rather than the server.
+parallel-walkdir = ["gix-features/fs-walkdir-parallel"]
 
 ## The tempfile registry uses a better implementation of a thread-safe hashmap, relying on an external crate.
 ## This may be useful when tempfiles are created and accessed in a massively parallel fashion and you know that this is indeed faster than
@@ -169,19 +183,23 @@ pack-cache-lru-dynamic = ["gix-pack/pack-cache-lru-dynamic"]
 
 ## Activate other features that maximize performance, like usage of threads, `zlib-ng` and access to caching in object databases.
 ## Note that some platforms might suffer from compile failures, which is when `max-performance-safe` should be used.
-max-performance = [ "max-performance-safe", "gix-features/zlib-ng", "fast-sha1" ]
-
-## Activate other features that maximize performance, like usage of threads, `zlib-ng-compat`, and access to caching in object databases.
-## Note that some platforms might suffer from compile failures, which is when `max-performance-safe` should be used.
-## Unlike `max-performance`, `max-performance-zlib-ng-compat` uses zlib-ng via
-## libz-sys in zlib-ng-compat mode, which is useful when building with other
-## software that needs zlib, or to avoid linking conflicts when using other
-## software that uses zlib-ng-compat.
-max-performance-zlib-ng-compat = [ "max-performance-safe", "gix-features/zlib-ng-compat", "fast-sha1" ]
+max-performance = [ "max-performance-safe", "zlib-ng", "fast-sha1" ]
 
 ## If enabled, use assembly versions of sha1 on supported platforms.
 ## This might cause compile failures as well which is why it can be turned off separately.
 fast-sha1 = [ "gix-features/fast-sha1" ]
+
+## Use the C-based zlib-ng backend, which can compress and decompress significantly faster.
+## Note that this will cause duplicate symbol errors if the application also depends on `zlib` - use `zlib-ng-compat` in that case.
+zlib-ng = ["gix-features/zlib-ng"]
+
+## Use zlib-ng via its zlib-compat API. Useful if you already need zlib for C
+## code elsewhere in your dependencies. Otherwise, use `zlib-ng`.
+zlib-ng-compat = ["gix-features/zlib-ng-compat"]
+
+## Use a slower C-based backend which can compress and decompress significantly faster than the rust version.
+## Unlike `zlib-ng-compat`, this allows using dynamic linking with system `zlib` libraries and doesn't require cmake.
+zlib-stock = ["gix-features/zlib-stock"]
 
 #! #### Other
 #!
@@ -222,57 +240,57 @@ cache-efficiency-debug = ["gix-features/cache-efficiency-debug"]
 
 [dependencies]
 gix-macros = { version = "^0.1.3", path = "../gix-macros" }
-gix-utils = { version = "^0.1.8", path = "../gix-utils" }
-gix-fs = { version = "^0.9.1", path = "../gix-fs" }
-gix-ref = { version = "^0.40.1", path = "../gix-ref" }
-gix-discover = { version = "^0.28.1", path = "../gix-discover" }
-gix-tempfile = { version = "^12.0.0", path = "../gix-tempfile", default-features = false }
-gix-lock = { version = "^12.0.0", path = "../gix-lock" }
+gix-utils = { version = "^0.1.9", path = "../gix-utils" }
+gix-fs = { version = "^0.10.0", path = "../gix-fs" }
+gix-ref = { version = "^0.41.0", path = "../gix-ref" }
+gix-discover = { version = "^0.29.0", path = "../gix-discover" }
+gix-tempfile = { version = "^13.0.0", path = "../gix-tempfile", default-features = false }
+gix-lock = { version = "^13.0.0", path = "../gix-lock" }
 gix-validate = { version = "^0.8.3", path = "../gix-validate" }
-gix-sec = { version = "^0.10.3", path = "../gix-sec" }
+gix-sec = { version = "^0.10.4", path = "../gix-sec" }
 gix-date = { version = "^0.8.3", path = "../gix-date" }
-gix-refspec = { version = "^0.21.1", path = "../gix-refspec" }
-gix-filter = { version = "^0.8.1", path = "../gix-filter", optional = true }
+gix-refspec = { version = "^0.22.0", path = "../gix-refspec" }
+gix-filter = { version = "^0.9.0", path = "../gix-filter", optional = true }
 
-gix-config = { version = "^0.33.1", path = "../gix-config" }
-gix-odb = { version = "^0.56.1", path = "../gix-odb" }
+gix-config = { version = "^0.34.0", path = "../gix-config" }
+gix-odb = { version = "^0.57.0", path = "../gix-odb" }
 gix-hash = { version = "^0.14.1", path = "../gix-hash" }
-gix-object = { version = "^0.40.1", path = "../gix-object" }
-gix-actor = { version = "^0.29.1", path = "../gix-actor" }
-gix-pack = { version = "^0.46.1", path = "../gix-pack", default-features = false, features = ["object-cache-dynamic"] }
-gix-revision = { version = "^0.25.1", path = "../gix-revision", default-features = false }
-gix-revwalk = { version = "^0.11.1", path = "../gix-revwalk" }
-gix-negotiate = { version = "^0.11.1", path = "../gix-negotiate", optional = true }
+gix-object = { version = "^0.41.0", path = "../gix-object" }
+gix-actor = { version = "^0.30.0", path = "../gix-actor" }
+gix-pack = { version = "^0.47.0", path = "../gix-pack", default-features = false, features = ["object-cache-dynamic"] }
+gix-revision = { version = "^0.26.0", path = "../gix-revision", default-features = false }
+gix-revwalk = { version = "^0.12.0", path = "../gix-revwalk" }
+gix-negotiate = { version = "^0.12.0", path = "../gix-negotiate", optional = true }
 
-gix-path = { version = "^0.10.3", path = "../gix-path" }
-gix-url = { version = "^0.26.1", path = "../gix-url" }
-gix-traverse = { version = "^0.36.2", path = "../gix-traverse" }
-gix-diff = { version = "^0.39.1", path = "../gix-diff", default-features = false }
-gix-mailmap = { version = "^0.21.1", path = "../gix-mailmap", optional = true }
-gix-features = { version = "^0.37.2", path = "../gix-features", features = ["progress", "once_cell"] }
+gix-path = { version = "^0.10.4", path = "../gix-path" }
+gix-url = { version = "^0.27.0", path = "../gix-url" }
+gix-traverse = { version = "^0.37.0", path = "../gix-traverse" }
+gix-diff = { version = "^0.40.0", path = "../gix-diff", default-features = false }
+gix-mailmap = { version = "^0.22.0", path = "../gix-mailmap", optional = true }
+gix-features = { version = "^0.38.0", path = "../gix-features", features = ["progress", "once_cell"] }
 gix-trace = { version = "^0.1.7", path = "../gix-trace" }
 
-gix-glob = { version = "^0.15.1", path = "../gix-glob" }
-gix-credentials = { version = "^0.23.1", path = "../gix-credentials", optional = true }
+gix-glob = { version = "^0.16.0", path = "../gix-glob" }
+gix-credentials = { version = "^0.24.0", path = "../gix-credentials", optional = true }
 gix-prompt = { version = "^0.8.2", path = "../gix-prompt", optional = true }
-gix-index = { version = "^0.28.2", path = "../gix-index", optional = true }
-gix-attributes = { version = "^0.21.1", path = "../gix-attributes", optional = true }
-gix-ignore = { version = "^0.10.1", path = "../gix-ignore", optional = true }
-gix-worktree = { version = "^0.29.1", path = "../gix-worktree", optional = true, default-features = false }
-gix-worktree-state = { version = "^0.6.1", path = "../gix-worktree-state", optional = true }
+gix-index = { version = "^0.29.0", path = "../gix-index", optional = true }
+gix-attributes = { version = "^0.22.0", path = "../gix-attributes", optional = true }
+gix-ignore = { version = "^0.11.0", path = "../gix-ignore", optional = true }
+gix-worktree = { version = "^0.30.0", path = "../gix-worktree", optional = true, default-features = false }
+gix-worktree-state = { version = "^0.7.0", path = "../gix-worktree-state", optional = true }
 gix-hashtable = { version = "^0.5.1", path = "../gix-hashtable" }
-gix-commitgraph = { version = "^0.23.2", path = "../gix-commitgraph" }
-gix-pathspec = { version = "^0.5.1", path = "../gix-pathspec", optional = true }
-gix-submodule = { version = "^0.7.1", path = "../gix-submodule", optional = true }
-gix-status = { version = "^0.4.1", path = "../gix-status", optional = true }
-gix-command = { version = "^0.3.2", path = "../gix-command", optional = true }
+gix-commitgraph = { version = "^0.24.0", path = "../gix-commitgraph" }
+gix-pathspec = { version = "^0.6.0", path = "../gix-pathspec", optional = true }
+gix-submodule = { version = "^0.8.0", path = "../gix-submodule", optional = true }
+gix-status = { version = "^0.5.0", path = "../gix-status", optional = true }
+gix-command = { version = "^0.3.3", path = "../gix-command", optional = true }
 
-gix-worktree-stream = { version = "^0.8.1", path = "../gix-worktree-stream", optional = true }
-gix-archive = { version = "^0.8.1", path = "../gix-archive", default-features = false, optional = true }
+gix-worktree-stream = { version = "^0.9.0", path = "../gix-worktree-stream", optional = true }
+gix-archive = { version = "^0.9.0", path = "../gix-archive", default-features = false, optional = true }
 
 # For communication with remotes
-gix-protocol = { version = "^0.43.1", path = "../gix-protocol", optional = true }
-gix-transport = { version = "^0.40.1", path = "../gix-transport", optional = true }
+gix-protocol = { version = "^0.44.0", path = "../gix-protocol", optional = true }
+gix-transport = { version = "^0.41.0", path = "../gix-transport", optional = true }
 
 # Just to get the progress-tree feature
 prodash = { workspace = true, optional = true, features = ["progress-tree"] }
