@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.35.0 (2024-02-25)
+
+A maintenance release without user-facing changes.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 15 commits contributed to the release over the course of 33 calendar days.
+ - 36 days passed between releases.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Thanks Clippy
+
+<csr-read-only-do-not-edit/>
+
+[Clippy](https://github.com/rust-lang/rust-clippy) helped 1 time to make code idiomatic. 
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Prepare changelogs prior to release ([`f2e111f`](https://github.com/Byron/gitoxide/commit/f2e111f768fc1bc6182355261c20b63610cffec7))
+    - Merge pull request #1290 from epage/winnow ([`a663e9f`](https://github.com/Byron/gitoxide/commit/a663e9fcdb5a3aedc9200da77ebae17d5c3e7135))
+    - Update winnow to 0.6 ([`e175b20`](https://github.com/Byron/gitoxide/commit/e175b20d431faa6859fbcc52f78400e50f91cad1))
+    - Update winnow to 0.5.40 ([`516e105`](https://github.com/Byron/gitoxide/commit/516e105db5f22e1483b4b8a886cc4f3929ad7f6a))
+    - Merge branch 'dirwalk' ([`face359`](https://github.com/Byron/gitoxide/commit/face359443ba33e8985ec1525d5ec38b743ea7a9))
+    - Adjust gitignore files with precious declarations ([`ae86a6a`](https://github.com/Byron/gitoxide/commit/ae86a6a206074b85ff1eba32aea9c8b40c087b17))
+    - Adjust test expectations to work with latest Rust version ([`53e9b4e`](https://github.com/Byron/gitoxide/commit/53e9b4e385315270b5a6d6bf8aafce76914ed84c))
+    - Thanks clippy ([`13d5602`](https://github.com/Byron/gitoxide/commit/13d5602faa58aa6f520ebc6003ed54bc9c844f2b))
+    - Merge branch 'tempfile-permissions' ([`7b44c7f`](https://github.com/Byron/gitoxide/commit/7b44c7ff1dc0b8875214d2673c7f52948cf04ff0))
+    - Release gix-tempfile v13.1.0, gix-lock v13.1.0, safety bump 12 crates ([`8430442`](https://github.com/Byron/gitoxide/commit/84304427dfe4d170c7732161b126961719f70059))
+    - Merge pull request #1267 from epage/winnow ([`69cb78b`](https://github.com/Byron/gitoxide/commit/69cb78bd865a372c580b386766d7b61e5ca9303a))
+    - Move off deprecated fold_repeat ([`b7ca4b2`](https://github.com/Byron/gitoxide/commit/b7ca4b200fdcbd6c382a2a4a0e6e425e53d085c1))
+    - Update from winnow 0.5.31 to 0.5.36 ([`9470554`](https://github.com/Byron/gitoxide/commit/94705546cf0e4c8e38bcc96999cfa79cd8ee1acd))
+    - Release gix-path v0.10.5 ([`b8cba96`](https://github.com/Byron/gitoxide/commit/b8cba96ce57f8b6b0067d6a8cf3e37eaf280a238))
+    - Assure the fuzzer can't construct expensive values ([`3edf0fe`](https://github.com/Byron/gitoxide/commit/3edf0fe0e5e35aca8859e3f57bdc164ff20c780b))
+</details>
+
 ## 0.34.0 (2024-01-20)
 
 ### Bug Fixes
@@ -43,7 +86,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 11 commits contributed to the release over the course of 20 calendar days.
+ - 12 commits contributed to the release over the course of 20 calendar days.
  - 20 days passed between releases.
  - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -55,6 +98,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release gix-utils v0.1.9, gix-features v0.38.0, gix-actor v0.30.0, gix-object v0.41.0, gix-path v0.10.4, gix-glob v0.16.0, gix-attributes v0.22.0, gix-command v0.3.3, gix-packetline-blocking v0.17.3, gix-filter v0.9.0, gix-fs v0.10.0, gix-commitgraph v0.24.0, gix-revwalk v0.12.0, gix-traverse v0.37.0, gix-worktree-stream v0.9.0, gix-archive v0.9.0, gix-config-value v0.14.4, gix-tempfile v13.0.0, gix-lock v13.0.0, gix-ref v0.41.0, gix-sec v0.10.4, gix-config v0.34.0, gix-url v0.27.0, gix-credentials v0.24.0, gix-ignore v0.11.0, gix-index v0.29.0, gix-worktree v0.30.0, gix-diff v0.40.0, gix-discover v0.29.0, gix-mailmap v0.22.0, gix-negotiate v0.12.0, gix-pack v0.47.0, gix-odb v0.57.0, gix-pathspec v0.6.0, gix-packetline v0.17.3, gix-transport v0.41.0, gix-protocol v0.44.0, gix-revision v0.26.0, gix-refspec v0.22.0, gix-status v0.5.0, gix-submodule v0.8.0, gix-worktree-state v0.7.0, gix v0.58.0, safety bump 39 crates ([`eb6aa8f`](https://github.com/Byron/gitoxide/commit/eb6aa8f502314f886fc4ea3d52ab220763968208))
     - Prepare changelogs prior to release ([`6a2e0be`](https://github.com/Byron/gitoxide/commit/6a2e0bebfdf012dc2ed0ff2604086081f2a0f96d))
     - Limit the amount of work done to avoid the creation of huge file when fuzzing the section API ([`4138902`](https://github.com/Byron/gitoxide/commit/4138902242affac8a61b6b650417401d1f18f34e))
     - Release gix-trace v0.1.7, gix-features v0.37.2, gix-commitgraph v0.23.2, gix-traverse v0.36.2, gix-index v0.28.2 ([`b6c04c8`](https://github.com/Byron/gitoxide/commit/b6c04c87b426bf36a059df8dc52b56d384b27b79))
@@ -74,12 +118,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Chore
 
- - <csr-id-3bd09ef120945a9669321ea856db4079a5dab930/> change `rust-version` manifest field back to 1.65.
-   They didn't actually need to be higher to work, and changing them
-   unecessarily can break downstream CI.
-   
-   Let's keep this value as low as possible, and only increase it when
-   more recent features are actually used.
+- <csr-id-3bd09ef120945a9669321ea856db4079a5dab930/> change `rust-version` manifest field back to 1.65.
+  They didn't actually need to be higher to work, and changing them
+  unecessarily can break downstream CI.
+
+  Let's keep this value as low as possible, and only increase it when
+  more recent features are actually used.
 
 ### Commit Statistics
 
@@ -111,8 +155,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Chore
 
- - <csr-id-aea89c3ad52f1a800abb620e9a4701bdf904ff7d/> upgrade MSRV to v1.70
-   Our MSRV follows the one of `helix`, which in turn follows Firefox.
+- <csr-id-aea89c3ad52f1a800abb620e9a4701bdf904ff7d/> upgrade MSRV to v1.70
+  Our MSRV follows the one of `helix`, which in turn follows Firefox.
 
 ### New Features
 
@@ -126,8 +170,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Other
 
- - <csr-id-14460020ff5f5c6f1d5c4089d35d7d6932604d14/> Add a fuzz harness for File
- - <csr-id-ebc051c1d470bbb063deb9ff57ba058b93f1e8a3/> Add fuzzer for file::Section
+- <csr-id-14460020ff5f5c6f1d5c4089d35d7d6932604d14/> Add a fuzz harness for File
+- <csr-id-ebc051c1d470bbb063deb9ff57ba058b93f1e8a3/> Add fuzzer for file::Section
 
 ### Commit Statistics
 
@@ -275,12 +319,12 @@ A maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-db0c4017142fd25d26d1c6860972b1ac84b24a6e/> add more test cases to pin behaviour around string and path handling.
-   This is important to know how to consistently handle empty strings - should they
-   not be present? Or should they be flagged as error?
-   
-   The answer here is that the caller has to deal with it, as we report these values
-   if they are present which only requires an equals sign.
+- <csr-id-db0c4017142fd25d26d1c6860972b1ac84b24a6e/> add more test cases to pin behaviour around string and path handling.
+  This is important to know how to consistently handle empty strings - should they
+  not be present? Or should they be flagged as error?
+
+  The answer here is that the caller has to deal with it, as we report these values
+  if they are present which only requires an equals sign.
 
 ### Commit Statistics
 
@@ -354,9 +398,9 @@ A maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-ef54aab9e5521add4154ee8d902d62612a9d8d4a/> switch `nom` to `winnow` in remaining uses in `gix-object`, `gix-ref`, and `gix-actor` for ~20% more performance.
-   It's likely that over time, these parsers will get even faster due to improvements to `winnow`.
-   Thanks, Ed Page, for single-handedly performing this transition.
+- <csr-id-ef54aab9e5521add4154ee8d902d62612a9d8d4a/> switch `nom` to `winnow` in remaining uses in `gix-object`, `gix-ref`, and `gix-actor` for ~20% more performance.
+  It's likely that over time, these parsers will get even faster due to improvements to `winnow`.
+  Thanks, Ed Page, for single-handedly performing this transition.
 
 ### Bug Fixes
 
@@ -595,7 +639,7 @@ A maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-bcad5c22049d56a25ef69d6c7a3344e78f9a1d4d/> Add `clippy::redundant-closure-for-method-calls` lint
+- <csr-id-bcad5c22049d56a25ef69d6c7a3344e78f9a1d4d/> Add `clippy::redundant-closure-for-method-calls` lint
 
 ### Commit Statistics
 
@@ -627,7 +671,7 @@ A maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-dbc6cbb4363c2532f81b0bd6e351c4577bb9e9a3/> inline format args
+- <csr-id-dbc6cbb4363c2532f81b0bd6e351c4577bb9e9a3/> inline format args
 
 ### Commit Statistics
 
@@ -985,13 +1029,13 @@ A maintenance release without user-facing changes.
 
 ### Other (BREAKING)
 
- - <csr-id-69ec5940d3f37eb4dace8f1ed7616b5988984d15/> `File::set_raw_[multi_]value()` to `::set_existing_raw_[multi_]value`.
-   This makes clear that the method will fail if the value doesn't yet
-   exist.
- - <csr-id-9cd99337333f5ef4b30e0ec9461fc087699576e6/> `File::raw_multi_value()` to `File::raw_values()`
- - <csr-id-0076dcf9b37f1d633bdad5573b40d34a9fbaba90/> `File::raw_multi_value_mut()` to `File::raw_values_mut()`
- - <csr-id-a8604a237782f8d60a185d4730db57bad81424a6/> `File::multi_value()` to `File::values()`.
-   The latter is better in line with `string()/strings()`
+- <csr-id-69ec5940d3f37eb4dace8f1ed7616b5988984d15/> `File::set_raw_[multi_]value()` to `::set_existing_raw_[multi_]value`.
+  This makes clear that the method will fail if the value doesn't yet
+  exist.
+- <csr-id-9cd99337333f5ef4b30e0ec9461fc087699576e6/> `File::raw_multi_value()` to `File::raw_values()`
+- <csr-id-0076dcf9b37f1d633bdad5573b40d34a9fbaba90/> `File::raw_multi_value_mut()` to `File::raw_values_mut()`
+- <csr-id-a8604a237782f8d60a185d4730db57bad81424a6/> `File::multi_value()` to `File::values()`.
+  The latter is better in line with `string()/strings()`
 
 ### Bug Fixes (BREAKING)
 
@@ -1196,20 +1240,20 @@ A maintenance release without user-facing changes.
 
 ### Refactor
 
- - <csr-id-55c00d880535a1f8c37cb7d4405d39ff5a7654a0/> remove `git_config::values::Value`; use `Bytes` in its place.
+- <csr-id-55c00d880535a1f8c37cb7d4405d39ff5a7654a0/> remove `git_config::values::Value`; use `Bytes` in its place.
 
 ### Other
 
- - <csr-id-32d5b3c695d868ba93755123a25b276bfbe55e0a/> :Events::from_bytes()` with `filter` support.
- - <csr-id-949622e461eb2116393ec6f4633ec0cb2e1695b5/> Include benches in crate to allow publishing to work
- - <csr-id-bcacfc9bcf19a0339541b24e84de68d95291c62b/> remove clippy-cargo lint until there are no warnings
-   Please feel free to re-add once all other git-* crates have been
-   adjusted. It's interesting to see how a crate lint spills into the
-   workspace.
-   
-   Personally I am surprised that the keywords value is supposed
-   to repeat the crate name as it seems redundant.
- - <csr-id-41f118d2aa560188fd3399d2390aa43794b0af75/> remove redundant lines from git-ignore file
+- <csr-id-32d5b3c695d868ba93755123a25b276bfbe55e0a/> :Events::from_bytes()` with `filter` support.
+- <csr-id-949622e461eb2116393ec6f4633ec0cb2e1695b5/> Include benches in crate to allow publishing to work
+- <csr-id-bcacfc9bcf19a0339541b24e84de68d95291c62b/> remove clippy-cargo lint until there are no warnings
+  Please feel free to re-add once all other git-* crates have been
+  adjusted. It's interesting to see how a crate lint spills into the
+  workspace.
+
+  Personally I am surprised that the keywords value is supposed
+  to repeat the crate name as it seems redundant.
+- <csr-id-41f118d2aa560188fd3399d2390aa43794b0af75/> remove redundant lines from git-ignore file
 
 ### Bug Fixes
 
@@ -1392,7 +1436,7 @@ A maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-f7f136dbe4f86e7dee1d54835c420ec07c96cd78/> uniformize deny attributes
+- <csr-id-f7f136dbe4f86e7dee1d54835c420ec07c96cd78/> uniformize deny attributes
 
 ### Changed
 
@@ -2550,7 +2594,7 @@ Maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-f7f136dbe4f86e7dee1d54835c420ec07c96cd78/> uniformize deny attributes
+- <csr-id-f7f136dbe4f86e7dee1d54835c420ec07c96cd78/> uniformize deny attributes
 
 ### New Features
 
@@ -2584,9 +2628,9 @@ Maintenance release without user-facing changes.
 
 ### Other (BREAKING)
 
- - <csr-id-69ec5940d3f37eb4dace8f1ed7616b5988984d15/> `File::set_raw_[multi_]value()` to `::set_existing_raw_[multi_]value`.
-   This makes clear that the method will fail if the value doesn't yet
-   exist.
+- <csr-id-69ec5940d3f37eb4dace8f1ed7616b5988984d15/> `File::set_raw_[multi_]value()` to `::set_existing_raw_[multi_]value`.
+  This makes clear that the method will fail if the value doesn't yet
+  exist.
 
 ## 0.6.1 (2022-08-17)
 
@@ -2666,7 +2710,7 @@ A maintenance release without user facing changes.
 
 ### Other
 
- - <csr-id-32d5b3c695d868ba93755123a25b276bfbe55e0a/> :Events::from_bytes()` with `filter` support.
+- <csr-id-32d5b3c695d868ba93755123a25b276bfbe55e0a/> :Events::from_bytes()` with `filter` support.
 
 ### Changed (BREAKING)
 
@@ -2807,10 +2851,10 @@ A maintenance release without user facing changes.
 
 ### Other (BREAKING)
 
- - <csr-id-9cd99337333f5ef4b30e0ec9461fc087699576e6/> `File::raw_multi_value()` to `File::raw_values()`
- - <csr-id-0076dcf9b37f1d633bdad5573b40d34a9fbaba90/> `File::raw_multi_value_mut()` to `File::raw_values_mut()`
- - <csr-id-a8604a237782f8d60a185d4730db57bad81424a6/> `File::multi_value()` to `File::values()`.
-   The latter is better in line with `string()/strings()`
+- <csr-id-9cd99337333f5ef4b30e0ec9461fc087699576e6/> `File::raw_multi_value()` to `File::raw_values()`
+- <csr-id-0076dcf9b37f1d633bdad5573b40d34a9fbaba90/> `File::raw_multi_value_mut()` to `File::raw_values_mut()`
+- <csr-id-a8604a237782f8d60a185d4730db57bad81424a6/> `File::multi_value()` to `File::values()`.
+  The latter is better in line with `string()/strings()`
 
 ## 0.5.0 (2022-06-13)
 
@@ -2905,12 +2949,12 @@ A maintenance release without user facing changes.
    can be interpolated according to gits own path interpolation
    rules.
  - <csr-id-61af06b905926849abce19677ff4b9ac05d625a3/> compatibility with Rust <1.53
- - Respect `include.path` when reading configuration files
- - Support for path interpolation
+- Respect `include.path` when reading configuration files
+- Support for path interpolation
 
 ### Refactor
 
- - <csr-id-55c00d880535a1f8c37cb7d4405d39ff5a7654a0/> remove `gix_config::values::Value`; use `Bytes` in its place.
+- <csr-id-55c00d880535a1f8c37cb7d4405d39ff5a7654a0/> remove `gix_config::values::Value`; use `Bytes` in its place.
 
 ## 0.1.11 (2022-01-31)
 
@@ -2957,27 +3001,27 @@ This is a maintenance release without functional changes.
 
 ### Added
 
- - Added the following methods to `GitConfig`:
-   - `is_empty`
-   - `len`
-   - `from_env`
-   - `open`
-- `len`
-- `from_env`
-- `open`
+- Added the following methods to `GitConfig`:
+    - `is_empty`
+    - `len`
+    - `from_env`
+    - `open`
+  - `len`
+  - `from_env`
+  - `open`
 
 ### Changed
 
- - `parse_from_path` now accepts a `AsRef<Path>` instead of a `&Path`.
- - `parse_from_path` now returns an `ParserOrIoError<'static>` instead, from
-   `ParserFromIoError`
+- `parse_from_path` now accepts a `AsRef<Path>` instead of a `&Path`.
+- `parse_from_path` now returns an `ParserOrIoError<'static>` instead, from
+  `ParserFromIoError`
 
 ### Fixed
 
- - _None._
+- _None._
 
 <csr-unknown>
-lenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopen<csr-unknown/>
+lenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopen<csr-unknown/>
 <csr-unknown/>
 
 ## v0.1.1 (2021-05-09)
@@ -2990,15 +3034,15 @@ lenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfrom_envopenlenfr
 
 ### Other
 
- - <csr-id-949622e461eb2116393ec6f4633ec0cb2e1695b5/> Include benches in crate to allow publishing to work
- - <csr-id-bcacfc9bcf19a0339541b24e84de68d95291c62b/> remove clippy-cargo lint until there are no warnings
-   Please feel free to re-add once all other git-* crates have been
-   adjusted. It's interesting to see how a crate lint spills into the
-   workspace.
-   
-   Personally I am surprised that the keywords value is supposed
-   to repeat the crate name as it seems redundant.
- - <csr-id-41f118d2aa560188fd3399d2390aa43794b0af75/> remove redundant lines from git-ignore file
+- <csr-id-949622e461eb2116393ec6f4633ec0cb2e1695b5/> Include benches in crate to allow publishing to work
+- <csr-id-bcacfc9bcf19a0339541b24e84de68d95291c62b/> remove clippy-cargo lint until there are no warnings
+  Please feel free to re-add once all other git-* crates have been
+  adjusted. It's interesting to see how a crate lint spills into the
+  workspace.
+
+  Personally I am surprised that the keywords value is supposed
+  to repeat the crate name as it seems redundant.
+- <csr-id-41f118d2aa560188fd3399d2390aa43794b0af75/> remove redundant lines from git-ignore file
 
 ## v0.0.0 (2020-10-05)
 

@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.30.0 (2024-02-25)
+
+A maintenance release without user-facing changes.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 4 commits contributed to the release over the course of 30 calendar days.
+ - 36 days passed between releases.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Prepare changelogs prior to release ([`f2e111f`](https://github.com/Byron/gitoxide/commit/f2e111f768fc1bc6182355261c20b63610cffec7))
+    - Merge branch 'tempfile-permissions' ([`7b44c7f`](https://github.com/Byron/gitoxide/commit/7b44c7ff1dc0b8875214d2673c7f52948cf04ff0))
+    - Release gix-tempfile v13.1.0, gix-lock v13.1.0, safety bump 12 crates ([`8430442`](https://github.com/Byron/gitoxide/commit/84304427dfe4d170c7732161b126961719f70059))
+    - Release gix-path v0.10.5 ([`b8cba96`](https://github.com/Byron/gitoxide/commit/b8cba96ce57f8b6b0067d6a8cf3e37eaf280a238))
+</details>
+
 ## 0.29.0 (2024-01-20)
 
 A maintenance release without user-facing changes.
@@ -13,7 +39,7 @@ A maintenance release without user-facing changes.
 
 <csr-read-only-do-not-edit/>
 
- - 4 commits contributed to the release over the course of 2 calendar days.
+ - 5 commits contributed to the release over the course of 2 calendar days.
  - 20 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -25,6 +51,7 @@ A maintenance release without user-facing changes.
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release gix-utils v0.1.9, gix-features v0.38.0, gix-actor v0.30.0, gix-object v0.41.0, gix-path v0.10.4, gix-glob v0.16.0, gix-attributes v0.22.0, gix-command v0.3.3, gix-packetline-blocking v0.17.3, gix-filter v0.9.0, gix-fs v0.10.0, gix-commitgraph v0.24.0, gix-revwalk v0.12.0, gix-traverse v0.37.0, gix-worktree-stream v0.9.0, gix-archive v0.9.0, gix-config-value v0.14.4, gix-tempfile v13.0.0, gix-lock v13.0.0, gix-ref v0.41.0, gix-sec v0.10.4, gix-config v0.34.0, gix-url v0.27.0, gix-credentials v0.24.0, gix-ignore v0.11.0, gix-index v0.29.0, gix-worktree v0.30.0, gix-diff v0.40.0, gix-discover v0.29.0, gix-mailmap v0.22.0, gix-negotiate v0.12.0, gix-pack v0.47.0, gix-odb v0.57.0, gix-pathspec v0.6.0, gix-packetline v0.17.3, gix-transport v0.41.0, gix-protocol v0.44.0, gix-revision v0.26.0, gix-refspec v0.22.0, gix-status v0.5.0, gix-submodule v0.8.0, gix-worktree-state v0.7.0, gix v0.58.0, safety bump 39 crates ([`eb6aa8f`](https://github.com/Byron/gitoxide/commit/eb6aa8f502314f886fc4ea3d52ab220763968208))
     - Prepare changelogs prior to release ([`6a2e0be`](https://github.com/Byron/gitoxide/commit/6a2e0bebfdf012dc2ed0ff2604086081f2a0f96d))
     - Merge branch 'dirwalk' ([`5d176fc`](https://github.com/Byron/gitoxide/commit/5d176fc5ab82bfc7c194b4d929e73da9659ae8b8))
     - Use `gix_fs::current_dir(precompose_unicode)`. ([`7d8d167`](https://github.com/Byron/gitoxide/commit/7d8d1678c9dd185a369e996551a6ed89fbb391f5))
@@ -37,12 +64,12 @@ A maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-3bd09ef120945a9669321ea856db4079a5dab930/> change `rust-version` manifest field back to 1.65.
-   They didn't actually need to be higher to work, and changing them
-   unecessarily can break downstream CI.
-   
-   Let's keep this value as low as possible, and only increase it when
-   more recent features are actually used.
+- <csr-id-3bd09ef120945a9669321ea856db4079a5dab930/> change `rust-version` manifest field back to 1.65.
+  They didn't actually need to be higher to work, and changing them
+  unecessarily can break downstream CI.
+
+  Let's keep this value as low as possible, and only increase it when
+  more recent features are actually used.
 
 ### Commit Statistics
 
@@ -70,8 +97,8 @@ A maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-aea89c3ad52f1a800abb620e9a4701bdf904ff7d/> upgrade MSRV to v1.70
-   Our MSRV follows the one of `helix`, which in turn follows Firefox.
+- <csr-id-aea89c3ad52f1a800abb620e9a4701bdf904ff7d/> upgrade MSRV to v1.70
+  Our MSRV follows the one of `helix`, which in turn follows Firefox.
 
 ### Commit Statistics
 
@@ -376,7 +403,7 @@ A maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-bcad5c22049d56a25ef69d6c7a3344e78f9a1d4d/> Add `clippy::redundant-closure-for-method-calls` lint
+- <csr-id-bcad5c22049d56a25ef69d6c7a3344e78f9a1d4d/> Add `clippy::redundant-closure-for-method-calls` lint
 
 ### Commit Statistics
 
@@ -758,12 +785,12 @@ A maintenance release without user-facing changes.
 
 ### Other
 
- - <csr-id-7057ad2251f76756a5b35b6bbba10ab9b6601226/> test `is_git` on macOS exfat
- - <csr-id-08d0c27b0641526aa8b70ee5aadd3658862bef1b/> allow opening repos on macos exfat
- - <csr-id-6106521581029c5c24b23a47bb91c1921edfa0af/> avoid shortening absolute paths
- - <csr-id-136eb37b00c9e7ba0fd0bc2a75dee2ac1b06516d/> adopt git-for-windows exception rules
- - <csr-id-277c41f1185398e14f92247aada8422f6b08afd1/> add cross_fs option to upwards discovery
- - <csr-id-e63e722791a7795cd99048bed834459595c60abc/> add ceiling_dirs option to upwards discovery
+- <csr-id-7057ad2251f76756a5b35b6bbba10ab9b6601226/> test `is_git` on macOS exfat
+- <csr-id-08d0c27b0641526aa8b70ee5aadd3658862bef1b/> allow opening repos on macos exfat
+- <csr-id-6106521581029c5c24b23a47bb91c1921edfa0af/> avoid shortening absolute paths
+- <csr-id-136eb37b00c9e7ba0fd0bc2a75dee2ac1b06516d/> adopt git-for-windows exception rules
+- <csr-id-277c41f1185398e14f92247aada8422f6b08afd1/> add cross_fs option to upwards discovery
+- <csr-id-e63e722791a7795cd99048bed834459595c60abc/> add ceiling_dirs option to upwards discovery
 
 ### New Features
 
@@ -783,8 +810,8 @@ A maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-f7f136dbe4f86e7dee1d54835c420ec07c96cd78/> uniformize deny attributes
- - <csr-id-533e887e80c5f7ede8392884562e1c5ba56fb9a8/> remove default link to cargo doc everywhere
+- <csr-id-f7f136dbe4f86e7dee1d54835c420ec07c96cd78/> uniformize deny attributes
+- <csr-id-533e887e80c5f7ede8392884562e1c5ba56fb9a8/> remove default link to cargo doc everywhere
 
 ### Documentation
 
@@ -1230,8 +1257,8 @@ Maintenance release without user-facing changes.
 
 ### Other
 
- - <csr-id-7057ad2251f76756a5b35b6bbba10ab9b6601226/> test `is_git` on macOS exfat
- - <csr-id-08d0c27b0641526aa8b70ee5aadd3658862bef1b/> allow opening repos on macos exfat
+- <csr-id-7057ad2251f76756a5b35b6bbba10ab9b6601226/> test `is_git` on macOS exfat
+- <csr-id-08d0c27b0641526aa8b70ee5aadd3658862bef1b/> allow opening repos on macos exfat
 
 ## 0.4.1 (2022-08-24)
 
@@ -1240,8 +1267,8 @@ Maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-f7f136dbe4f86e7dee1d54835c420ec07c96cd78/> uniformize deny attributes
- - <csr-id-533e887e80c5f7ede8392884562e1c5ba56fb9a8/> remove default link to cargo doc everywhere
+- <csr-id-f7f136dbe4f86e7dee1d54835c420ec07c96cd78/> uniformize deny attributes
+- <csr-id-533e887e80c5f7ede8392884562e1c5ba56fb9a8/> remove default link to cargo doc everywhere
 
 ## 0.4.0 (2022-08-17)
 
@@ -1272,7 +1299,7 @@ Maintenance release without user-facing changes.
 
 ### Other
 
- - <csr-id-6106521581029c5c24b23a47bb91c1921edfa0af/> avoid shortening absolute paths
+- <csr-id-6106521581029c5c24b23a47bb91c1921edfa0af/> avoid shortening absolute paths
 
 ### New Features (BREAKING)
 
@@ -1293,7 +1320,7 @@ A maintenance release without user-facing changes.
 
 ### Other
 
- - <csr-id-136eb37b00c9e7ba0fd0bc2a75dee2ac1b06516d/> adopt git-for-windows exception rules
+- <csr-id-136eb37b00c9e7ba0fd0bc2a75dee2ac1b06516d/> adopt git-for-windows exception rules
 
 ## 0.1.1 (2022-05-21)
 
@@ -1302,11 +1329,11 @@ A maintenance release without user-facing changes.
 
 ### Other
 
- - <csr-id-e63e722791a7795cd99048bed834459595c60abc/> add ceiling_dirs option to upwards discovery
+- <csr-id-e63e722791a7795cd99048bed834459595c60abc/> add ceiling_dirs option to upwards discovery
 
 ### Other
 
- - <csr-id-277c41f1185398e14f92247aada8422f6b08afd1/> add cross_fs option to upwards discovery
+- <csr-id-277c41f1185398e14f92247aada8422f6b08afd1/> add cross_fs option to upwards discovery
 
 ## 0.1.0 (2022-05-18)
 

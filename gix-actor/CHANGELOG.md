@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.30.1 (2024-02-25)
+
+A maintenance release without user-facing changes.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 10 commits contributed to the release over the course of 24 calendar days.
+ - 36 days passed between releases.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Prepare changelogs prior to release ([`f2e111f`](https://github.com/Byron/gitoxide/commit/f2e111f768fc1bc6182355261c20b63610cffec7))
+    - Merge branch 'btoi' ([`5fc379d`](https://github.com/Byron/gitoxide/commit/5fc379d1dc867d15a50cb086e30beefde2b42d86))
+    - Refactor ([`c5c69bd`](https://github.com/Byron/gitoxide/commit/c5c69bd355771a6fb3e4f6db0c5f49aa2bf7f42f))
+    - Inline btoi code to reduce compile times ([`f26f298`](https://github.com/Byron/gitoxide/commit/f26f2988f51f6c419ec7eff4ae6f4df0f4011663))
+    - Merge pull request #1290 from epage/winnow ([`a663e9f`](https://github.com/Byron/gitoxide/commit/a663e9fcdb5a3aedc9200da77ebae17d5c3e7135))
+    - Update winnow to 0.6 ([`e175b20`](https://github.com/Byron/gitoxide/commit/e175b20d431faa6859fbcc52f78400e50f91cad1))
+    - Update winnow to 0.5.40 ([`516e105`](https://github.com/Byron/gitoxide/commit/516e105db5f22e1483b4b8a886cc4f3929ad7f6a))
+    - Merge pull request #1267 from epage/winnow ([`69cb78b`](https://github.com/Byron/gitoxide/commit/69cb78bd865a372c580b386766d7b61e5ca9303a))
+    - Move off deprecated take_until[01] ([`52ede06`](https://github.com/Byron/gitoxide/commit/52ede0634067de81d7db66728257d8242c14654e))
+    - Update from winnow 0.5.31 to 0.5.36 ([`9470554`](https://github.com/Byron/gitoxide/commit/94705546cf0e4c8e38bcc96999cfa79cd8ee1acd))
+</details>
+
 ## 0.30.0 (2024-01-20)
 
 A maintenance release without user-facing changes.
@@ -13,7 +45,7 @@ A maintenance release without user-facing changes.
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release.
+ - 2 commits contributed to the release.
  - 20 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -25,6 +57,7 @@ A maintenance release without user-facing changes.
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release gix-utils v0.1.9, gix-features v0.38.0, gix-actor v0.30.0, gix-object v0.41.0, gix-path v0.10.4, gix-glob v0.16.0, gix-attributes v0.22.0, gix-command v0.3.3, gix-packetline-blocking v0.17.3, gix-filter v0.9.0, gix-fs v0.10.0, gix-commitgraph v0.24.0, gix-revwalk v0.12.0, gix-traverse v0.37.0, gix-worktree-stream v0.9.0, gix-archive v0.9.0, gix-config-value v0.14.4, gix-tempfile v13.0.0, gix-lock v13.0.0, gix-ref v0.41.0, gix-sec v0.10.4, gix-config v0.34.0, gix-url v0.27.0, gix-credentials v0.24.0, gix-ignore v0.11.0, gix-index v0.29.0, gix-worktree v0.30.0, gix-diff v0.40.0, gix-discover v0.29.0, gix-mailmap v0.22.0, gix-negotiate v0.12.0, gix-pack v0.47.0, gix-odb v0.57.0, gix-pathspec v0.6.0, gix-packetline v0.17.3, gix-transport v0.41.0, gix-protocol v0.44.0, gix-revision v0.26.0, gix-refspec v0.22.0, gix-status v0.5.0, gix-submodule v0.8.0, gix-worktree-state v0.7.0, gix v0.58.0, safety bump 39 crates ([`eb6aa8f`](https://github.com/Byron/gitoxide/commit/eb6aa8f502314f886fc4ea3d52ab220763968208))
     - Prepare changelogs prior to release ([`6a2e0be`](https://github.com/Byron/gitoxide/commit/6a2e0bebfdf012dc2ed0ff2604086081f2a0f96d))
 </details>
 
@@ -34,12 +67,12 @@ A maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-3bd09ef120945a9669321ea856db4079a5dab930/> change `rust-version` manifest field back to 1.65.
-   They didn't actually need to be higher to work, and changing them
-   unecessarily can break downstream CI.
-   
-   Let's keep this value as low as possible, and only increase it when
-   more recent features are actually used.
+- <csr-id-3bd09ef120945a9669321ea856db4079a5dab930/> change `rust-version` manifest field back to 1.65.
+  They didn't actually need to be higher to work, and changing them
+  unecessarily can break downstream CI.
+
+  Let's keep this value as low as possible, and only increase it when
+  more recent features are actually used.
 
 ### Commit Statistics
 
@@ -67,8 +100,8 @@ A maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-aea89c3ad52f1a800abb620e9a4701bdf904ff7d/> upgrade MSRV to v1.70
-   Our MSRV follows the one of `helix`, which in turn follows Firefox.
+- <csr-id-aea89c3ad52f1a800abb620e9a4701bdf904ff7d/> upgrade MSRV to v1.70
+  Our MSRV follows the one of `helix`, which in turn follows Firefox.
 
 ### Commit Statistics
 
@@ -205,9 +238,9 @@ A maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-ef54aab9e5521add4154ee8d902d62612a9d8d4a/> switch `nom` to `winnow` in remaining uses in `gix-object`, `gix-ref`, and `gix-actor` for ~20% more performance.
-   It's likely that over time, these parsers will get even faster due to improvements to `winnow`.
-   Thanks, Ed Page, for single-handedly performing this transition.
+- <csr-id-ef54aab9e5521add4154ee8d902d62612a9d8d4a/> switch `nom` to `winnow` in remaining uses in `gix-object`, `gix-ref`, and `gix-actor` for ~20% more performance.
+  It's likely that over time, these parsers will get even faster due to improvements to `winnow`.
+  Thanks, Ed Page, for single-handedly performing this transition.
 
 ### Commit Statistics
 
@@ -498,10 +531,10 @@ A maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-634429a9c09dc9116bdb1c2317e7a96f27f2ddc8/> replace `quick-error` with `thiserror`
-   This increases the compile time of the crate alone if there is no proc-macro
-   in the dependency tree, but will ever so slightly improve compile times for `gix`
-   as a whole.
+- <csr-id-634429a9c09dc9116bdb1c2317e7a96f27f2ddc8/> replace `quick-error` with `thiserror`
+  This increases the compile time of the crate alone if there is no proc-macro
+  in the dependency tree, but will ever so slightly improve compile times for `gix`
+  as a whole.
 
 ### Commit Statistics
 
@@ -568,7 +601,7 @@ A maintenance release without user-facing changes.
 
 ### Refactor (BREAKING)
 
- - <csr-id-598698b88c194bc0e6ef69539f9fa7246ebfab70/> move loose header manipulation from git-pack to git-object
+- <csr-id-598698b88c194bc0e6ef69539f9fa7246ebfab70/> move loose header manipulation from git-pack to git-object
 
 ### New Features (BREAKING)
 
@@ -620,7 +653,7 @@ A maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-f7f136dbe4f86e7dee1d54835c420ec07c96cd78/> uniformize deny attributes
+- <csr-id-f7f136dbe4f86e7dee1d54835c420ec07c96cd78/> uniformize deny attributes
 
 ### Documentation
 
@@ -914,7 +947,7 @@ A maintenance release without user facing changes.
 
 ### Chore
 
- - <csr-id-f7f136dbe4f86e7dee1d54835c420ec07c96cd78/> uniformize deny attributes
+- <csr-id-f7f136dbe4f86e7dee1d54835c420ec07c96cd78/> uniformize deny attributes
 
 ### New Features
 

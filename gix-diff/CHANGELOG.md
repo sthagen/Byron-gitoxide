@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.41.0 (2024-02-25)
+
+A maintenance release without user-facing changes.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 9 commits contributed to the release over the course of 30 calendar days.
+ - 36 days passed between releases.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Thanks Clippy
+
+<csr-read-only-do-not-edit/>
+
+[Clippy](https://github.com/rust-lang/rust-clippy) helped 1 time to make code idiomatic. 
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Prepare changelogs prior to release ([`f2e111f`](https://github.com/Byron/gitoxide/commit/f2e111f768fc1bc6182355261c20b63610cffec7))
+    - Thanks clippy ([`13d5602`](https://github.com/Byron/gitoxide/commit/13d5602faa58aa6f520ebc6003ed54bc9c844f2b))
+    - Merge branch 'tempfile-permissions' ([`7b44c7f`](https://github.com/Byron/gitoxide/commit/7b44c7ff1dc0b8875214d2673c7f52948cf04ff0))
+    - Release gix-tempfile v13.1.0, gix-lock v13.1.0, safety bump 12 crates ([`8430442`](https://github.com/Byron/gitoxide/commit/84304427dfe4d170c7732161b126961719f70059))
+    - Merge branch 'entryoom' ([`684fa5c`](https://github.com/Byron/gitoxide/commit/684fa5caf82fc38dd238361d6482e77901ca0265))
+    - Refactor ([`2a9ef4e`](https://github.com/Byron/gitoxide/commit/2a9ef4e3299a28df8f9648e62eaec1ecb0011b99))
+    - Handle OOM when copying to buffers ([`0be338f`](https://github.com/Byron/gitoxide/commit/0be338fdf80a11877599545cfa1b215092ce9afb))
+    - Release gix-command v0.3.4 ([`8a62fb5`](https://github.com/Byron/gitoxide/commit/8a62fb57f7751d3d57273d9430517487e555f999))
+    - Release gix-path v0.10.5 ([`b8cba96`](https://github.com/Byron/gitoxide/commit/b8cba96ce57f8b6b0067d6a8cf3e37eaf280a238))
+</details>
+
 ## 0.40.0 (2024-01-20)
 
 A maintenance release without user-facing changes.
@@ -13,7 +50,7 @@ A maintenance release without user-facing changes.
 
 <csr-read-only-do-not-edit/>
 
- - 5 commits contributed to the release over the course of 19 calendar days.
+ - 6 commits contributed to the release over the course of 19 calendar days.
  - 20 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 1 unique issue was worked on: [#1224](https://github.com/Byron/gitoxide/issues/1224)
@@ -27,6 +64,7 @@ A maintenance release without user-facing changes.
  * **[#1224](https://github.com/Byron/gitoxide/issues/1224)**
     - Adjust debug assertion to count blobs and executables ([`0878344`](https://github.com/Byron/gitoxide/commit/08783444b1db885706e686d19bd9d55403c2df7f))
  * **Uncategorized**
+    - Release gix-utils v0.1.9, gix-features v0.38.0, gix-actor v0.30.0, gix-object v0.41.0, gix-path v0.10.4, gix-glob v0.16.0, gix-attributes v0.22.0, gix-command v0.3.3, gix-packetline-blocking v0.17.3, gix-filter v0.9.0, gix-fs v0.10.0, gix-commitgraph v0.24.0, gix-revwalk v0.12.0, gix-traverse v0.37.0, gix-worktree-stream v0.9.0, gix-archive v0.9.0, gix-config-value v0.14.4, gix-tempfile v13.0.0, gix-lock v13.0.0, gix-ref v0.41.0, gix-sec v0.10.4, gix-config v0.34.0, gix-url v0.27.0, gix-credentials v0.24.0, gix-ignore v0.11.0, gix-index v0.29.0, gix-worktree v0.30.0, gix-diff v0.40.0, gix-discover v0.29.0, gix-mailmap v0.22.0, gix-negotiate v0.12.0, gix-pack v0.47.0, gix-odb v0.57.0, gix-pathspec v0.6.0, gix-packetline v0.17.3, gix-transport v0.41.0, gix-protocol v0.44.0, gix-revision v0.26.0, gix-refspec v0.22.0, gix-status v0.5.0, gix-submodule v0.8.0, gix-worktree-state v0.7.0, gix v0.58.0, safety bump 39 crates ([`eb6aa8f`](https://github.com/Byron/gitoxide/commit/eb6aa8f502314f886fc4ea3d52ab220763968208))
     - Prepare changelogs prior to release ([`6a2e0be`](https://github.com/Byron/gitoxide/commit/6a2e0bebfdf012dc2ed0ff2604086081f2a0f96d))
     - Release gix-trace v0.1.7, gix-features v0.37.2, gix-commitgraph v0.23.2, gix-traverse v0.36.2, gix-index v0.28.2 ([`b6c04c8`](https://github.com/Byron/gitoxide/commit/b6c04c87b426bf36a059df8dc52b56d384b27b79))
     - Merge pull request #1248 from joshtriplett/tyop ([`39f35da`](https://github.com/Byron/gitoxide/commit/39f35da390bc46005d0374b9bf4e7106fc1bd0ec))
@@ -39,12 +77,12 @@ A maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-3bd09ef120945a9669321ea856db4079a5dab930/> change `rust-version` manifest field back to 1.65.
-   They didn't actually need to be higher to work, and changing them
-   unecessarily can break downstream CI.
-   
-   Let's keep this value as low as possible, and only increase it when
-   more recent features are actually used.
+- <csr-id-3bd09ef120945a9669321ea856db4079a5dab930/> change `rust-version` manifest field back to 1.65.
+  They didn't actually need to be higher to work, and changing them
+  unecessarily can break downstream CI.
+
+  Let's keep this value as low as possible, and only increase it when
+  more recent features are actually used.
 
 ### Commit Statistics
 
@@ -72,8 +110,8 @@ A maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-aea89c3ad52f1a800abb620e9a4701bdf904ff7d/> upgrade MSRV to v1.70
-   Our MSRV follows the one of `helix`, which in turn follows Firefox.
+- <csr-id-aea89c3ad52f1a800abb620e9a4701bdf904ff7d/> upgrade MSRV to v1.70
+  Our MSRV follows the one of `helix`, which in turn follows Firefox.
 
 ### Commit Statistics
 
@@ -373,7 +411,7 @@ A maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-bcad5c22049d56a25ef69d6c7a3344e78f9a1d4d/> Add `clippy::redundant-closure-for-method-calls` lint
+- <csr-id-bcad5c22049d56a25ef69d6c7a3344e78f9a1d4d/> Add `clippy::redundant-closure-for-method-calls` lint
 
 ### Commit Statistics
 
@@ -664,18 +702,18 @@ A maintenance release without user-facing changes.
 
 ### Refactor (BREAKING)
 
- - <csr-id-ebc7f47708a63c3df4415ba0e702660d976dfb3e/> remove pack-cache from `Find::try_find(…)`
-   With the new architecture this can be an implementation detail without
-   forcing it to be Sync.
- - <csr-id-2290d006705ff47ad780b009fe58ee422b3285af/> move git_pack::data::Object to git_object::Data, massively alter git_odb::Find trait
-   This will break a lot, but has to happen to prepare these traits for the
-   next generation of object databases.
+- <csr-id-ebc7f47708a63c3df4415ba0e702660d976dfb3e/> remove pack-cache from `Find::try_find(…)`
+  With the new architecture this can be an implementation detail without
+  forcing it to be Sync.
+- <csr-id-2290d006705ff47ad780b009fe58ee422b3285af/> move git_pack::data::Object to git_object::Data, massively alter git_odb::Find trait
+  This will break a lot, but has to happen to prepare these traits for the
+  next generation of object databases.
 
 ### Other (BREAKING)
 
- - <csr-id-fed47d45b7e39958921a230b485b5b0384c8672f/> rename `lines` module to `text`.
-   Thanks to `imara-diff`, diffs can easily abstract over different kinds
-   of tokens, at the expense of a much more complex call signature.
+- <csr-id-fed47d45b7e39958921a230b485b5b0384c8672f/> rename `lines` module to `text`.
+  Thanks to `imara-diff`, diffs can easily abstract over different kinds
+  of tokens, at the expense of a much more complex call signature.
 
 ### Bug Fixes (BREAKING)
 
@@ -724,8 +762,8 @@ A maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-f7f136dbe4f86e7dee1d54835c420ec07c96cd78/> uniformize deny attributes
- - <csr-id-533e887e80c5f7ede8392884562e1c5ba56fb9a8/> remove default link to cargo doc everywhere
+- <csr-id-f7f136dbe4f86e7dee1d54835c420ec07c96cd78/> uniformize deny attributes
+- <csr-id-533e887e80c5f7ede8392884562e1c5ba56fb9a8/> remove default link to cargo doc everywhere
 
 ### Documentation
 
@@ -1158,9 +1196,9 @@ A maintenance release without user-facing changes.
 
 ### Other (BREAKING)
 
- - <csr-id-fed47d45b7e39958921a230b485b5b0384c8672f/> rename `lines` module to `text`.
-   Thanks to `imara-diff`, diffs can easily abstract over different kinds
-   of tokens, at the expense of a much more complex call signature.
+- <csr-id-fed47d45b7e39958921a230b485b5b0384c8672f/> rename `lines` module to `text`.
+  Thanks to `imara-diff`, diffs can easily abstract over different kinds
+  of tokens, at the expense of a much more complex call signature.
 
 ## 0.20.0 (2022-10-10)
 
@@ -1194,8 +1232,8 @@ Maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-f7f136dbe4f86e7dee1d54835c420ec07c96cd78/> uniformize deny attributes
- - <csr-id-533e887e80c5f7ede8392884562e1c5ba56fb9a8/> remove default link to cargo doc everywhere
+- <csr-id-f7f136dbe4f86e7dee1d54835c420ec07c96cd78/> uniformize deny attributes
+- <csr-id-533e887e80c5f7ede8392884562e1c5ba56fb9a8/> remove default link to cargo doc everywhere
 
 ## 0.17.1 (2022-08-17)
 
@@ -1228,12 +1266,12 @@ A maintenance release primarily to adapt to dependent crates.
 
 ### Changes (BREAKING)
 
- - remove pack-cache from `Find::try_find(…)`
-   With the new architecture this can be an implementation detail without
-   forcing it to be Sync.
- - move gix_pack::data::Object to gix_object::Data, massively alter gix_odb::Find trait
-   This will break a lot, but has to happen to prepare these traits for the
-   next generation of object databases.
+- remove pack-cache from `Find::try_find(…)`
+  With the new architecture this can be an implementation detail without
+  forcing it to be Sync.
+- move gix_pack::data::Object to gix_object::Data, massively alter gix_odb::Find trait
+  This will break a lot, but has to happen to prepare these traits for the
+  next generation of object databases.
 
 ## 0.12.0 (2021-11-29)
 

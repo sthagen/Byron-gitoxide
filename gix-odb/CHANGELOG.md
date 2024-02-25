@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.58.0 (2024-02-25)
+
+A maintenance release without user-facing changes.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 4 commits contributed to the release over the course of 30 calendar days.
+ - 36 days passed between releases.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Prepare changelogs prior to release ([`f2e111f`](https://github.com/Byron/gitoxide/commit/f2e111f768fc1bc6182355261c20b63610cffec7))
+    - Merge branch 'tempfile-permissions' ([`7b44c7f`](https://github.com/Byron/gitoxide/commit/7b44c7ff1dc0b8875214d2673c7f52948cf04ff0))
+    - Release gix-tempfile v13.1.0, gix-lock v13.1.0, safety bump 12 crates ([`8430442`](https://github.com/Byron/gitoxide/commit/84304427dfe4d170c7732161b126961719f70059))
+    - Release gix-path v0.10.5 ([`b8cba96`](https://github.com/Byron/gitoxide/commit/b8cba96ce57f8b6b0067d6a8cf3e37eaf280a238))
+</details>
+
 ## 0.57.0 (2024-01-20)
 
 A maintenance release without user-facing changes.
@@ -13,7 +39,7 @@ A maintenance release without user-facing changes.
 
 <csr-read-only-do-not-edit/>
 
- - 7 commits contributed to the release over the course of 5 calendar days.
+ - 8 commits contributed to the release over the course of 5 calendar days.
  - 20 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -25,6 +51,7 @@ A maintenance release without user-facing changes.
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release gix-utils v0.1.9, gix-features v0.38.0, gix-actor v0.30.0, gix-object v0.41.0, gix-path v0.10.4, gix-glob v0.16.0, gix-attributes v0.22.0, gix-command v0.3.3, gix-packetline-blocking v0.17.3, gix-filter v0.9.0, gix-fs v0.10.0, gix-commitgraph v0.24.0, gix-revwalk v0.12.0, gix-traverse v0.37.0, gix-worktree-stream v0.9.0, gix-archive v0.9.0, gix-config-value v0.14.4, gix-tempfile v13.0.0, gix-lock v13.0.0, gix-ref v0.41.0, gix-sec v0.10.4, gix-config v0.34.0, gix-url v0.27.0, gix-credentials v0.24.0, gix-ignore v0.11.0, gix-index v0.29.0, gix-worktree v0.30.0, gix-diff v0.40.0, gix-discover v0.29.0, gix-mailmap v0.22.0, gix-negotiate v0.12.0, gix-pack v0.47.0, gix-odb v0.57.0, gix-pathspec v0.6.0, gix-packetline v0.17.3, gix-transport v0.41.0, gix-protocol v0.44.0, gix-revision v0.26.0, gix-refspec v0.22.0, gix-status v0.5.0, gix-submodule v0.8.0, gix-worktree-state v0.7.0, gix v0.58.0, safety bump 39 crates ([`eb6aa8f`](https://github.com/Byron/gitoxide/commit/eb6aa8f502314f886fc4ea3d52ab220763968208))
     - Prepare changelogs prior to release ([`6a2e0be`](https://github.com/Byron/gitoxide/commit/6a2e0bebfdf012dc2ed0ff2604086081f2a0f96d))
     - Merge branch 'dirwalk' ([`5d176fc`](https://github.com/Byron/gitoxide/commit/5d176fc5ab82bfc7c194b4d929e73da9659ae8b8))
     - Use `gix_fs::current_dir(precompose_unicode)`. ([`7d8d167`](https://github.com/Byron/gitoxide/commit/7d8d1678c9dd185a369e996551a6ed89fbb391f5))
@@ -40,12 +67,12 @@ A maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-3bd09ef120945a9669321ea856db4079a5dab930/> change `rust-version` manifest field back to 1.65.
-   They didn't actually need to be higher to work, and changing them
-   unecessarily can break downstream CI.
-   
-   Let's keep this value as low as possible, and only increase it when
-   more recent features are actually used.
+- <csr-id-3bd09ef120945a9669321ea856db4079a5dab930/> change `rust-version` manifest field back to 1.65.
+  They didn't actually need to be higher to work, and changing them
+  unecessarily can break downstream CI.
+
+  Let's keep this value as low as possible, and only increase it when
+  more recent features are actually used.
 
 ### Commit Statistics
 
@@ -73,8 +100,8 @@ A maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-aea89c3ad52f1a800abb620e9a4701bdf904ff7d/> upgrade MSRV to v1.70
-   Our MSRV follows the one of `helix`, which in turn follows Firefox.
+- <csr-id-aea89c3ad52f1a800abb620e9a4701bdf904ff7d/> upgrade MSRV to v1.70
+  Our MSRV follows the one of `helix`, which in turn follows Firefox.
 
 ### Commit Statistics
 
@@ -214,9 +241,9 @@ A maintenance release without user-facing changes.
 
 ### Chore (BREAKING)
 
- - <csr-id-ed327f6163f54756e58c20f86a563a97efb256ca/> update to the latest `prodash`
-   It makes proper usage of `Progress` types easier and allows them to be used
-   as `dyn` traits as well.
+- <csr-id-ed327f6163f54756e58c20f86a563a97efb256ca/> update to the latest `prodash`
+  It makes proper usage of `Progress` types easier and allows them to be used
+  as `dyn` traits as well.
 
 ### Bug Fixes (BREAKING)
 
@@ -266,7 +293,7 @@ A maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-01c6ef62e260246f1623bdf05f49c03eff14ac69/> reorganize tests to get rid of feature toggles that are for internal testing only
+- <csr-id-01c6ef62e260246f1623bdf05f49c03eff14ac69/> reorganize tests to get rid of feature toggles that are for internal testing only
 
 ### Commit Statistics
 
@@ -431,7 +458,7 @@ A maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-bcad5c22049d56a25ef69d6c7a3344e78f9a1d4d/> Add `clippy::redundant-closure-for-method-calls` lint
+- <csr-id-bcad5c22049d56a25ef69d6c7a3344e78f9a1d4d/> Add `clippy::redundant-closure-for-method-calls` lint
 
 ### New Features
 
@@ -770,13 +797,13 @@ A maintenance release without user-facing changes.
 
 ### Refactor (BREAKING)
 
- - <csr-id-ebc7f47708a63c3df4415ba0e702660d976dfb3e/> remove pack-cache from `Find::try_find(…)`
-   With the new architecture this can be an implementation detail without
-   forcing it to be Sync.
- - <csr-id-2290d006705ff47ad780b009fe58ee422b3285af/> move git_pack::data::Object to git_object::Data, massively alter git_odb::Find trait
-   This will break a lot, but has to happen to prepare these traits for the
-   next generation of object databases.
- - <csr-id-598698b88c194bc0e6ef69539f9fa7246ebfab70/> move loose header manipulation from git-pack to git-object
+- <csr-id-ebc7f47708a63c3df4415ba0e702660d976dfb3e/> remove pack-cache from `Find::try_find(…)`
+  With the new architecture this can be an implementation detail without
+  forcing it to be Sync.
+- <csr-id-2290d006705ff47ad780b009fe58ee422b3285af/> move git_pack::data::Object to git_object::Data, massively alter git_odb::Find trait
+  This will break a lot, but has to happen to prepare these traits for the
+  next generation of object databases.
+- <csr-id-598698b88c194bc0e6ef69539f9fa7246ebfab70/> move loose header manipulation from git-pack to git-object
 
 ### Bug Fixes (BREAKING)
 
@@ -842,45 +869,45 @@ A maintenance release without user-facing changes.
 
 ### Refactor
 
- - <csr-id-46636e64c9a48ec0e85e014ac0cc8b48846d8462/> flatten errors into one
-   By adding one variant, one can remove the previous 'sub-error', for which
-   there is no precedent in the codebase yet.
- - <csr-id-e0b8636f96e4bfe1bc72b5aa6ad4c4c8538ff92c/> replace bare u32 `data::Id` typedef
- - <csr-id-5d57c1f7e3b9a84f7b46a4378015572155f3104b/> Use borrowed::Id in trees for full type safety
- - <csr-id-47ca6ab2ff0cbf8801d0a82cebbbeb8c4f62cdae/> a simpler implementation to skip the header
+- <csr-id-46636e64c9a48ec0e85e014ac0cc8b48846d8462/> flatten errors into one
+  By adding one variant, one can remove the previous 'sub-error', for which
+  there is no precedent in the codebase yet.
+- <csr-id-e0b8636f96e4bfe1bc72b5aa6ad4c4c8538ff92c/> replace bare u32 `data::Id` typedef
+- <csr-id-5d57c1f7e3b9a84f7b46a4378015572155f3104b/> Use borrowed::Id in trees for full type safety
+- <csr-id-47ca6ab2ff0cbf8801d0a82cebbbeb8c4f62cdae/> a simpler implementation to skip the header
 
 ### Other
 
- - <csr-id-2d6960f886c1165f0bdb6f2d653388e1e0b57a2d/> try LRU-like contains implementation
-   Which unfortunately isn't really faster at all even though it totally
-   should be.
- - <csr-id-424c9b3a2b467f5a1e339700257cd4ab72e2e692/> Try to make Handle usable for pack creation
-   It's nearly there, but for some reason the boxed dyn traits don't get to
-   be Send even though it's specified.
- - <csr-id-b1c82a7959fba1541642fc8dfae46b27848f2ba3/> :Find for Arc and Rc
- - <csr-id-9235106986e14551a28693bfe4ea92f046c65406/> :Find implementation for linked::Store
- - <csr-id-747a13e9a1fe5200c53055dd961507c9fef667e1/> :borrowed::Object => git-odb::data::Object
- - <csr-id-4c77e4c97641ab3b02b56aaa702a7d2ca5bced7c/> :Db::init() with a few tests
- - <csr-id-d53c4b0f91f1b29769c9430f2d1c0bcab1170c75/> add link to simplified/polonius version in the docs
- - <csr-id-b317200b72096573d511d229c6e61e74e7ba14db/> Only check alternates for objects not found in packs or loose
-   This matches the behavior of git.
- - <csr-id-eaae9c1bc723209d793eb93f5587fa2604d5cd92/> Avoid double-lookup in packs without polonius
-   Split object lookup into two steps: looking up the object index, and
-   looking up the object itself given the index. This avoids passing in the
-   buffer (and thus looking like an unconditional borrow to non-polonius)
-   until we're committed to returning from the loop.
- - <csr-id-13159eb972ed78ce4ebee2313b288023cec91c47/> try to get rid of tree-traversal Boxed error…
-   …which really complicates things downstream as these now have to deal
-   with another type argument, or of to try to turn it into a Box anyway.
-   
-   The latter seems to be…troubling so I can't make it compile.
- - <csr-id-0092c256b3bfaf2818566540e660cdefcf68d246/> See if tree compaction saves considerable amounts of memory
-   No, it's not worth it.
- - <csr-id-9945eba749afb020e0deaaa5bb01fda6ff9ccd84/> try to use a customized version of just pieces of Miniz-oxide
- - <csr-id-cfd8a25f9125c48afe4b66eab6b6ecf71097c486/> fanout table, but slowly I get it :D
- - <csr-id-1525f36d29574699d2fcb16b70678121030fd109/> discard idea of making traversal even more generic
- - <csr-id-4ff21686c32a6edc84ea041c3040f33ae24f9519/> first silly attempt to randomly remove an allocation
- - <csr-id-91c8fc1f0c50af55d7cb233bbe813c6d12fe11bc/> get rid of failure crate in favor of quick-error
+- <csr-id-2d6960f886c1165f0bdb6f2d653388e1e0b57a2d/> try LRU-like contains implementation
+  Which unfortunately isn't really faster at all even though it totally
+  should be.
+- <csr-id-424c9b3a2b467f5a1e339700257cd4ab72e2e692/> Try to make Handle usable for pack creation
+  It's nearly there, but for some reason the boxed dyn traits don't get to
+  be Send even though it's specified.
+- <csr-id-b1c82a7959fba1541642fc8dfae46b27848f2ba3/> :Find for Arc and Rc
+- <csr-id-9235106986e14551a28693bfe4ea92f046c65406/> :Find implementation for linked::Store
+- <csr-id-747a13e9a1fe5200c53055dd961507c9fef667e1/> :borrowed::Object => git-odb::data::Object
+- <csr-id-4c77e4c97641ab3b02b56aaa702a7d2ca5bced7c/> :Db::init() with a few tests
+- <csr-id-d53c4b0f91f1b29769c9430f2d1c0bcab1170c75/> add link to simplified/polonius version in the docs
+- <csr-id-b317200b72096573d511d229c6e61e74e7ba14db/> Only check alternates for objects not found in packs or loose
+  This matches the behavior of git.
+- <csr-id-eaae9c1bc723209d793eb93f5587fa2604d5cd92/> Avoid double-lookup in packs without polonius
+  Split object lookup into two steps: looking up the object index, and
+  looking up the object itself given the index. This avoids passing in the
+  buffer (and thus looking like an unconditional borrow to non-polonius)
+  until we're committed to returning from the loop.
+- <csr-id-13159eb972ed78ce4ebee2313b288023cec91c47/> try to get rid of tree-traversal Boxed error…
+  …which really complicates things downstream as these now have to deal
+  with another type argument, or of to try to turn it into a Box anyway.
+
+  The latter seems to be…troubling so I can't make it compile.
+- <csr-id-0092c256b3bfaf2818566540e660cdefcf68d246/> See if tree compaction saves considerable amounts of memory
+  No, it's not worth it.
+- <csr-id-9945eba749afb020e0deaaa5bb01fda6ff9ccd84/> try to use a customized version of just pieces of Miniz-oxide
+- <csr-id-cfd8a25f9125c48afe4b66eab6b6ecf71097c486/> fanout table, but slowly I get it :D
+- <csr-id-1525f36d29574699d2fcb16b70678121030fd109/> discard idea of making traversal even more generic
+- <csr-id-4ff21686c32a6edc84ea041c3040f33ae24f9519/> first silly attempt to randomly remove an allocation
+- <csr-id-91c8fc1f0c50af55d7cb233bbe813c6d12fe11bc/> get rid of failure crate in favor of quick-error
 
 ### Bug Fixes
 
@@ -895,8 +922,8 @@ A maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-f7f136dbe4f86e7dee1d54835c420ec07c96cd78/> uniformize deny attributes
- - <csr-id-c800fdd331e6d7a0b8d756ba822915259f26e9e8/> remove unused dependencies
+- <csr-id-f7f136dbe4f86e7dee1d54835c420ec07c96cd78/> uniformize deny attributes
+- <csr-id-c800fdd331e6d7a0b8d756ba822915259f26e9e8/> remove unused dependencies
 
 ### Documentation
 
@@ -2573,9 +2600,9 @@ A maintenance release without user-facing changes.
 
 ### Refactor
 
- - <csr-id-46636e64c9a48ec0e85e014ac0cc8b48846d8462/> flatten errors into one
-   By adding one variant, one can remove the previous 'sub-error', for which
-   there is no precedent in the codebase yet.
+- <csr-id-46636e64c9a48ec0e85e014ac0cc8b48846d8462/> flatten errors into one
+  By adding one variant, one can remove the previous 'sub-error', for which
+  there is no precedent in the codebase yet.
 
 ## 0.38.0 (2022-12-19)
 
@@ -2651,7 +2678,7 @@ Maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-f7f136dbe4f86e7dee1d54835c420ec07c96cd78/> uniformize deny attributes
+- <csr-id-f7f136dbe4f86e7dee1d54835c420ec07c96cd78/> uniformize deny attributes
 
 ### New Features
 
@@ -2730,22 +2757,22 @@ A maintenance release without user-facing changes.
 
 ### Refactor
 
- - <csr-id-e0b8636f96e4bfe1bc72b5aa6ad4c4c8538ff92c/> replace bare u32 `data::Id` typedef
+- <csr-id-e0b8636f96e4bfe1bc72b5aa6ad4c4c8538ff92c/> replace bare u32 `data::Id` typedef
 
 ### Other
 
- - <csr-id-2d6960f886c1165f0bdb6f2d653388e1e0b57a2d/> try LRU-like contains implementation
-   Which unfortunately isn't really faster at all even though it totally
-   should be.
- - <csr-id-424c9b3a2b467f5a1e339700257cd4ab72e2e692/> Try to make Handle usable for pack creation
-   It's nearly there, but for some reason the boxed dyn traits don't get to
-   be Send even though it's specified.
- - <csr-id-b1c82a7959fba1541642fc8dfae46b27848f2ba3/> :Find for Arc and Rc
- - <csr-id-9235106986e14551a28693bfe4ea92f046c65406/> :Find implementation for linked::Store
+- <csr-id-2d6960f886c1165f0bdb6f2d653388e1e0b57a2d/> try LRU-like contains implementation
+  Which unfortunately isn't really faster at all even though it totally
+  should be.
+- <csr-id-424c9b3a2b467f5a1e339700257cd4ab72e2e692/> Try to make Handle usable for pack creation
+  It's nearly there, but for some reason the boxed dyn traits don't get to
+  be Send even though it's specified.
+- <csr-id-b1c82a7959fba1541642fc8dfae46b27848f2ba3/> :Find for Arc and Rc
+- <csr-id-9235106986e14551a28693bfe4ea92f046c65406/> :Find implementation for linked::Store
 
 ### Chore
 
- - <csr-id-c800fdd331e6d7a0b8d756ba822915259f26e9e8/> remove unused dependencies
+- <csr-id-c800fdd331e6d7a0b8d756ba822915259f26e9e8/> remove unused dependencies
 
 ### New Features
 
@@ -2791,12 +2818,12 @@ A maintenance release without user-facing changes.
  - <csr-id-580e96c1b2d9782a2e8cf9d1123f6d53a5376a3d/> Rename `Handle` to `Cache`
    Because this is exactly what it is effectively.
    Also add some basic instantiation for the new object store.
- - remove pack-cache from `Find::try_find(…)`
-   With the new architecture this can be an implementation detail without
-   forcing it to be Sync.
- - move gix_pack::data::Object to gix_object::Data, massively alter gix_odb::Find trait
-   This will break a lot, but has to happen to prepare these traits for the
-   next generation of object databases.
+- remove pack-cache from `Find::try_find(…)`
+  With the new architecture this can be an implementation detail without
+  forcing it to be Sync.
+- move gix_pack::data::Object to gix_object::Data, massively alter gix_odb::Find trait
+  This will break a lot, but has to happen to prepare these traits for the
+  next generation of object databases.
 
 ### New Features (BREAKING)
 
@@ -2814,7 +2841,7 @@ Maintenance release due, which isn't really required but one now has to be caref
 
 ### Refactor (BREAKING)
 
- - move loose header manipulation from gix-pack to gix-object
+- move loose header manipulation from gix-pack to gix-object
 
 ## 0.24.0 (2021-11-16)
 
@@ -2870,8 +2897,8 @@ A maintenance release to properly dealing with previously breaking changes in `g
 
 ### Other
 
- - <csr-id-747a13e9a1fe5200c53055dd961507c9fef667e1/> :borrowed::Object => gix-odb::data::Object
- - <csr-id-4c77e4c97641ab3b02b56aaa702a7d2ca5bced7c/> :Db::init() with a few tests
+- <csr-id-747a13e9a1fe5200c53055dd961507c9fef667e1/> :borrowed::Object => gix-odb::data::Object
+- <csr-id-4c77e4c97641ab3b02b56aaa702a7d2ca5bced7c/> :Db::init() with a few tests
 
 ## v0.10.0 (2021-04-08)
 
@@ -2881,14 +2908,14 @@ A maintenance release to properly dealing with previously breaking changes in `g
 
 ### Other
 
- - <csr-id-d53c4b0f91f1b29769c9430f2d1c0bcab1170c75/> add link to simplified/polonius version in the docs
- - <csr-id-b317200b72096573d511d229c6e61e74e7ba14db/> Only check alternates for objects not found in packs or loose
-   This matches the behavior of git.
- - <csr-id-eaae9c1bc723209d793eb93f5587fa2604d5cd92/> Avoid double-lookup in packs without polonius
-   Split object lookup into two steps: looking up the object index, and
-   looking up the object itself given the index. This avoids passing in the
-   buffer (and thus looking like an unconditional borrow to non-polonius)
-   until we're committed to returning from the loop.
+- <csr-id-d53c4b0f91f1b29769c9430f2d1c0bcab1170c75/> add link to simplified/polonius version in the docs
+- <csr-id-b317200b72096573d511d229c6e61e74e7ba14db/> Only check alternates for objects not found in packs or loose
+  This matches the behavior of git.
+- <csr-id-eaae9c1bc723209d793eb93f5587fa2604d5cd92/> Avoid double-lookup in packs without polonius
+  Split object lookup into two steps: looking up the object index, and
+  looking up the object itself given the index. This avoids passing in the
+  buffer (and thus looking like an unconditional borrow to non-polonius)
+  until we're committed to returning from the loop.
 
 ## v0.9.1 (2021-04-03)
 
@@ -2910,11 +2937,11 @@ A maintenance release to properly dealing with previously breaking changes in `g
 
 ### Other
 
- - <csr-id-13159eb972ed78ce4ebee2313b288023cec91c47/> try to get rid of tree-traversal Boxed error…
-   …which really complicates things downstream as these now have to deal
-   with another type argument, or of to try to turn it into a Box anyway.
-   
-   The latter seems to be…troubling so I can't make it compile.
+- <csr-id-13159eb972ed78ce4ebee2313b288023cec91c47/> try to get rid of tree-traversal Boxed error…
+  …which really complicates things downstream as these now have to deal
+  with another type argument, or of to try to turn it into a Box anyway.
+
+  The latter seems to be…troubling so I can't make it compile.
 
 ## v0.4.1 (2020-09-18)
 
@@ -2923,16 +2950,16 @@ A maintenance release to properly dealing with previously breaking changes in `g
 
 ### Other
 
- - <csr-id-0092c256b3bfaf2818566540e660cdefcf68d246/> See if tree compaction saves considerable amounts of memory
-   No, it's not worth it.
+- <csr-id-0092c256b3bfaf2818566540e660cdefcf68d246/> See if tree compaction saves considerable amounts of memory
+  No, it's not worth it.
 
 ### Other
 
- - <csr-id-13159eb972ed78ce4ebee2313b288023cec91c47/> try to get rid of tree-traversal Boxed error…
-   …which really complicates things downstream as these now have to deal
-   with another type argument, or of to try to turn it into a Box anyway.
-   
-   The latter seems to be…troubling so I can't make it compile.
+- <csr-id-13159eb972ed78ce4ebee2313b288023cec91c47/> try to get rid of tree-traversal Boxed error…
+  …which really complicates things downstream as these now have to deal
+  with another type argument, or of to try to turn it into a Box anyway.
+
+  The latter seems to be…troubling so I can't make it compile.
 
 ## v0.4.0 (2020-09-12)
 
@@ -2940,8 +2967,8 @@ A maintenance release to properly dealing with previously breaking changes in `g
 
 ### Other
 
- - <csr-id-0092c256b3bfaf2818566540e660cdefcf68d246/> See if tree compaction saves considerable amounts of memory
-   No, it's not worth it.
+- <csr-id-0092c256b3bfaf2818566540e660cdefcf68d246/> See if tree compaction saves considerable amounts of memory
+  No, it's not worth it.
 
 ## v0.3.0 (2020-08-12)
 
@@ -2952,13 +2979,13 @@ A maintenance release to properly dealing with previously breaking changes in `g
 
 ### Refactor
 
- - <csr-id-5d57c1f7e3b9a84f7b46a4378015572155f3104b/> Use borrowed::Id in trees for full type safety
+- <csr-id-5d57c1f7e3b9a84f7b46a4378015572155f3104b/> Use borrowed::Id in trees for full type safety
 
 ### Other
 
- - <csr-id-9945eba749afb020e0deaaa5bb01fda6ff9ccd84/> try to use a customized version of just pieces of Miniz-oxide
- - <csr-id-cfd8a25f9125c48afe4b66eab6b6ecf71097c486/> fanout table, but slowly I get it :D
- - <csr-id-1525f36d29574699d2fcb16b70678121030fd109/> discard idea of making traversal even more generic
+- <csr-id-9945eba749afb020e0deaaa5bb01fda6ff9ccd84/> try to use a customized version of just pieces of Miniz-oxide
+- <csr-id-cfd8a25f9125c48afe4b66eab6b6ecf71097c486/> fanout table, but slowly I get it :D
+- <csr-id-1525f36d29574699d2fcb16b70678121030fd109/> discard idea of making traversal even more generic
 
 ## v0.1.0 (2020-07-12)
 
@@ -2968,10 +2995,10 @@ A maintenance release to properly dealing with previously breaking changes in `g
 
 ### Refactor
 
- - <csr-id-47ca6ab2ff0cbf8801d0a82cebbbeb8c4f62cdae/> a simpler implementation to skip the header
+- <csr-id-47ca6ab2ff0cbf8801d0a82cebbbeb8c4f62cdae/> a simpler implementation to skip the header
 
 ### Other
 
- - <csr-id-4ff21686c32a6edc84ea041c3040f33ae24f9519/> first silly attempt to randomly remove an allocation
- - <csr-id-91c8fc1f0c50af55d7cb233bbe813c6d12fe11bc/> get rid of failure crate in favor of quick-error
+- <csr-id-4ff21686c32a6edc84ea041c3040f33ae24f9519/> first silly attempt to randomly remove an allocation
+- <csr-id-91c8fc1f0c50af55d7cb233bbe813c6d12fe11bc/> get rid of failure crate in favor of quick-error
 

@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.42.0 (2024-02-25)
+
+A maintenance release without user-facing changes.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 11 commits contributed to the release over the course of 30 calendar days.
+ - 36 days passed between releases.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Prepare changelogs prior to release ([`f2e111f`](https://github.com/Byron/gitoxide/commit/f2e111f768fc1bc6182355261c20b63610cffec7))
+    - Merge pull request #1290 from epage/winnow ([`a663e9f`](https://github.com/Byron/gitoxide/commit/a663e9fcdb5a3aedc9200da77ebae17d5c3e7135))
+    - Update winnow to 0.6 ([`e175b20`](https://github.com/Byron/gitoxide/commit/e175b20d431faa6859fbcc52f78400e50f91cad1))
+    - Update winnow to 0.5.40 ([`516e105`](https://github.com/Byron/gitoxide/commit/516e105db5f22e1483b4b8a886cc4f3929ad7f6a))
+    - Merge branch 'dirwalk' ([`face359`](https://github.com/Byron/gitoxide/commit/face359443ba33e8985ec1525d5ec38b743ea7a9))
+    - Adjust gitignore files with precious declarations ([`ae86a6a`](https://github.com/Byron/gitoxide/commit/ae86a6a206074b85ff1eba32aea9c8b40c087b17))
+    - Merge branch 'tempfile-permissions' ([`7b44c7f`](https://github.com/Byron/gitoxide/commit/7b44c7ff1dc0b8875214d2673c7f52948cf04ff0))
+    - Release gix-tempfile v13.1.0, gix-lock v13.1.0, safety bump 12 crates ([`8430442`](https://github.com/Byron/gitoxide/commit/84304427dfe4d170c7732161b126961719f70059))
+    - Merge pull request #1267 from epage/winnow ([`69cb78b`](https://github.com/Byron/gitoxide/commit/69cb78bd865a372c580b386766d7b61e5ca9303a))
+    - Update from winnow 0.5.31 to 0.5.36 ([`9470554`](https://github.com/Byron/gitoxide/commit/94705546cf0e4c8e38bcc96999cfa79cd8ee1acd))
+    - Release gix-path v0.10.5 ([`b8cba96`](https://github.com/Byron/gitoxide/commit/b8cba96ce57f8b6b0067d6a8cf3e37eaf280a238))
+</details>
+
 ## 0.41.0 (2024-01-20)
 
 ### New Features (BREAKING)
@@ -15,7 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 5 commits contributed to the release over the course of 4 calendar days.
+ - 6 commits contributed to the release over the course of 4 calendar days.
  - 20 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -27,6 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release gix-utils v0.1.9, gix-features v0.38.0, gix-actor v0.30.0, gix-object v0.41.0, gix-path v0.10.4, gix-glob v0.16.0, gix-attributes v0.22.0, gix-command v0.3.3, gix-packetline-blocking v0.17.3, gix-filter v0.9.0, gix-fs v0.10.0, gix-commitgraph v0.24.0, gix-revwalk v0.12.0, gix-traverse v0.37.0, gix-worktree-stream v0.9.0, gix-archive v0.9.0, gix-config-value v0.14.4, gix-tempfile v13.0.0, gix-lock v13.0.0, gix-ref v0.41.0, gix-sec v0.10.4, gix-config v0.34.0, gix-url v0.27.0, gix-credentials v0.24.0, gix-ignore v0.11.0, gix-index v0.29.0, gix-worktree v0.30.0, gix-diff v0.40.0, gix-discover v0.29.0, gix-mailmap v0.22.0, gix-negotiate v0.12.0, gix-pack v0.47.0, gix-odb v0.57.0, gix-pathspec v0.6.0, gix-packetline v0.17.3, gix-transport v0.41.0, gix-protocol v0.44.0, gix-revision v0.26.0, gix-refspec v0.22.0, gix-status v0.5.0, gix-submodule v0.8.0, gix-worktree-state v0.7.0, gix v0.58.0, safety bump 39 crates ([`eb6aa8f`](https://github.com/Byron/gitoxide/commit/eb6aa8f502314f886fc4ea3d52ab220763968208))
     - Prepare changelogs prior to release ([`6a2e0be`](https://github.com/Byron/gitoxide/commit/6a2e0bebfdf012dc2ed0ff2604086081f2a0f96d))
     - Merge branch 'dirwalk' ([`5d176fc`](https://github.com/Byron/gitoxide/commit/5d176fc5ab82bfc7c194b4d929e73da9659ae8b8))
     - Add precompose_unicode related tests ([`69c8232`](https://github.com/Byron/gitoxide/commit/69c8232c82c5f4e49ce0f26003ec6df5f36f17b7))
@@ -40,12 +74,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Chore
 
- - <csr-id-3bd09ef120945a9669321ea856db4079a5dab930/> change `rust-version` manifest field back to 1.65.
-   They didn't actually need to be higher to work, and changing them
-   unecessarily can break downstream CI.
-   
-   Let's keep this value as low as possible, and only increase it when
-   more recent features are actually used.
+- <csr-id-3bd09ef120945a9669321ea856db4079a5dab930/> change `rust-version` manifest field back to 1.65.
+  They didn't actually need to be higher to work, and changing them
+  unecessarily can break downstream CI.
+
+  Let's keep this value as low as possible, and only increase it when
+  more recent features are actually used.
 
 ### Commit Statistics
 
@@ -73,8 +107,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Chore
 
- - <csr-id-aea89c3ad52f1a800abb620e9a4701bdf904ff7d/> upgrade MSRV to v1.70
-   Our MSRV follows the one of `helix`, which in turn follows Firefox.
+- <csr-id-aea89c3ad52f1a800abb620e9a4701bdf904ff7d/> upgrade MSRV to v1.70
+  Our MSRV follows the one of `helix`, which in turn follows Firefox.
 
 ### New Features
 
@@ -295,9 +329,9 @@ A maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-ef54aab9e5521add4154ee8d902d62612a9d8d4a/> switch `nom` to `winnow` in remaining uses in `gix-object`, `gix-ref`, and `gix-actor` for ~20% more performance.
-   It's likely that over time, these parsers will get even faster due to improvements to `winnow`.
-   Thanks, Ed Page, for single-handedly performing this transition.
+- <csr-id-ef54aab9e5521add4154ee8d902d62612a9d8d4a/> switch `nom` to `winnow` in remaining uses in `gix-object`, `gix-ref`, and `gix-actor` for ~20% more performance.
+  It's likely that over time, these parsers will get even faster due to improvements to `winnow`.
+  Thanks, Ed Page, for single-handedly performing this transition.
 
 ### Commit Statistics
 
@@ -372,10 +406,10 @@ A maintenance release without user-facing changes.
 
 ### Other
 
- - <csr-id-5f6cf22cd8eda37c151e67b83cdb36d953ee3793/> improve documentation about the `Change` type.
-   Further, we update internal logic to decide when to write a reflog
-   for symrefs. Now we will always do it when possible, i.e. there is
-   object ids available.
+- <csr-id-5f6cf22cd8eda37c151e67b83cdb36d953ee3793/> improve documentation about the `Change` type.
+  Further, we update internal logic to decide when to write a reflog
+  for symrefs. Now we will always do it when possible, i.e. there is
+  object ids available.
 
 ### Commit Statistics
 
@@ -534,7 +568,7 @@ A maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-bcad5c22049d56a25ef69d6c7a3344e78f9a1d4d/> Add `clippy::redundant-closure-for-method-calls` lint
+- <csr-id-bcad5c22049d56a25ef69d6c7a3344e78f9a1d4d/> Add `clippy::redundant-closure-for-method-calls` lint
 
 ### Commit Statistics
 
@@ -922,24 +956,24 @@ A maintenance release without user-facing changes.
 
 ### Refactor (BREAKING)
 
- - <csr-id-ebc7f47708a63c3df4415ba0e702660d976dfb3e/> remove pack-cache from `Find::try_find(…)`
-   With the new architecture this can be an implementation detail without
-   forcing it to be Sync.
- - <csr-id-2290d006705ff47ad780b009fe58ee422b3285af/> move git_pack::data::Object to git_object::Data, massively alter git_odb::Find trait
-   This will break a lot, but has to happen to prepare these traits for the
-   next generation of object databases.
- - <csr-id-0e1875363fea09452789d7a90fc6860a7996d6d3/> `file::Store::base` is now `file::Store::base()` and read-only
-   That way, file databases can't be repositioned anymore, it's recommended
-   to recreate it if that's desired.
+- <csr-id-ebc7f47708a63c3df4415ba0e702660d976dfb3e/> remove pack-cache from `Find::try_find(…)`
+  With the new architecture this can be an implementation detail without
+  forcing it to be Sync.
+- <csr-id-2290d006705ff47ad780b009fe58ee422b3285af/> move git_pack::data::Object to git_object::Data, massively alter git_odb::Find trait
+  This will break a lot, but has to happen to prepare these traits for the
+  next generation of object databases.
+- <csr-id-0e1875363fea09452789d7a90fc6860a7996d6d3/> `file::Store::base` is now `file::Store::base()` and read-only
+  That way, file databases can't be repositioned anymore, it's recommended
+  to recreate it if that's desired.
 
 ### Other (BREAKING)
 
- - <csr-id-c46dec311c76a83dba136be5dba6b70d739c354d/> remove `Target::must_exist()`
-   It was a remainder of an old API which since has been replaced
-   with a more explicit approach.
- - <csr-id-951c050ecbb70c9de216603e55c7cfbc89a067e3/> Reference::logs() -> Reference::log_iter()
-   The latter now returns a standard Platform to iterate over all
-   reflog entries from oldest to newest or vice versa.
+- <csr-id-c46dec311c76a83dba136be5dba6b70d739c354d/> remove `Target::must_exist()`
+  It was a remainder of an old API which since has been replaced
+  with a more explicit approach.
+- <csr-id-951c050ecbb70c9de216603e55c7cfbc89a067e3/> Reference::logs() -> Reference::log_iter()
+  The latter now returns a standard Platform to iterate over all
+  reflog entries from oldest to newest or vice versa.
 
 ### New Features (BREAKING)
 
@@ -958,7 +992,7 @@ A maintenance release without user-facing changes.
 
 ### Chore (BREAKING)
 
- - <csr-id-725210dc401406fe9450eae9d375b0238d645027/> replace `quick-error` with `thiserror`
+- <csr-id-725210dc401406fe9450eae9d375b0238d645027/> replace `quick-error` with `thiserror`
 
 ### Changed (BREAKING)
 
@@ -1027,16 +1061,16 @@ A maintenance release without user-facing changes.
 
 ### Other
 
- - <csr-id-4ed4b2da50557aff540685441f4b5c7d5e582977/> add panicking `Target::id()` and `TargetRef::id()`
- - <csr-id-293bfc0278c5983c0beaec93253fb51f00d81156/> loose reference iteration with non-dir prefixes…
-   Previously it was expected for the prefix `Path` to always exist for
-   the prefix to be valid. This, however, is not similar to packed
-   prefixes, which allow non-dir prefixes as well.
-   
-   Now we will check if the prefix is actually a directory, and if not
-   split it into its parent directory and the filename portion. The latter
-   is then used for prefix matching file names within that directory.
- - <csr-id-90e6128727932f917c485f411e623fc6a9c2ad4d/> improve changelog format
+- <csr-id-4ed4b2da50557aff540685441f4b5c7d5e582977/> add panicking `Target::id()` and `TargetRef::id()`
+- <csr-id-293bfc0278c5983c0beaec93253fb51f00d81156/> loose reference iteration with non-dir prefixes…
+  Previously it was expected for the prefix `Path` to always exist for
+  the prefix to be valid. This, however, is not similar to packed
+  prefixes, which allow non-dir prefixes as well.
+
+  Now we will check if the prefix is actually a directory, and if not
+  split it into its parent directory and the filename portion. The latter
+  is then used for prefix matching file names within that directory.
+- <csr-id-90e6128727932f917c485f411e623fc6a9c2ad4d/> improve changelog format
 
 ### Bug Fixes
 
@@ -1141,8 +1175,8 @@ A maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-f7f136dbe4f86e7dee1d54835c420ec07c96cd78/> uniformize deny attributes
- - <csr-id-533e887e80c5f7ede8392884562e1c5ba56fb9a8/> remove default link to cargo doc everywhere
+- <csr-id-f7f136dbe4f86e7dee1d54835c420ec07c96cd78/> uniformize deny attributes
+- <csr-id-533e887e80c5f7ede8392884562e1c5ba56fb9a8/> remove default link to cargo doc everywhere
 
 ### Documentation
 
@@ -2286,7 +2320,7 @@ A maintenance release without user-facing changes.
 
 ### Chore (BREAKING)
 
- - <csr-id-725210dc401406fe9450eae9d375b0238d645027/> replace `quick-error` with `thiserror`
+- <csr-id-725210dc401406fe9450eae9d375b0238d645027/> replace `quick-error` with `thiserror`
 
 ## 0.15.4 (2022-08-28)
 
@@ -2305,8 +2339,8 @@ Maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-f7f136dbe4f86e7dee1d54835c420ec07c96cd78/> uniformize deny attributes
- - <csr-id-533e887e80c5f7ede8392884562e1c5ba56fb9a8/> remove default link to cargo doc everywhere
+- <csr-id-f7f136dbe4f86e7dee1d54835c420ec07c96cd78/> uniformize deny attributes
+- <csr-id-533e887e80c5f7ede8392884562e1c5ba56fb9a8/> remove default link to cargo doc everywhere
 
 ### New Features
 
@@ -2478,15 +2512,15 @@ A maintenance release without user-facing changes.
  - <csr-id-dea6659a404bf8b2ad1290549653c776ec04f964/> Required `object_hash` as parameter when instantiating any Store
    This is needed to choose the correct kind of object hash in a couple of
    situations, and future-proofs it for when ref-table arrives.
- - remove `Target::must_exist()`
-   It was a remainder of an old API which since has been replaced
-   with a more explicit approach.
- - remove pack-cache from `Find::try_find(…)`
-   With the new architecture this can be an implementation detail without
-   forcing it to be Sync.
- - move gix_pack::data::Object to gix_object::Data, massively alter gix_odb::Find trait
-   This will break a lot, but has to happen to prepare these traits for the
-   next generation of object databases.
+- remove `Target::must_exist()`
+  It was a remainder of an old API which since has been replaced
+  with a more explicit approach.
+- remove pack-cache from `Find::try_find(…)`
+  With the new architecture this can be an implementation detail without
+  forcing it to be Sync.
+- move gix_pack::data::Object to gix_object::Data, massively alter gix_odb::Find trait
+  This will break a lot, but has to happen to prepare these traits for the
+  next generation of object databases.
 
 ## 0.10.0 (2021-11-29)
 
@@ -2544,15 +2578,15 @@ a 'frozen' version of the packed buffer for any amount of operations.
 
 ### Other (BREAKING)
 
- - <csr-id-951c050ecbb70c9de216603e55c7cfbc89a067e3/> Reference::logs() -> Reference::log_iter()
-   The latter now returns a standard Platform to iterate over all
-   reflog entries from oldest to newest or vice versa.
+- <csr-id-951c050ecbb70c9de216603e55c7cfbc89a067e3/> Reference::logs() -> Reference::log_iter()
+  The latter now returns a standard Platform to iterate over all
+  reflog entries from oldest to newest or vice versa.
 
 ### Refactor (BREAKING)
 
- - <csr-id-0e1875363fea09452789d7a90fc6860a7996d6d3/> `file::Store::base` is now `file::Store::base()` and read-only
-   That way, file databases can't be repositioned anymore, it's recommended
-   to recreate it if that's desired.
+- <csr-id-0e1875363fea09452789d7a90fc6860a7996d6d3/> `file::Store::base` is now `file::Store::base()` and read-only
+  That way, file databases can't be repositioned anymore, it's recommended
+  to recreate it if that's desired.
 
 ## 0.9.1 (2021-11-16)
 
@@ -2571,24 +2605,24 @@ A maintenance release to properly dealing with previously breaking changes in `g
 <csr-id-293bfc0278c5983c0beaec93253fb51f00d81156/>
 <csr-id-90e6128727932f917c485f411e623fc6a9c2ad4d/>
 
-This release contains no functional changes, but is considered breaking for safety reasons 
+This release contains no functional changes, but is considered breaking for safety reasons
 as `gix-traverse` is signalling a breaking change.
 
 ### Other
 
- - <csr-id-293bfc0278c5983c0beaec93253fb51f00d81156/> loose reference iteration with non-dir prefixes…
-   Previously it was expected for the prefix `Path` to always exist for
-   the prefix to be valid. This, however, is not similar to packed
-   prefixes, which allow non-dir prefixes as well.
-   
-   Now we will check if the prefix is actually a directory, and if not
-   split it into its parent directory and the filename portion. The latter
-   is then used for prefix matching file names within that directory.
- - <csr-id-90e6128727932f917c485f411e623fc6a9c2ad4d/> improve changelog format
+- <csr-id-293bfc0278c5983c0beaec93253fb51f00d81156/> loose reference iteration with non-dir prefixes…
+  Previously it was expected for the prefix `Path` to always exist for
+  the prefix to be valid. This, however, is not similar to packed
+  prefixes, which allow non-dir prefixes as well.
+
+  Now we will check if the prefix is actually a directory, and if not
+  split it into its parent directory and the filename portion. The latter
+  is then used for prefix matching file names within that directory.
+- <csr-id-90e6128727932f917c485f411e623fc6a9c2ad4d/> improve changelog format
 
 ### Other
 
- - <csr-id-4ed4b2da50557aff540685441f4b5c7d5e582977/> add panicking `Target::id()` and `TargetRef::id()`
+- <csr-id-4ed4b2da50557aff540685441f4b5c7d5e582977/> add panicking `Target::id()` and `TargetRef::id()`
 
 ## v0.7.3 (2021-09-10)
 
@@ -2599,14 +2633,14 @@ as `gix-traverse` is signalling a breaking change.
 
 ### Other
 
- - <csr-id-293bfc0278c5983c0beaec93253fb51f00d81156/> loose reference iteration with non-dir prefixes…
-   Previously it was expected for the prefix `Path` to always exist for
-   the prefix to be valid. This, however, is not similar to packed
-   prefixes, which allow non-dir prefixes as well.
-   
-   Now we will check if the prefix is actually a directory, and if not
-   split it into its parent directory and the filename portion. The latter
-   is then used for prefix matching file names within that directory.
+- <csr-id-293bfc0278c5983c0beaec93253fb51f00d81156/> loose reference iteration with non-dir prefixes…
+  Previously it was expected for the prefix `Path` to always exist for
+  the prefix to be valid. This, however, is not similar to packed
+  prefixes, which allow non-dir prefixes as well.
+
+  Now we will check if the prefix is actually a directory, and if not
+  split it into its parent directory and the filename portion. The latter
+  is then used for prefix matching file names within that directory.
 
 ## v0.7.2 (2021-09-10)
 
@@ -2614,7 +2648,7 @@ as `gix-traverse` is signalling a breaking change.
 
 ### Other
 
- - <csr-id-90e6128727932f917c485f411e623fc6a9c2ad4d/> improve changelog format
+- <csr-id-90e6128727932f917c485f411e623fc6a9c2ad4d/> improve changelog format
 
 ## v0.7.1 (2021-09-08)
 
@@ -2627,7 +2661,6 @@ as `gix-traverse` is signalling a breaking change.
 * Move `file::log::Line` to `log::Line`
 * `TargetRef::Symbolic(&BStr)` -> `TargetRef::Symbolic(FullNameRef)`
 * replace `Transaction::namespace()` with `file::Store::namespace`
- 
 
 ## v0.6.1
 

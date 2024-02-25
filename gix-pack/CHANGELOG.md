@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.48.0 (2024-02-25)
+
+A maintenance release without user-facing changes.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 10 commits contributed to the release over the course of 30 calendar days.
+ - 36 days passed between releases.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Thanks Clippy
+
+<csr-read-only-do-not-edit/>
+
+[Clippy](https://github.com/rust-lang/rust-clippy) helped 1 time to make code idiomatic. 
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Prepare changelogs prior to release ([`f2e111f`](https://github.com/Byron/gitoxide/commit/f2e111f768fc1bc6182355261c20b63610cffec7))
+    - Thanks clippy ([`13d5602`](https://github.com/Byron/gitoxide/commit/13d5602faa58aa6f520ebc6003ed54bc9c844f2b))
+    - Merge branch 'tempfile-permissions' ([`7b44c7f`](https://github.com/Byron/gitoxide/commit/7b44c7ff1dc0b8875214d2673c7f52948cf04ff0))
+    - Release gix-tempfile v13.1.0, gix-lock v13.1.0, safety bump 12 crates ([`8430442`](https://github.com/Byron/gitoxide/commit/84304427dfe4d170c7732161b126961719f70059))
+    - Merge branch 'entryoom' ([`684fa5c`](https://github.com/Byron/gitoxide/commit/684fa5caf82fc38dd238361d6482e77901ca0265))
+    - Refactor ([`2a9ef4e`](https://github.com/Byron/gitoxide/commit/2a9ef4e3299a28df8f9648e62eaec1ecb0011b99))
+    - Merge branch 'chunks_exact' ([`d4d478b`](https://github.com/Byron/gitoxide/commit/d4d478ba6a70fce34717e2164f8b3aa7a1521a2d))
+    - Use chunks_exact where possible ([`2482023`](https://github.com/Byron/gitoxide/commit/24820232f07ae55c80d95470228cc9e874830487))
+    - Handle OOM when copying to buffers ([`0be338f`](https://github.com/Byron/gitoxide/commit/0be338fdf80a11877599545cfa1b215092ce9afb))
+    - Release gix-path v0.10.5 ([`b8cba96`](https://github.com/Byron/gitoxide/commit/b8cba96ce57f8b6b0067d6a8cf3e37eaf280a238))
+</details>
+
 ## 0.47.0 (2024-01-20)
 
 A maintenance release without user-facing changes.
@@ -13,7 +51,7 @@ A maintenance release without user-facing changes.
 
 <csr-read-only-do-not-edit/>
 
- - 10 commits contributed to the release over the course of 16 calendar days.
+ - 11 commits contributed to the release over the course of 16 calendar days.
  - 20 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 1 unique issue was worked on: [#1231](https://github.com/Byron/gitoxide/issues/1231)
@@ -27,6 +65,7 @@ A maintenance release without user-facing changes.
  * **[#1231](https://github.com/Byron/gitoxide/issues/1231)**
     - Improve usage of `unsafe` ([`4017e69`](https://github.com/Byron/gitoxide/commit/4017e6934f7a68456c62bca78ecabc9c9151e843))
  * **Uncategorized**
+    - Release gix-utils v0.1.9, gix-features v0.38.0, gix-actor v0.30.0, gix-object v0.41.0, gix-path v0.10.4, gix-glob v0.16.0, gix-attributes v0.22.0, gix-command v0.3.3, gix-packetline-blocking v0.17.3, gix-filter v0.9.0, gix-fs v0.10.0, gix-commitgraph v0.24.0, gix-revwalk v0.12.0, gix-traverse v0.37.0, gix-worktree-stream v0.9.0, gix-archive v0.9.0, gix-config-value v0.14.4, gix-tempfile v13.0.0, gix-lock v13.0.0, gix-ref v0.41.0, gix-sec v0.10.4, gix-config v0.34.0, gix-url v0.27.0, gix-credentials v0.24.0, gix-ignore v0.11.0, gix-index v0.29.0, gix-worktree v0.30.0, gix-diff v0.40.0, gix-discover v0.29.0, gix-mailmap v0.22.0, gix-negotiate v0.12.0, gix-pack v0.47.0, gix-odb v0.57.0, gix-pathspec v0.6.0, gix-packetline v0.17.3, gix-transport v0.41.0, gix-protocol v0.44.0, gix-revision v0.26.0, gix-refspec v0.22.0, gix-status v0.5.0, gix-submodule v0.8.0, gix-worktree-state v0.7.0, gix v0.58.0, safety bump 39 crates ([`eb6aa8f`](https://github.com/Byron/gitoxide/commit/eb6aa8f502314f886fc4ea3d52ab220763968208))
     - Prepare changelogs prior to release ([`6a2e0be`](https://github.com/Byron/gitoxide/commit/6a2e0bebfdf012dc2ed0ff2604086081f2a0f96d))
     - Release gix-trace v0.1.7, gix-features v0.37.2, gix-commitgraph v0.23.2, gix-traverse v0.36.2, gix-index v0.28.2 ([`b6c04c8`](https://github.com/Byron/gitoxide/commit/b6c04c87b426bf36a059df8dc52b56d384b27b79))
     - Merge pull request #1248 from joshtriplett/tyop ([`39f35da`](https://github.com/Byron/gitoxide/commit/39f35da390bc46005d0374b9bf4e7106fc1bd0ec))
@@ -44,12 +83,12 @@ A maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-3bd09ef120945a9669321ea856db4079a5dab930/> change `rust-version` manifest field back to 1.65.
-   They didn't actually need to be higher to work, and changing them
-   unecessarily can break downstream CI.
-   
-   Let's keep this value as low as possible, and only increase it when
-   more recent features are actually used.
+- <csr-id-3bd09ef120945a9669321ea856db4079a5dab930/> change `rust-version` manifest field back to 1.65.
+  They didn't actually need to be higher to work, and changing them
+  unecessarily can break downstream CI.
+
+  Let's keep this value as low as possible, and only increase it when
+  more recent features are actually used.
 
 ### Commit Statistics
 
@@ -77,8 +116,8 @@ A maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-aea89c3ad52f1a800abb620e9a4701bdf904ff7d/> upgrade MSRV to v1.70
-   Our MSRV follows the one of `helix`, which in turn follows Firefox.
+- <csr-id-aea89c3ad52f1a800abb620e9a4701bdf904ff7d/> upgrade MSRV to v1.70
+  Our MSRV follows the one of `helix`, which in turn follows Firefox.
 
 ### Commit Statistics
 
@@ -243,9 +282,9 @@ A maintenance release without user-facing changes.
 
 ### Chore (BREAKING)
 
- - <csr-id-ed327f6163f54756e58c20f86a563a97efb256ca/> update to the latest `prodash`
-   It makes proper usage of `Progress` types easier and allows them to be used
-   as `dyn` traits as well.
+- <csr-id-ed327f6163f54756e58c20f86a563a97efb256ca/> update to the latest `prodash`
+  It makes proper usage of `Progress` types easier and allows them to be used
+  as `dyn` traits as well.
 
 ### New Features (BREAKING)
 
@@ -298,10 +337,10 @@ A maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-93feea269eebd114e866e6f29f4a73c0096df9e0/> split tests off into their own crate to allow feature toggles.
-   That way we can test with the `parallel` feature and won't have to
-   create bogus feature toggles that are only used for testing, yet visbible
-   to users.
+- <csr-id-93feea269eebd114e866e6f29f4a73c0096df9e0/> split tests off into their own crate to allow feature toggles.
+  That way we can test with the `parallel` feature and won't have to
+  create bogus feature toggles that are only used for testing, yet visbible
+  to users.
 
 ### Commit Statistics
 
@@ -474,7 +513,7 @@ A maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-bcad5c22049d56a25ef69d6c7a3344e78f9a1d4d/> Add `clippy::redundant-closure-for-method-calls` lint
+- <csr-id-bcad5c22049d56a25ef69d6c7a3344e78f9a1d4d/> Add `clippy::redundant-closure-for-method-calls` lint
 
 ### New Features
 
@@ -851,13 +890,13 @@ A maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-3ba25202240d13fdda998581297616afe06422ca/> remove `dashmap` in favor of own sharded concurrent hashmap.
-   This speeds up multi-threaded counting greatly, and despite it
-   using shared memory which makes it quite wasteful, it is possible to
-   outperform `git` with it if enough cores are thrown at the problem.
-   
-   Single-threaded performance is still lacking though, ultimately it needs
-   caches to accelerate the counting stage to hopefully be competitive.
+- <csr-id-3ba25202240d13fdda998581297616afe06422ca/> remove `dashmap` in favor of own sharded concurrent hashmap.
+  This speeds up multi-threaded counting greatly, and despite it
+  using shared memory which makes it quite wasteful, it is possible to
+  outperform `git` with it if enough cores are thrown at the problem.
+
+  Single-threaded performance is still lacking though, ultimately it needs
+  caches to accelerate the counting stage to hopefully be competitive.
 
 ### New Features
 
@@ -966,19 +1005,19 @@ A maintenance release without user-facing changes.
 
 ### Refactor (BREAKING)
 
- - <csr-id-ebc7f47708a63c3df4415ba0e702660d976dfb3e/> remove pack-cache from `Find::try_find(…)`
-   With the new architecture this can be an implementation detail without
-   forcing it to be Sync.
- - <csr-id-2290d006705ff47ad780b009fe58ee422b3285af/> move git_pack::data::Object to git_object::Data, massively alter git_odb::Find trait
-   This will break a lot, but has to happen to prepare these traits for the
-   next generation of object databases.
- - <csr-id-598698b88c194bc0e6ef69539f9fa7246ebfab70/> move loose header manipulation from git-pack to git-object
+- <csr-id-ebc7f47708a63c3df4415ba0e702660d976dfb3e/> remove pack-cache from `Find::try_find(…)`
+  With the new architecture this can be an implementation detail without
+  forcing it to be Sync.
+- <csr-id-2290d006705ff47ad780b009fe58ee422b3285af/> move git_pack::data::Object to git_object::Data, massively alter git_odb::Find trait
+  This will break a lot, but has to happen to prepare these traits for the
+  next generation of object databases.
+- <csr-id-598698b88c194bc0e6ef69539f9fa7246ebfab70/> move loose header manipulation from git-pack to git-object
 
 ### Other (BREAKING)
 
- - <csr-id-b46347fd3d50886eeca500e31e1e12b354711309/> `index::write::Outcome::index_kind` -> `::index_version`.
- - <csr-id-591afd56d9862a6348ef8b3af61798004b36aa19/> `bundle::write::Options::index_kind` -> `::index_version`.
- - <csr-id-2f2d856efe733d3cf81110c0e0607d2e7c40d968/> Avoid duplicate module paths in 'tree' and 'commit'
+- <csr-id-b46347fd3d50886eeca500e31e1e12b354711309/> `index::write::Outcome::index_kind` -> `::index_version`.
+- <csr-id-591afd56d9862a6348ef8b3af61798004b36aa19/> `bundle::write::Options::index_kind` -> `::index_version`.
+- <csr-id-2f2d856efe733d3cf81110c0e0607d2e7c40d968/> Avoid duplicate module paths in 'tree' and 'commit'
 
 ### Bug Fixes (BREAKING)
 
@@ -1056,12 +1095,12 @@ A maintenance release without user-facing changes.
 
 ### Refactor
 
- - <csr-id-9b9f10ad862b5e097c836c51df1eb98607df5ae1/> remove unnecessary unsafe by using `chunks_mut()`
-   This was probably a left-over from times where there was a static
-   requirement on the chunks processing. Maybe… .
- - <csr-id-e0b8636f96e4bfe1bc72b5aa6ad4c4c8538ff92c/> replace bare u32 `data::Id` typedef
- - <csr-id-71c628d46088ab455b54eb2330d24dcff96c911d/> Use 'cache::Object' trait where it matters
- - <csr-id-8fe461281842b58aa11437445637c6e587bedd63/> split data::output::count::objects into files
+- <csr-id-9b9f10ad862b5e097c836c51df1eb98607df5ae1/> remove unnecessary unsafe by using `chunks_mut()`
+  This was probably a left-over from times where there was a static
+  requirement on the chunks processing. Maybe… .
+- <csr-id-e0b8636f96e4bfe1bc72b5aa6ad4c4c8538ff92c/> replace bare u32 `data::Id` typedef
+- <csr-id-71c628d46088ab455b54eb2330d24dcff96c911d/> Use 'cache::Object' trait where it matters
+- <csr-id-8fe461281842b58aa11437445637c6e587bedd63/> split data::output::count::objects into files
 
 ### Performance
 
@@ -1069,8 +1108,8 @@ A maintenance release without user-facing changes.
 
 ### Other
 
- - <csr-id-e6ff1a885889cf88f6b34b1193aa03d8bce16af5/> :File uses its hash_len parameter
- - <csr-id-f48630ba8f745c2ec61a1e3c51fa63a1789a088c/> :Find implementation for Rc
+- <csr-id-e6ff1a885889cf88f6b34b1193aa03d8bce16af5/> :File uses its hash_len parameter
+- <csr-id-f48630ba8f745c2ec61a1e3c51fa63a1789a088c/> :Find implementation for Rc
 
 ### Bug Fixes
 
@@ -1138,9 +1177,9 @@ A maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-f7f136dbe4f86e7dee1d54835c420ec07c96cd78/> uniformize deny attributes
- - <csr-id-25209454d3f7e27e12e8ddca92e43b1ff01d58aa/> upgrade dashmap to 5.1.0 (with security fix)
- - <csr-id-c800fdd331e6d7a0b8d756ba822915259f26e9e8/> remove unused dependencies
+- <csr-id-f7f136dbe4f86e7dee1d54835c420ec07c96cd78/> uniformize deny attributes
+- <csr-id-25209454d3f7e27e12e8ddca92e43b1ff01d58aa/> upgrade dashmap to 5.1.0 (with security fix)
+- <csr-id-c800fdd331e6d7a0b8d756ba822915259f26e9e8/> remove unused dependencies
 
 ### Documentation
 
@@ -2056,8 +2095,8 @@ A maintenance release without user-facing changes.
 
 ### Other (BREAKING)
 
- - <csr-id-b46347fd3d50886eeca500e31e1e12b354711309/> `index::write::Outcome::index_kind` -> `::index_version`.
- - <csr-id-591afd56d9862a6348ef8b3af61798004b36aa19/> `bundle::write::Options::index_kind` -> `::index_version`.
+- <csr-id-b46347fd3d50886eeca500e31e1e12b354711309/> `index::write::Outcome::index_kind` -> `::index_version`.
+- <csr-id-591afd56d9862a6348ef8b3af61798004b36aa19/> `bundle::write::Options::index_kind` -> `::index_version`.
 
 ## 0.23.0 (2022-09-20)
 
@@ -2075,7 +2114,7 @@ Maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-f7f136dbe4f86e7dee1d54835c420ec07c96cd78/> uniformize deny attributes
+- <csr-id-f7f136dbe4f86e7dee1d54835c420ec07c96cd78/> uniformize deny attributes
 
 ### New Features
 
@@ -2122,7 +2161,7 @@ A maintenance release without user-facing changes.
 
 ### Chore
 
- - <csr-id-25209454d3f7e27e12e8ddca92e43b1ff01d58aa/> upgrade dashmap to 5.1.0 (with security fix)
+- <csr-id-25209454d3f7e27e12e8ddca92e43b1ff01d58aa/> upgrade dashmap to 5.1.0 (with security fix)
 
 ### New Features
 
@@ -2138,9 +2177,9 @@ A maintenance release without user-facing changes.
 
 ### Refactor
 
- - <csr-id-9b9f10ad862b5e097c836c51df1eb98607df5ae1/> remove unnecessary unsafe by using `chunks_mut()`
-   This was probably a left-over from times where there was a static
-   requirement on the chunks processing. Maybe… .
+- <csr-id-9b9f10ad862b5e097c836c51df1eb98607df5ae1/> remove unnecessary unsafe by using `chunks_mut()`
+  This was probably a left-over from times where there was a static
+  requirement on the chunks processing. Maybe… .
 
 ## 0.16.1 (2022-02-01)
 
@@ -2161,16 +2200,16 @@ A maintenance release without user-facing changes.
 
 ### Refactor
 
- - <csr-id-e0b8636f96e4bfe1bc72b5aa6ad4c4c8538ff92c/> replace bare u32 `data::Id` typedef
+- <csr-id-e0b8636f96e4bfe1bc72b5aa6ad4c4c8538ff92c/> replace bare u32 `data::Id` typedef
 
 ### Other
 
- - <csr-id-e6ff1a885889cf88f6b34b1193aa03d8bce16af5/> :File uses its hash_len parameter
- - <csr-id-f48630ba8f745c2ec61a1e3c51fa63a1789a088c/> :Find implementation for Rc
+- <csr-id-e6ff1a885889cf88f6b34b1193aa03d8bce16af5/> :File uses its hash_len parameter
+- <csr-id-f48630ba8f745c2ec61a1e3c51fa63a1789a088c/> :Find implementation for Rc
 
 ### Chore
 
- - <csr-id-c800fdd331e6d7a0b8d756ba822915259f26e9e8/> remove unused dependencies
+- <csr-id-c800fdd331e6d7a0b8d756ba822915259f26e9e8/> remove unused dependencies
 
 ### New Features
 
@@ -2244,12 +2283,12 @@ A maintenance release without user-facing changes.
    It now is an implementation detail of the Find trait.
  - <csr-id-82b9b33bd5f4c3c1721a5093de2cedc62cb10565/> move `bundle::Location` to `data::entry::Location`
    The latter place best describes its purpose.
- - remove pack-cache from `Find::try_find(…)`
-   With the new architecture this can be an implementation detail without
-   forcing it to be Sync.
- - move gix_pack::data::Object to gix_object::Data, massively alter gix_odb::Find trait
-   This will break a lot, but has to happen to prepare these traits for the
-   next generation of object databases.
+- remove pack-cache from `Find::try_find(…)`
+  With the new architecture this can be an implementation detail without
+  forcing it to be Sync.
+- move gix_pack::data::Object to gix_object::Data, massively alter gix_odb::Find trait
+  This will break a lot, but has to happen to prepare these traits for the
+  next generation of object databases.
 
 ## 0.15.0 (2021-11-29)
 
@@ -2305,8 +2344,8 @@ signalled a breaking change which is one of our dependencies.
 
 ### Refactor
 
- - <csr-id-71c628d46088ab455b54eb2330d24dcff96c911d/> Use 'cache::Object' trait where it matters
- - <csr-id-8fe461281842b58aa11437445637c6e587bedd63/> split data::output::count::objects into files
+- <csr-id-71c628d46088ab455b54eb2330d24dcff96c911d/> Use 'cache::Object' trait where it matters
+- <csr-id-8fe461281842b58aa11437445637c6e587bedd63/> split data::output::count::objects into files
 
 ### New Features
 
@@ -2345,28 +2384,27 @@ signalled a breaking change which is one of our dependencies.
 ## v0.10.0 (2021-09-07)
 
 - **renames**
-   - `data::Object::into_commit_iter()` -> `data::Object::try_into_commit_iter()`
-   - `data::Object::into_tree_iter()` -> `data::Object::try_into_tree_iter()`
-   - `data::Object::into_tag_iter()` -> `data::Object::try_into_tag_iter()`
+    - `data::Object::into_commit_iter()` -> `data::Object::try_into_commit_iter()`
+    - `data::Object::into_tree_iter()` -> `data::Object::try_into_tree_iter()`
+    - `data::Object::into_tag_iter()` -> `data::Object::try_into_tag_iter()`
 
 ## v0.9.0 (2021-08-27)
 
 - **renames / moves / visibility**
-   - `find::Find`  and `find::FindExt` only in `Find` and `FindExt` (not in `find` anymore)
-   - `data::output::count::Count` -> `data::output::Count`
-   - `data::output::entry::Entry` -> `data::output::Entry`
-   - `Find::find_existing_*` -> `Find::find_*`
-   - `Find::find_existing_*` -> `Find::find_*`
-   - `Find::find()-> `Find::try_find()`
-   - `bundle::Bundle` -> `Bundle`
-   - `bundle::Error` -> `bundle::init::Error`
-   - `pub tree::` -> `pub(crate) cache::delta::`
-   - `data::object::Object` -> `data::Object`
-   - `data::entry::Entry` -> `data::Entry`
+    - `find::Find`  and `find::FindExt` only in `Find` and `FindExt` (not in `find` anymore)
+    - `data::output::count::Count` -> `data::output::Count`
+    - `data::output::entry::Entry` -> `data::output::Entry`
+    - `Find::find_existing_*` -> `Find::find_*`
+    - `Find::find_existing_*` -> `Find::find_*`
+    - `Find::find()-> `Find::try_find()`
+    - `bundle::Bundle` -> `Bundle`
+    - `bundle::Error` -> `bundle::init::Error`
+    - `pub tree::` -> `pub(crate) cache::delta::`
+    - `data::object::Object` -> `data::Object`
+    - `data::entry::Entry` -> `data::Entry`
 
 * **new methods**
-   - `Find::find_tag_iter()`
- 
+    - `Find::find_tag_iter()`
 
 ## v0.8.2 (2021-08-17)
 
