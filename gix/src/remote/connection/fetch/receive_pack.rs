@@ -91,6 +91,15 @@ where
         let _span = gix_trace::coarse!("fetch::Prepare::receive()");
         let mut con = self.con.take().expect("receive() can only be called once");
 
+        if self.ref_map.mappings.is_empty() && !self.ref_map.remote_refs.is_empty() {
+            let mut specs = con.remote.fetch_specs.clone();
+            specs.extend(self.ref_map.extra_refspecs.clone());
+            return Err(Error::NoMapping {
+                refspecs: specs,
+                num_remote_refs: self.ref_map.remote_refs.len(),
+            });
+        }
+
         let handshake = &self.ref_map.handshake;
         let protocol_version = handshake.server_protocol_version;
 
@@ -105,7 +114,7 @@ where
         gix_protocol::fetch::Response::check_required_features(protocol_version, &fetch_features)?;
         let sideband_all = fetch_features.iter().any(|(n, _)| *n == "sideband-all");
         let mut arguments = gix_protocol::fetch::Arguments::new(protocol_version, fetch_features, con.trace);
-        if matches!(con.remote.fetch_tags, crate::remote::fetch::Tags::Included) {
+        if matches!(con.remote.fetch_tags, fetch::Tags::Included) {
             if !arguments.can_use_include_tag() {
                 return Err(Error::MissingServerFeature {
                     feature: "include-tag",
@@ -132,7 +141,7 @@ where
         let mut negotiator = repo
             .config
             .resolved
-            .string_by_key(Fetch::NEGOTIATION_ALGORITHM.logical_name().as_str())
+            .string(Fetch::NEGOTIATION_ALGORITHM.logical_name().as_str())
             .map(|n| Fetch::NEGOTIATION_ALGORITHM.try_into_negotiation_algorithm(n))
             .transpose()
             .with_leniency(repo.config.lenient_config)?
@@ -248,7 +257,7 @@ where
                     let reject_shallow_remote = repo
                         .config
                         .resolved
-                        .boolean_filter_by_key("clone.rejectShallow", &mut repo.filter_config_section())
+                        .boolean_filter("clone.rejectShallow", &mut repo.filter_config_section())
                         .map(|val| Clone::REJECT_SHALLOW.enrich_error(val))
                         .transpose()?
                         .unwrap_or(false);

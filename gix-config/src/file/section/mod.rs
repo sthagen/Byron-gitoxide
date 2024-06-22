@@ -57,7 +57,7 @@ impl<'a> Section<'a> {
         self.id
     }
 
-    /// Return our body, containing all keys and values.
+    /// Return our body, containing all value names and values.
     pub fn body(&self) -> &Body<'a> {
         &self.body
     }
@@ -75,7 +75,7 @@ impl<'a> Section<'a> {
     /// Stream ourselves to the given `out`, in order to reproduce this section mostly losslessly
     /// as it was parsed.
     pub fn write_to(&self, mut out: &mut dyn std::io::Write) -> std::io::Result<()> {
-        self.header.write_to(&mut out)?;
+        self.header.write_to(&mut *out)?;
 
         if self.body.0.is_empty() {
             return Ok(());
@@ -92,7 +92,7 @@ impl<'a> Section<'a> {
             .body
             .as_ref()
             .iter()
-            .take_while(|e| !matches!(e, Event::SectionKey(_)))
+            .take_while(|e| !matches!(e, Event::SectionValueName(_)))
             .any(|e| e.to_bstr_lossy().contains_str(nl))
         {
             out.write_all(nl)?;
@@ -102,7 +102,7 @@ impl<'a> Section<'a> {
         let mut in_key_value_pair = false;
         for (idx, event) in self.body.as_ref().iter().enumerate() {
             match event {
-                Event::SectionKey(_) => {
+                Event::SectionValueName(_) => {
                     if !saw_newline_after_value {
                         out.write_all(nl)?;
                     }
