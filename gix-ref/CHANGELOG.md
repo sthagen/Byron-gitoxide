@@ -5,6 +5,59 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.45.0 (2024-07-23)
+
+<csr-id-ec1d6b44d7f65ded8ea34914350e723275121776/>
+
+### Other
+
+ - <csr-id-ec1d6b44d7f65ded8ea34914350e723275121776/> gix-date is test only dep
+
+### Bug Fixes (BREAKING)
+
+ - <csr-id-86e50ee8e235e9b6c3dc23d4ba8fe7098e545bc4/> remove unused and unusable `PartialNameCow`
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 23 commits contributed to the release over the course of 57 calendar days.
+ - 57 days passed between releases.
+ - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release gix-glob v0.16.4, gix-attributes v0.22.3, gix-command v0.3.8, gix-filter v0.11.3, gix-fs v0.11.2, gix-commitgraph v0.24.3, gix-revwalk v0.13.2, gix-traverse v0.39.2, gix-worktree-stream v0.13.1, gix-archive v0.13.2, gix-config-value v0.14.7, gix-tempfile v14.0.1, gix-ref v0.45.0, gix-sec v0.10.7, gix-config v0.38.0, gix-prompt v0.8.6, gix-url v0.27.4, gix-credentials v0.24.3, gix-ignore v0.11.3, gix-index v0.33.1, gix-worktree v0.34.1, gix-diff v0.44.1, gix-discover v0.33.0, gix-pathspec v0.7.6, gix-dir v0.6.0, gix-mailmap v0.23.5, gix-negotiate v0.13.2, gix-pack v0.51.1, gix-odb v0.61.1, gix-transport v0.42.2, gix-protocol v0.45.2, gix-revision v0.27.2, gix-refspec v0.23.1, gix-status v0.11.0, gix-submodule v0.12.0, gix-worktree-state v0.11.1, gix v0.64.0, gix-fsck v0.4.1, gitoxide-core v0.39.0, gitoxide v0.37.0 ([`a1b73a6`](https://github.com/Byron/gitoxide/commit/a1b73a67c19d9102a2c5a7f574a7a53a86d0094c))
+    - Update manifests (by cargo-smart-release) ([`0470df3`](https://github.com/Byron/gitoxide/commit/0470df3b8ebb136b219f0057f1e9a7031975cce5))
+    - Prepare changelog prior to release ([`99c00cc`](https://github.com/Byron/gitoxide/commit/99c00cc3ae9827555e2e1162328bc57038619d1f))
+    - Release gix-path v0.10.9 ([`15f1cf7`](https://github.com/Byron/gitoxide/commit/15f1cf76764221d14afa66d03a6528b19b9c30c9))
+    - Merge branch 'fix-1440' ([`f87322e`](https://github.com/Byron/gitoxide/commit/f87322e185704d9d4368ae88e95892635a976e4a))
+    - Adapt to changes in `gix-testtools` ([`f5a9884`](https://github.com/Byron/gitoxide/commit/f5a9884006b0ea8d22cc51a119ae87ce10cd3484))
+    - Release gix-actor v0.31.4, gix-object v0.42.3 ([`bf3d82a`](https://github.com/Byron/gitoxide/commit/bf3d82abc7c875109f9a5d6b6713ce68153b6456))
+    - Release gix-actor v0.31.3, gix-mailmap v0.23.4 ([`1e79c5c`](https://github.com/Byron/gitoxide/commit/1e79c5cdf20fc0440e9a497c9d01b0c0ca3ce424))
+    - Merge pull request #1430 from klensy/deps ([`ab02aa9`](https://github.com/Byron/gitoxide/commit/ab02aa99842c17d68b8ee37e05e2f35720291e42))
+    - Gix-date is test only dep ([`ec1d6b4`](https://github.com/Byron/gitoxide/commit/ec1d6b44d7f65ded8ea34914350e723275121776))
+    - Release gix-path v0.10.8 ([`8d89b86`](https://github.com/Byron/gitoxide/commit/8d89b865c84d1fb153d93343d1ce4e1d64e53541))
+    - Release gix-date v0.8.7, gix-mailmap v0.23.2 ([`c1d7c02`](https://github.com/Byron/gitoxide/commit/c1d7c023d595eb04891b65295f001d85c9ba8074))
+    - Merge branch 'tar-only' ([`1dfa90d`](https://github.com/Byron/gitoxide/commit/1dfa90d641306b4099a6ecd52e2056b231467807))
+    - Remove binary files in favor of `tar` files ([`dcab79a`](https://github.com/Byron/gitoxide/commit/dcab79a6958cbf5cd69184c24497dc27c6f94961))
+    - Merge branch 'main' into config-key-take-2 ([`9fa1054`](https://github.com/Byron/gitoxide/commit/9fa1054a01071180d7b08c8c2b5bd61e9d0d32da))
+    - Merge branch 'status' ([`2f9f0ac`](https://github.com/Byron/gitoxide/commit/2f9f0ac36eb37b1736e21ee09e5a91833b80fc65))
+    - Remove unused and unusable `PartialNameCow` ([`86e50ee`](https://github.com/Byron/gitoxide/commit/86e50ee8e235e9b6c3dc23d4ba8fe7098e545bc4))
+    - Re-add tests that were previously 'lost' due to an incorrect feature toggle ([`ca31249`](https://github.com/Byron/gitoxide/commit/ca31249e9322b14868af4c3324a8cef991a1b552))
+    - Merge pull request #1361 from EliahKagan/freebsd ([`9c65d98`](https://github.com/Byron/gitoxide/commit/9c65d9886328f53129b966aecdc91644297c54be))
+    - Regenerate archives for changed scripts ([`ea12fc2`](https://github.com/Byron/gitoxide/commit/ea12fc234e898eb15013da40d2a82f69c2d20482))
+    - Make bash script shebangs more portable ([`68cbea8`](https://github.com/Byron/gitoxide/commit/68cbea815aa979acb0b86943db83ab77bbc728c4))
+    - Release gix-fs v0.11.1, gix-glob v0.16.3 ([`2cefe77`](https://github.com/Byron/gitoxide/commit/2cefe77203131878d0d8f5346f20f0e25b76cbea))
+    - Merge pull request #1385 from Byron/fix-gix-ref ([`8da55a3`](https://github.com/Byron/gitoxide/commit/8da55a3488a3389ec02c56cb79d0f93d600905e7))
+</details>
+
 ## 0.44.1 (2024-05-27)
 
 ### Bug Fixes
@@ -16,7 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release.
+ - 2 commits contributed to the release.
  - 4 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -28,6 +81,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release gix-ref v0.44.1 ([`2d0a352`](https://github.com/Byron/gitoxide/commit/2d0a3520e1df80f8f6edece0884a672cbc18839d))
     - `LineRef` is now `Copy` and remove non-exhaustive ([`cd969f6`](https://github.com/Byron/gitoxide/commit/cd969f69d1b86030d4ea5c5a77100f36caffb8d8))
 </details>
 
