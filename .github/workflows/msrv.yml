@@ -14,12 +14,12 @@ on:
   workflow_dispatch:
 
 jobs:
-  rustfmt:
+  check-msrv:
     name: cargo check MSRV
     strategy:
       matrix:
         os:
-          - windows-2019
+          - windows-2022
           - ubuntu-latest
     runs-on: ${{ matrix.os }}
     env:
