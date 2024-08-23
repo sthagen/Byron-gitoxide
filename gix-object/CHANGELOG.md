@@ -5,6 +5,66 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.44.0 (2024-08-22)
+
+A maintenance release without user-facing changes.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Prepare changelog prior to (yet another) release ([`209b6de`](https://github.com/Byron/gitoxide/commit/209b6de0329dbaaf61b929d32d9d54cf13fe241e))
+</details>
+
+## 0.43.0 (2024-08-22)
+
+A maintenance release without user-facing changes.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 10 commits contributed to the release over the course of 24 calendar days.
+ - 49 days passed between releases.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Thanks Clippy
+
+<csr-read-only-do-not-edit/>
+
+[Clippy](https://github.com/rust-lang/rust-clippy) helped 1 time to make code idiomatic. 
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release gix-date v0.9.0, gix-actor v0.31.6, gix-validate v0.9.0, gix-object v0.43.0, gix-path v0.10.10, gix-attributes v0.22.4, gix-command v0.3.9, gix-packetline-blocking v0.17.5, gix-filter v0.12.0, gix-fs v0.11.3, gix-revwalk v0.14.0, gix-traverse v0.40.0, gix-worktree-stream v0.14.0, gix-archive v0.14.0, gix-ref v0.46.0, gix-config v0.39.0, gix-prompt v0.8.7, gix-url v0.27.5, gix-credentials v0.24.5, gix-ignore v0.11.4, gix-index v0.34.0, gix-worktree v0.35.0, gix-diff v0.45.0, gix-discover v0.34.0, gix-dir v0.7.0, gix-mailmap v0.23.6, gix-negotiate v0.14.0, gix-pack v0.52.0, gix-odb v0.62.0, gix-packetline v0.17.6, gix-transport v0.42.3, gix-protocol v0.45.3, gix-revision v0.28.0, gix-refspec v0.24.0, gix-status v0.12.0, gix-submodule v0.13.0, gix-worktree-state v0.12.0, gix v0.65.0, gix-fsck v0.5.0, gitoxide-core v0.40.0, gitoxide v0.38.0, safety bump 25 crates ([`d19af16`](https://github.com/Byron/gitoxide/commit/d19af16e1d2031d4f0100e76b6cd410a5d252af1))
+    - Prepare changelogs prior to release ([`0f25841`](https://github.com/Byron/gitoxide/commit/0f2584178ae88e425f1c629eb85b69f3b4310d9f))
+    - Merge branch 'dependabot/github_actions/github-actions-c4bcf5a8e2' ([`2e00b5e`](https://github.com/Byron/gitoxide/commit/2e00b5ef6e8a15e7f0a34d54739a5cd1c986b322))
+    - Make `winnow` a workspace dependency ([`78a7e32`](https://github.com/Byron/gitoxide/commit/78a7e32c34150dece4065e513cd177356619419f))
+    - Merge branch 'improvements' ([`12313f2`](https://github.com/Byron/gitoxide/commit/12313f2720bb509cb8fa5d7033560823beafb91c))
+    - Thanks clippy ([`ae2b733`](https://github.com/Byron/gitoxide/commit/ae2b733c1e4de33ddf442cd8044dae364307085d))
+    - Merge branch 'upgrades' ([`1d37bf6`](https://github.com/Byron/gitoxide/commit/1d37bf6a773d56eea9003aa626ced413e8e0eaa3))
+    - Update all dependencies and fix deprecations ([`f5cd3ba`](https://github.com/Byron/gitoxide/commit/f5cd3baf57676bfee0c40fee577d2779958bbe72))
+    - Merge branch 'ag/jiff' ([`5871fb1`](https://github.com/Byron/gitoxide/commit/5871fb130b1a603c1e768f4b2371ac9d7cc56330))
+    - Assure the next release is breaking ([`9fd1090`](https://github.com/Byron/gitoxide/commit/9fd10905449a41cdda5eb2764e4d45d314de9c04))
+</details>
+
 ## 0.42.3 (2024-07-03)
 
 A maintenance release without user-facing changes.
@@ -13,7 +73,7 @@ A maintenance release without user-facing changes.
 
 <csr-read-only-do-not-edit/>
 
- - 12 commits contributed to the release over the course of 31 calendar days.
+ - 13 commits contributed to the release over the course of 31 calendar days.
  - 42 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 1 unique issue was worked on: [#1438](https://github.com/Byron/gitoxide/issues/1438)
@@ -27,6 +87,7 @@ A maintenance release without user-facing changes.
  * **[#1438](https://github.com/Byron/gitoxide/issues/1438)**
     - Reproduce failure when parsing malformed commit ([`6c5861d`](https://github.com/Byron/gitoxide/commit/6c5861dff0986ca68c474be65738eda47ca28927))
  * **Uncategorized**
+    - Release gix-actor v0.31.4, gix-object v0.42.3 ([`bf3d82a`](https://github.com/Byron/gitoxide/commit/bf3d82abc7c875109f9a5d6b6713ce68153b6456))
     - Prepare changelogs prior to release ([`255920e`](https://github.com/Byron/gitoxide/commit/255920ecffd47f221702aaec29de966b120f8fc5))
     - Merge branch 'fix-1438' ([`9717a25`](https://github.com/Byron/gitoxide/commit/9717a255b7c817c9f6cde44eedba232e309a6e0f))
     - Adapt to changes in `gix-actor` ([`8dca2d4`](https://github.com/Byron/gitoxide/commit/8dca2d4de9f40839148fe545cf2f52d2fb9fa496))

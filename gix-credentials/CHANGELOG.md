@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.24.5 (2024-08-22)
+
+### Bug Fixes
+
+ - <csr-id-cacc8af96a41e601c5136cba4b1f9b3b9d5e6844/> prevent terminal Windows to popup on Windows when run from a GUI application.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 7 commits contributed to the release over the course of 20 calendar days.
+ - 28 days passed between releases.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Thanks Clippy
+
+<csr-read-only-do-not-edit/>
+
+[Clippy](https://github.com/rust-lang/rust-clippy) helped 1 time to make code idiomatic. 
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release gix-glob v0.16.5, gix-filter v0.12.0, gix-fs v0.11.3, gix-revwalk v0.14.0, gix-traverse v0.40.0, gix-worktree-stream v0.14.0, gix-archive v0.14.0, gix-config-value v0.14.8, gix-tempfile v14.0.2, gix-ref v0.46.0, gix-sec v0.10.8, gix-config v0.39.0, gix-prompt v0.8.7, gix-url v0.27.5, gix-credentials v0.24.5, gix-ignore v0.11.4, gix-index v0.34.0, gix-worktree v0.35.0, gix-diff v0.45.0, gix-discover v0.34.0, gix-pathspec v0.7.7, gix-dir v0.7.0, gix-mailmap v0.23.6, gix-negotiate v0.14.0, gix-pack v0.52.0, gix-odb v0.62.0, gix-packetline v0.17.6, gix-transport v0.42.3, gix-protocol v0.45.3, gix-revision v0.28.0, gix-refspec v0.24.0, gix-status v0.12.0, gix-submodule v0.13.0, gix-worktree-state v0.12.0, gix v0.65.0, gix-fsck v0.5.0, gitoxide-core v0.40.0, gitoxide v0.38.0 ([`a65a17f`](https://github.com/Byron/gitoxide/commit/a65a17fc396ef49663b0a75cf7b5502d370db269))
+    - Release gix-date v0.9.0, gix-actor v0.31.6, gix-validate v0.9.0, gix-object v0.43.0, gix-path v0.10.10, gix-attributes v0.22.4, gix-command v0.3.9, gix-packetline-blocking v0.17.5, gix-filter v0.12.0, gix-fs v0.11.3, gix-revwalk v0.14.0, gix-traverse v0.40.0, gix-worktree-stream v0.14.0, gix-archive v0.14.0, gix-ref v0.46.0, gix-config v0.39.0, gix-prompt v0.8.7, gix-url v0.27.5, gix-credentials v0.24.5, gix-ignore v0.11.4, gix-index v0.34.0, gix-worktree v0.35.0, gix-diff v0.45.0, gix-discover v0.34.0, gix-dir v0.7.0, gix-mailmap v0.23.6, gix-negotiate v0.14.0, gix-pack v0.52.0, gix-odb v0.62.0, gix-packetline v0.17.6, gix-transport v0.42.3, gix-protocol v0.45.3, gix-revision v0.28.0, gix-refspec v0.24.0, gix-status v0.12.0, gix-submodule v0.13.0, gix-worktree-state v0.12.0, gix v0.65.0, gix-fsck v0.5.0, gitoxide-core v0.40.0, gitoxide v0.38.0, safety bump 25 crates ([`d19af16`](https://github.com/Byron/gitoxide/commit/d19af16e1d2031d4f0100e76b6cd410a5d252af1))
+    - Prepare changelogs prior to release ([`0f25841`](https://github.com/Byron/gitoxide/commit/0f2584178ae88e425f1c629eb85b69f3b4310d9f))
+    - Merge branch 'push-ysnqkzlzwuwq' ([`e2c747d`](https://github.com/Byron/gitoxide/commit/e2c747d9049bc4a4975de2fd780e8b1fb862fc09))
+    - Prevent terminal Windows to popup on Windows when run from a GUI application. ([`cacc8af`](https://github.com/Byron/gitoxide/commit/cacc8af96a41e601c5136cba4b1f9b3b9d5e6844))
+    - Merge branch 'improvements' ([`12313f2`](https://github.com/Byron/gitoxide/commit/12313f2720bb509cb8fa5d7033560823beafb91c))
+    - Thanks clippy ([`ae2b733`](https://github.com/Byron/gitoxide/commit/ae2b733c1e4de33ddf442cd8044dae364307085d))
+</details>
+
 ## 0.24.4 (2024-07-25)
 
 ### Bug Fixes
@@ -19,7 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 2 commits contributed to the release.
+ - 3 commits contributed to the release.
  - 1 day passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 1 unique issue was worked on: [#1466](https://github.com/Byron/gitoxide/issues/1466)
@@ -33,6 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#1466](https://github.com/Byron/gitoxide/issues/1466)**
     - Avoid `as_ref()` call as `bstr` could break downstream with new impls ([`1772f88`](https://github.com/Byron/gitoxide/commit/1772f88882824b92fd233bc2148c4ad123740096))
  * **Uncategorized**
+    - Release gix-credentials v0.24.4 ([`f6a4eb9`](https://github.com/Byron/gitoxide/commit/f6a4eb98740fe4151e293d53a578233119307a58))
     - Merge branch 'fix-clean' ([`33eacfb`](https://github.com/Byron/gitoxide/commit/33eacfbaace2021043e2b5d72dcb9293af6c4020))
 </details>
 
