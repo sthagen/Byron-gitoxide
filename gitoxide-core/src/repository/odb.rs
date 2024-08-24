@@ -128,12 +128,12 @@ pub fn statistics(
             match item {
                 find::Header::Loose { size, kind } => {
                     self.loose_objects += 1;
-                    self.count(kind, size)
+                    self.count(kind, size);
                 }
                 find::Header::Packed(packed) => {
                     self.packed_objects += 1;
                     self.packed_delta_objects += usize::from(packed.num_deltas > 0);
-                    self.total_delta_chain_length += packed.num_deltas as u64;
+                    self.total_delta_chain_length += u64::from(packed.num_deltas);
                     self.count(packed.kind, packed.object_size);
                 }
             }

@@ -70,7 +70,7 @@ pub mod index_names {
                 ascii_path.is_ascii(),
                 "must use ascii bytes for correct size computation"
             );
-            count += (ascii_path.as_bytes().len() + 1/* null byte */) as u64
+            count += (ascii_path.as_bytes().len() + 1/* null byte */) as u64;
         }
 
         let needed_alignment = CHUNK_ALIGNMENT - (count % CHUNK_ALIGNMENT);
@@ -238,7 +238,7 @@ pub mod large_offsets {
             if entry.pack_offset > LARGE_OFFSET_THRESHOLD {
                 num_large_offsets += 1;
             }
-            if entry.pack_offset > u32::MAX as crate::data::Offset {
+            if entry.pack_offset > crate::data::Offset::from(u32::MAX) {
                 needs_large_offsets = true;
             }
         }
