@@ -60,6 +60,9 @@ jobs:
         run:
           sudo apt-get install tree
       - uses: extractions/setup-just@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
       - name: test
         env:
           CI: true
@@ -89,7 +92,9 @@ jobs:
         with:
           tool: nextest
       - name: "Test (nextest)"
-        run: cargo nextest run --all --no-fail-fast
+        run: |
+          cargo nextest run --all --no-fail-fast
+          cargo test --doc
 
   test-32bit:
     runs-on: ubuntu-latest
@@ -115,47 +120,6 @@ jobs:
         # TODO: figure out why `git` doesn't pick up environment configuration so build scripts fail when using `-p gix`.
         run: cross test -p gix-hashtable --target ${{ matrix.target }}
 
-  installation:
-    strategy:
-      matrix:
-        build: [ win-msvc, win-gnu, win32-msvc, win32-gnu ]
-        include:
-          - build: win-msvc
-            os: windows-latest
-            rust: stable
-            target: x86_64-pc-windows-msvc
-          - build: win-gnu
-            os: windows-latest
-            rust: stable-x86_64-gnu
-            target: x86_64-pc-windows-gnu
-          - build: win32-msvc
-            os: windows-latest
-            rust: stable
-            target: i686-pc-windows-msvc
-          - build: win32-gnu
-            os: windows-latest
-            rust: stable
-            target: i686-pc-windows-gnu
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ matrix.rust }}
-          targets: ${{ matrix.target }}
-      - uses: Swatinem/rust-cache@v2
-      - uses: msys2/setup-msys2@v2
-        with:
-          msystem: MINGW${{ startsWith(matrix.target, 'i686-') && '32' || '64' }}
-          pacboy: cc:p
-          path-type: inherit
-      - name: "Install prerequisites"
-        run: vcpkg install  zlib:x64-windows-static-md
-      - name: "Installation from crates.io: gitoxide"
-        run: cargo +${{ matrix.rust }} install --target ${{ matrix.target }} --no-default-features --features max-pure --target-dir install-artifacts --debug --force gitoxide
-        shell: msys2 {0}
-
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -166,7 +130,7 @@ jobs:
           components: clippy,rustfmt
       - uses: extractions/setup-just@v2
       - name: Run cargo clippy
-        run: just clippy -D warnings -A unknown-lints
+        run: just clippy -D warnings -A unknown-lints --no-deps
       - name: Run cargo doc
         run: just doc
       - name: Run cargo fmt
@@ -246,3 +210,23 @@ jobs:
           set -x
           git status
           git diff --exit-code
+
+  # Dummy job to have a stable name for the "all tests pass" requirement
+  tests-pass:
+    name: Tests pass
+    needs:
+      - pure-rust-build
+      - test
+      - test-fast
+      - test-32bit
+      - lint
+      - cargo-deny
+      - wasm
+      - check-packetline
+    if: always() # always run even if dependencies fail
+    runs-on: ubuntu-latest
+    steps:
+      # fail if ANY dependency has failed or cancelled
+      - if: "contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')"
+        run: exit 1
+      - run: exit 0
