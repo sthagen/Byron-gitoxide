@@ -19,8 +19,8 @@ impl Default for Algorithm {
 
 impl Algorithm {
     /// Add `id` to our priority queue and *add* `flags` to it.
-    fn add_to_queue(&mut self, id: ObjectId, mark: Flags, graph: &mut crate::Graph<'_>) -> Result<(), Error> {
-        let commit = graph.try_lookup_or_insert_commit(id, |entry| {
+    fn add_to_queue(&mut self, id: ObjectId, mark: Flags, graph: &mut crate::Graph<'_, '_>) -> Result<(), Error> {
+        let commit = graph.get_or_insert_commit(id, |entry| {
             entry.flags |= mark | Flags::SEEN;
         })?;
         if let Some(timestamp) = commit.map(|c| c.commit_time) {
@@ -32,10 +32,10 @@ impl Algorithm {
         Ok(())
     }
 
-    fn mark_common(&mut self, id: ObjectId, graph: &mut crate::Graph<'_>) -> Result<(), Error> {
+    fn mark_common(&mut self, id: ObjectId, graph: &mut crate::Graph<'_, '_>) -> Result<(), Error> {
         let mut is_common = false;
         if let Some(commit) = graph
-            .try_lookup_or_insert_commit(id, |entry| {
+            .get_or_insert_commit(id, |entry| {
                 is_common = entry.flags.contains(Flags::COMMON);
                 entry.flags |= Flags::COMMON;
             })?
@@ -43,7 +43,7 @@ impl Algorithm {
         {
             let mut queue = gix_revwalk::PriorityQueue::from_iter(Some((commit.commit_time, id)));
             while let Some(id) = queue.pop_value() {
-                if let Some(commit) = graph.try_lookup_or_insert_commit(id, |entry| {
+                if let Some(commit) = graph.get_or_insert_commit(id, |entry| {
                     if !entry.flags.contains(Flags::POPPED) {
                         self.non_common_revs -= 1;
                     }
@@ -56,7 +56,7 @@ impl Algorithm {
                         }
                         let mut was_unseen_or_common = false;
                         if let Some(parent) = graph
-                            .try_lookup_or_insert_commit(parent_id, |entry| {
+                            .get_or_insert_commit(parent_id, |entry| {
                                 was_unseen_or_common =
                                     !entry.flags.contains(Flags::SEEN) || entry.flags.contains(Flags::COMMON);
                                 entry.flags |= Flags::COMMON;
@@ -76,7 +76,7 @@ impl Algorithm {
         &mut self,
         entry: Metadata,
         parent_id: ObjectId,
-        graph: &mut crate::Graph<'_>,
+        graph: &mut crate::Graph<'_, '_>,
     ) -> Result<bool, Error> {
         let mut was_seen = false;
         if let Some(parent) = graph
@@ -113,7 +113,7 @@ impl Algorithm {
 }
 
 impl Negotiator for Algorithm {
-    fn known_common(&mut self, id: ObjectId, graph: &mut crate::Graph<'_>) -> Result<(), Error> {
+    fn known_common(&mut self, id: ObjectId, graph: &mut crate::Graph<'_, '_>) -> Result<(), Error> {
         if graph
             .get(&id)
             .map_or(false, |commit| commit.data.flags.contains(Flags::SEEN))
@@ -123,7 +123,7 @@ impl Negotiator for Algorithm {
         self.add_to_queue(id, Flags::ADVERTISED, graph)
     }
 
-    fn add_tip(&mut self, id: ObjectId, graph: &mut crate::Graph<'_>) -> Result<(), Error> {
+    fn add_tip(&mut self, id: ObjectId, graph: &mut crate::Graph<'_, '_>) -> Result<(), Error> {
         if graph
             .get(&id)
             .map_or(false, |commit| commit.data.flags.contains(Flags::SEEN))
@@ -133,7 +133,7 @@ impl Negotiator for Algorithm {
         self.add_to_queue(id, Flags::default(), graph)
     }
 
-    fn next_have(&mut self, graph: &mut crate::Graph<'_>) -> Option<Result<ObjectId, Error>> {
+    fn next_have(&mut self, graph: &mut crate::Graph<'_, '_>) -> Option<Result<ObjectId, Error>> {
         loop {
             let id = self.revs.pop_value().filter(|_| self.non_common_revs != 0)?;
             let commit = graph.get_mut(&id).expect("it was added to the graph by now");
@@ -166,7 +166,7 @@ impl Negotiator for Algorithm {
         }
     }
 
-    fn in_common_with_remote(&mut self, id: ObjectId, graph: &mut crate::Graph<'_>) -> Result<bool, Error> {
+    fn in_common_with_remote(&mut self, id: ObjectId, graph: &mut crate::Graph<'_, '_>) -> Result<bool, Error> {
         let mut was_seen = false;
         let known_to_be_common = graph.get(&id).map_or(false, |commit| {
             was_seen = commit.data.flags.contains(Flags::SEEN);

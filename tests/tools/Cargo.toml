@@ -8,6 +8,7 @@ authors = ["Sebastian Thiel <sebastian.thiel@icloud.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
 include = ["/src/**/*", "/LICENSE-*"]
+rust-version = "1.76"
 
 [[bin]]
 name = "jtt"
@@ -47,6 +48,9 @@ tar = { version = "0.4.38", default-features = false }
 xz2 = { version = "0.1.6", optional = true }
 
 document-features = { version = "0.2.1", optional = true }
+
+[dev-dependencies]
+serial_test = { version = "3.1.0", default-features = false }
 
 [package.metadata.docs.rs]
 all-features = true

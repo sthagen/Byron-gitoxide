@@ -16,7 +16,7 @@ pub enum Error {
     #[error("We were unable to figure out what objects the server should send after {rounds} round(s)")]
     NegotiationFailed { rounds: usize },
     #[error(transparent)]
-    LookupCommitInGraph(#[from] gix_revwalk::graph::try_lookup_or_insert_default::Error),
+    LookupCommitInGraph(#[from] gix_revwalk::graph::get_or_insert_default::Error),
     #[error(transparent)]
     InitRefsIterator(#[from] crate::reference::iter::init::Error),
     #[error(transparent)]
@@ -65,7 +65,7 @@ pub(crate) enum Action {
 pub(crate) fn mark_complete_and_common_ref(
     repo: &crate::Repository,
     negotiator: &mut dyn gix_negotiate::Negotiator,
-    graph: &mut gix_negotiate::Graph<'_>,
+    graph: &mut gix_negotiate::Graph<'_, '_>,
     ref_map: &fetch::RefMap,
     shallow: &fetch::Shallow,
     mapping_is_ignored: impl Fn(&fetch::Mapping) -> bool,
@@ -114,7 +114,7 @@ pub(crate) fn mark_complete_and_common_ref(
         }
 
         if let Some(commit) = want_id
-            .and_then(|id| graph.try_lookup_or_insert_commit(id.into(), |_| {}).transpose())
+            .and_then(|id| graph.get_or_insert_commit(id.into(), |_| {}).transpose())
             .transpose()?
         {
             remote_ref_target_known[mapping_idx] = true;
@@ -258,7 +258,7 @@ pub(crate) fn add_wants(
 /// Remove all commits that are more recent than the cut-off, which is the commit time of the oldest common commit we have with the server.
 fn mark_recent_complete_commits(
     queue: &mut Queue,
-    graph: &mut gix_negotiate::Graph<'_>,
+    graph: &mut gix_negotiate::Graph<'_, '_>,
     cutoff: SecondsSinceUnixEpoch,
 ) -> Result<(), Error> {
     let _span = gix_trace::detail!("mark_recent_complete", queue_len = queue.len());
@@ -271,7 +271,7 @@ fn mark_recent_complete_commits(
         for parent_id in commit.parents.clone() {
             let mut was_complete = false;
             if let Some(parent) = graph
-                .try_lookup_or_insert_commit(parent_id, |md| {
+                .get_or_insert_commit(parent_id, |md| {
                     was_complete = md.flags.contains(Flags::COMPLETE);
                     md.flags |= Flags::COMPLETE;
                 })?
@@ -286,7 +286,7 @@ fn mark_recent_complete_commits(
 
 fn mark_all_refs_in_repo(
     repo: &crate::Repository,
-    graph: &mut gix_negotiate::Graph<'_>,
+    graph: &mut gix_negotiate::Graph<'_, '_>,
     queue: &mut Queue,
     mark: Flags,
 ) -> Result<(), Error> {
@@ -296,7 +296,7 @@ fn mark_all_refs_in_repo(
         let id = local_ref.id().detach();
         let mut is_complete = false;
         if let Some(commit) = graph
-            .try_lookup_or_insert_commit(id, |md| {
+            .get_or_insert_commit(id, |md| {
                 is_complete = md.flags.contains(Flags::COMPLETE);
                 md.flags |= mark;
             })?
@@ -310,7 +310,7 @@ fn mark_all_refs_in_repo(
 
 fn mark_alternate_complete(
     repo: &crate::Repository,
-    graph: &mut gix_negotiate::Graph<'_>,
+    graph: &mut gix_negotiate::Graph<'_, '_>,
     queue: &mut Queue,
 ) -> Result<(), Error> {
     let alternates = repo.objects.store_ref().alternate_db_paths()?;
@@ -332,7 +332,7 @@ fn mark_alternate_complete(
 /// Returns the amount of haves actually sent.
 pub(crate) fn one_round(
     negotiator: &mut dyn gix_negotiate::Negotiator,
-    graph: &mut gix_negotiate::Graph<'_>,
+    graph: &mut gix_negotiate::Graph<'_, '_>,
     haves_to_send: usize,
     arguments: &mut gix_protocol::fetch::Arguments,
     previous_response: Option<&gix_protocol::fetch::Response>,

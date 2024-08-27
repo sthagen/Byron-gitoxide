@@ -90,7 +90,6 @@ pub mod outcome {
     }
 
     ///
-    #[allow(clippy::empty_docs)]
     pub mod negotiate {
         /// Key information about each round in the pack-negotiation.
         #[derive(Debug, Clone)]
@@ -139,7 +138,6 @@ impl From<ProgressId> for gix_features::progress::Id {
 pub(crate) mod negotiate;
 
 ///
-#[allow(clippy::empty_docs)]
 pub mod prepare {
     /// The error returned by [`prepare_fetch()`][super::Connection::prepare_fetch()].
     #[derive(Debug, thiserror::Error)]
@@ -184,7 +182,7 @@ where
         progress: impl Progress,
         options: ref_map::Options,
     ) -> Result<Prepare<'remote, 'repo, T>, prepare::Error> {
-        if self.remote.refspecs(remote::Direction::Fetch).is_empty() {
+        if self.remote.refspecs(remote::Direction::Fetch).is_empty() && options.extra_refspecs.is_empty() {
             return Err(prepare::Error::MissingRefSpecs);
         }
         let ref_map = self.ref_map_inner(progress, options).await?;
