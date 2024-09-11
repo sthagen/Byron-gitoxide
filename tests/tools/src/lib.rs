@@ -10,7 +10,8 @@
 
 use std::{
     collections::BTreeMap,
-    ffi::OsString,
+    env,
+    ffi::{OsStr, OsString},
     io::Read,
     path::{Path, PathBuf},
     str::FromStr,
@@ -67,11 +68,11 @@ static EXCLUDE_LUT: Lazy<Mutex<Option<gix_worktree::Stack>>> = Lazy::new(|| {
         let mut buf = Vec::with_capacity(512);
         let case = gix_fs::Capabilities::probe(&work_tree)
             .ignore_case
-            .then_some(gix_ignore::glob::pattern::Case::Fold)
+            .then_some(gix_worktree::ignore::glob::pattern::Case::Fold)
             .unwrap_or_default();
         let state = gix_worktree::stack::State::IgnoreStack(gix_worktree::stack::state::Ignore::new(
             Default::default(),
-            gix_ignore::Search::from_git_dir(&gix_dir, None, &mut buf).ok()?,
+            gix_worktree::ignore::Search::from_git_dir(&gix_dir, None, &mut buf).ok()?,
             None,
             gix_worktree::stack::state::ignore::Source::WorktreeThenIdMappingIfNotSkipped,
         ));
@@ -150,8 +151,8 @@ fn git_version_from_bytes(bytes: &[u8]) -> Result<(u8, u8, u8)> {
 
 /// Set the current working dir to `new_cwd` and return a type that returns to the previous working dir on drop.
 pub fn set_current_dir(new_cwd: impl AsRef<Path>) -> std::io::Result<AutoRevertToPreviousCWD> {
-    let cwd = std::env::current_dir()?;
-    std::env::set_current_dir(new_cwd)?;
+    let cwd = env::current_dir()?;
+    env::set_current_dir(new_cwd)?;
     Ok(AutoRevertToPreviousCWD(cwd))
 }
 
@@ -166,7 +167,7 @@ pub struct AutoRevertToPreviousCWD(PathBuf);
 
 impl Drop for AutoRevertToPreviousCWD {
     fn drop(&mut self) {
-        std::env::set_current_dir(&self.0).unwrap();
+        env::set_current_dir(&self.0).unwrap();
     }
 }
 
@@ -461,7 +462,7 @@ fn scripted_fixture_read_only_with_args_inner(
                 crc_digest.update(&std::fs::read(&script_path).unwrap_or_else(|err| {
                     panic!(
                         "file {script_path:?} in CWD {:?} could not be read: {err}",
-                        std::env::current_dir().expect("valid cwd"),
+                        env::current_dir().expect("valid cwd"),
                     )
                 }));
                 for arg in &args {
@@ -548,7 +549,7 @@ fn scripted_fixture_read_only_with_args_inner(
                         script_location.display()
                     );
                 }
-                let script_absolute_path = std::env::current_dir()?.join(script_path);
+                let script_absolute_path = env::current_dir()?.join(script_path);
                 let mut cmd = std::process::Command::new(&script_absolute_path);
                 let output = match configure_command(&mut cmd, &args, &script_result_directory).output() {
                     Ok(out) => out,
@@ -569,7 +570,7 @@ fn scripted_fixture_read_only_with_args_inner(
                     output.stdout.as_bstr(),
                     output.stderr.as_bstr()
                 );
-                create_archive_if_not_on_ci(
+                create_archive_if_we_should(
                     &script_result_directory,
                     &archive_file_path,
                     script_identity_for_archive,
@@ -588,12 +589,15 @@ const NULL_DEVICE: &str = "NUL";
 #[cfg(not(windows))]
 const NULL_DEVICE: &str = "/dev/null";
 
-fn configure_command<'a>(
+fn configure_command<'a, I: IntoIterator<Item = S>, S: AsRef<OsStr>>(
     cmd: &'a mut std::process::Command,
-    args: &[String],
+    args: I,
     script_result_directory: &Path,
 ) -> &'a mut std::process::Command {
-    let mut msys_for_git_bash_on_windows = std::env::var_os("MSYS").unwrap_or_default();
+    // For simplicity, we extend the `MSYS` variable from from our own environment. This disregards
+    // state from any prior `cmd.env("MSYS")` or `cmd.env_remove("MSYS")` calls. Such calls should
+    // either be avoided, or made after this function returns (but before spawning the command).
+    let mut msys_for_git_bash_on_windows = env::var_os("MSYS").unwrap_or_default();
     msys_for_git_bash_on_windows.push(" winsymlinks:nativestrict");
     cmd.args(args)
         .stdout(std::process::Stdio::piped())
@@ -632,6 +636,14 @@ fn write_failure_marker(failure_marker: &Path) {
     std::fs::write(failure_marker, []).ok();
 }
 
+fn should_skip_all_archive_creation() -> bool {
+    // On Windows, we fail to remove the meta_dir and can't do anything about it, which means tests will see more
+    // in the directory than they should which makes them fail. It's probably a bad idea to generate archives on Windows
+    // anyway. Either Unix is portable OR no archive is created anywhere. This also means that Windows users can't create
+    // archives, but that's not a deal-breaker.
+    cfg!(windows) || (is_ci::cached() && env::var_os("GIX_TEST_CREATE_ARCHIVES_EVEN_ON_CI").is_none())
+}
+
 fn is_lfs_pointer_file(path: &Path) -> bool {
     const PREFIX: &[u8] = b"version https://gix-lfs";
     let mut buf = [0_u8; PREFIX.len()];
@@ -642,14 +654,10 @@ fn is_lfs_pointer_file(path: &Path) -> bool {
         .map_or(false, |_| buf.starts_with(PREFIX))
 }
 
-/// The `script_identity` will be baked into the soon to be created `archive` as it identitifies the script
+/// The `script_identity` will be baked into the soon to be created `archive` as it identifies the script
 /// that created the contents of `source_dir`.
-fn create_archive_if_not_on_ci(source_dir: &Path, archive: &Path, script_identity: u32) -> std::io::Result<()> {
-    // on windows, we fail to remove the meta_dir and can't do anything about it, which means tests will see more
-    // in the directory than they should which makes them fail. It's probably a bad idea to generate archives on windows
-    // anyway. Either unix is portable OR no archive is created anywhere. This also means that windows users can't create
-    // archives, but that's not a deal-breaker.
-    if cfg!(windows) || is_ci::cached() || is_excluded(archive) {
+fn create_archive_if_we_should(source_dir: &Path, archive: &Path, script_identity: u32) -> std::io::Result<()> {
+    if should_skip_all_archive_creation() || is_excluded(archive) {
         return Ok(());
     }
     if is_lfs_pointer_file(archive) {
@@ -702,12 +710,12 @@ fn is_excluded(archive: &Path) -> bool {
     let mut lut = EXCLUDE_LUT.lock();
     lut.as_mut()
         .and_then(|cache| {
-            let archive = std::env::current_dir().ok()?.join(archive);
+            let archive = env::current_dir().ok()?.join(archive);
             let relative_path = archive.strip_prefix(cache.base()).ok()?;
             cache
                 .at_path(
                     relative_path,
-                    Some(gix_index::entry::Mode::FILE),
+                    Some(gix_worktree::index::entry::Mode::FILE),
                     &gix_worktree::object::find::Never,
                 )
                 .ok()?
@@ -746,7 +754,7 @@ fn extract_archive(
         let mut buf = Vec::new();
         #[cfg_attr(feature = "xz", allow(unused_mut))]
         let mut input_archive = std::fs::File::open(archive)?;
-        if std::env::var_os("GIX_TEST_IGNORE_ARCHIVES").is_some() {
+        if env::var_os("GIX_TEST_IGNORE_ARCHIVES").is_some() {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::Other,
                 format!(
@@ -848,16 +856,16 @@ impl<'a> Env<'a> {
 
     /// Set `var` to `value`.
     pub fn set(mut self, var: &'a str, value: impl Into<String>) -> Self {
-        let prev = std::env::var_os(var);
-        std::env::set_var(var, value.into());
+        let prev = env::var_os(var);
+        env::set_var(var, value.into());
         self.altered_vars.push((var, prev));
         self
     }
 
     /// Unset `var`.
     pub fn unset(mut self, var: &'a str) -> Self {
-        let prev = std::env::var_os(var);
-        std::env::remove_var(var);
+        let prev = env::var_os(var);
+        env::remove_var(var);
         self.altered_vars.push((var, prev));
         self
     }
@@ -867,8 +875,8 @@ impl<'a> Drop for Env<'a> {
     fn drop(&mut self) {
         for (var, prev_value) in self.altered_vars.iter().rev() {
             match prev_value {
-                Some(value) => std::env::set_var(var, value),
-                None => std::env::remove_var(var),
+                Some(value) => env::set_var(var, value),
+                None => env::remove_var(var),
             }
         }
     }
@@ -920,10 +928,9 @@ mod tests {
         populate_ad_hoc_config_files(temp.path());
 
         let mut cmd = std::process::Command::new("git");
-        let args = ["config", "-l", "--show-origin"].map(String::from);
         cmd.env("GIT_CONFIG_SYSTEM", SCOPE_ENV_VALUE);
         cmd.env("GIT_CONFIG_GLOBAL", SCOPE_ENV_VALUE);
-        configure_command(&mut cmd, &args, temp.path());
+        configure_command(&mut cmd, ["config", "-l", "--show-origin"], temp.path());
 
         let output = cmd.output().expect("can run git");
         let lines: Vec<_> = output
