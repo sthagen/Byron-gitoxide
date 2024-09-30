@@ -1325,6 +1325,7 @@ dependencies = [
  "gix-index 0.35.0",
  "gix-lock 14.0.0",
  "gix-mailmap",
+ "gix-merge",
  "gix-negotiate",
  "gix-object 0.44.0",
  "gix-odb",
@@ -2036,6 +2037,29 @@ dependencies = [
  "gix-actor 0.32.0",
  "gix-date 0.9.0",
  "gix-testtools",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "gix-merge"
+version = "0.0.0"
+dependencies = [
+ "bstr",
+ "document-features",
+ "gix-command",
+ "gix-filter",
+ "gix-fs 0.11.3",
+ "gix-hash 0.14.2",
+ "gix-object 0.44.0",
+ "gix-path 0.10.11",
+ "gix-quote 0.4.12",
+ "gix-tempfile 14.0.2",
+ "gix-testtools",
+ "gix-trace 0.1.10",
+ "gix-worktree 0.36.0",
+ "imara-diff",
+ "pretty_assertions",
  "serde",
  "thiserror",
 ]
