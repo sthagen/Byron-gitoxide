@@ -43,8 +43,8 @@ jobs:
       - name: Verify that we are in an environment with limited dev tools
         run: |
           set -x
-          for pattern in cmake g++ libssl-dev make pkgconf pkg-config; do
-            if dpkg-query --status -- "$pattern"; then
+          for package in cmake g++ libssl-dev make pkgconf pkg-config; do
+            if dpkg-query --status -- "$package"; then
               exit 1
             fi
           done
@@ -64,6 +64,9 @@ jobs:
           pattern='.*\b(-sys|cc|cmake|pkg-config|vcpkg)\b.*'
           ! GREP_COLORS='ms=30;48;5;214' grep --color=always -Ex -C 1000000 -e "$pattern" tree.txt
         continue-on-error: true
+      - name: Check for unrecognized *-sys dependencies
+        run: |
+          ! grep -qP '(?<!\blinux-raw)-sys\b' tree.txt
       - name: Wrap cc1 (and cc1plus if present) to record calls
         run: |
           cat >/usr/local/bin/wrapper1 <<'EOF'
@@ -198,6 +201,42 @@ jobs:
   test-32bit:
     runs-on: ubuntu-latest
 
+    container: i386/debian:stable-slim
+
+    steps:
+      - name: Prerequisites
+        run: |
+          prerequisites=(
+            build-essential
+            ca-certificates
+            cmake
+            curl
+            git
+            jq
+            libssl-dev
+            libstdc++6:amd64  # To support external 64-bit Node.js for actions.
+            pkgconf
+          )
+          dpkg --add-architecture amd64
+          apt-get update
+          apt-get install --no-install-recommends -y -- "${prerequisites[@]}"
+        shell: bash
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable-i686-unknown-linux-gnu  # Otherwise it may misdetect based on the amd64 kernel.
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+      - name: Make `system` scope nonempty for "GitInstallation" tests
+        run: git config --system gitoxide.imaginary.arbitraryVariable arbitraryValue
+      - name: Test (nextest)
+        run: cargo nextest run --workspace --no-fail-fast
+
+  test-32bit-cross:
+    runs-on: ubuntu-latest
+
     strategy:
       matrix:
         target: [ armv7-linux-androideabi ]
@@ -211,15 +250,17 @@ jobs:
         with:
           toolchain: stable
           targets: ${{ matrix.target }}
-      - uses: taiki-e/install-action@v2
+      - name: Install cross
+        uses: taiki-e/install-action@v2
         with:
           tool: cross
       - name: check
         run: cross check -p gix --target ${{ matrix.target }}
       - name: Test (unit)
-        # run high-level unit tests that exercise a lot of code while being pure Rust to ease building test binaries.
-        # TODO: figure out why `git` doesn't pick up environment configuration so build scripts fail when using `-p gix`.
-        run: cross test -p gix-hashtable --target ${{ matrix.target }}
+        run: |
+          # Run some high-level unit tests that exercise various pure Rust code to ease building test binaries.
+          # We would prefer `-p gix`. But with `cross`, fixture scripts try to run amd64 `git` as an armv7 binary.
+          cross test -p gix-hashtable --target ${{ matrix.target }}
 
   lint:
     runs-on: ubuntu-latest
@@ -396,6 +437,7 @@ jobs:
       - test-journey
       - test-fast
       - test-32bit
+      - test-32bit-cross
       - lint
       - cargo-deny
       - check-packetline
