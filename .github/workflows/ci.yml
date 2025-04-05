@@ -309,6 +309,24 @@ jobs:
           GIX_TEST_IGNORE_ARCHIVES: '1'
         run: cargo nextest run --workspace --no-fail-fast
 
+  test-32bit-windows-size:
+    runs-on: windows-latest
+
+    env:
+      TARGET: i686-pc-windows-msvc
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ env.TARGET }}
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+      - name: Test (nextest)
+        run: cargo nextest run --target $env:TARGET --workspace --no-fail-fast size
+
   lint:
     runs-on: ubuntu-latest
 
@@ -344,10 +362,28 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: EmbarkStudios/cargo-deny-action@v2
+      - name: Install tomlq
+        run: |
+          # The runner already has the `yq` command but not its associated `tomlq` command.
+          sudo apt-get update
+          sudo apt-get install yq
+      - name: Strict check, but omit gix-testtools
+        uses: EmbarkStudios/cargo-deny-action@v2
         with:
-          arguments: --workspace --all-features
           command: check advisories
+          arguments: --workspace --all-features --exclude gix-testtools
+      - name: Configure less strict check
+        run: |
+          filter='.advisories.ignore += [
+            { id: "RUSTSEC-2025-0021", reason: "gix-testtools can’t upgrade from old gix-features yet" }
+          ]'
+          tomlq "$filter" deny.toml --toml-output > deny-but-ignore-RUSTSEC-2025-0021.toml
+      - name: Less strict check, but include gix-testtools
+        uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check advisories
+          arguments: --workspace --all-features
+          command-arguments: --config deny-but-ignore-RUSTSEC-2025-0021.toml
 
   cargo-deny:
     runs-on: ubuntu-latest
@@ -356,8 +392,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
-          arguments: --workspace --all-features
           command: check bans licenses sources
+          arguments: --workspace --all-features
 
   wasm:
     name: WebAssembly
@@ -486,6 +522,7 @@ jobs:
       - test-fast
       - test-fixtures-windows
       - test-32bit
+      - test-32bit-windows-size
       - lint
       - cargo-deny
       - check-packetline
