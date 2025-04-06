@@ -30,11 +30,12 @@ blocking-client = [
     "fetch"
 ]
 ## As above, but provides async implementations instead.
+# no `dep:` for futures-lite (https://github.com/rust-secure-code/cargo-auditable/issues/124)
 async-client = [
     "gix-transport/async-client",
     "dep:async-trait",
     "dep:futures-io",
-    "dep:futures-lite",
+    "futures-lite",
     "handshake",
     "fetch"
 ]
@@ -67,7 +68,7 @@ path = "tests/async-protocol.rs"
 required-features = ["async-client"]
 
 [dependencies]
-gix-features = { version = "^0.41.0", path = "../gix-features", features = [
+gix-features = { version = "^0.41.1", path = "../gix-features", features = [
     "progress",
 ] }
 gix-transport = { version = "^0.46.0", path = "../gix-transport" }
