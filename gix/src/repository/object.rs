@@ -10,6 +10,7 @@ use gix_ref::{
 };
 use smallvec::SmallVec;
 
+use crate::repository::{new_commit, new_commit_as};
 use crate::{commit, ext::ObjectIdExt, object, tag, Blob, Commit, Id, Object, Reference, Tag, Tree};
 
 /// Tree editing
@@ -86,6 +87,8 @@ impl crate::Repository {
     /// Obtain information about an object without fully decoding it, or fail if the object doesn't exist.
     ///
     /// Note that despite being cheaper than [`Self::find_object()`], there is still some effort traversing delta-chains.
+    /// Also note that for empty trees and blobs, it will always report it to exist in loose objects, even if they don't
+    /// exist or if they exist in a pack.
     #[doc(alias = "read_header", alias = "git2")]
     pub fn find_header(&self, id: impl Into<ObjectId>) -> Result<gix_odb::find::Header, object::find::existing::Error> {
         let id = id.into();
@@ -234,7 +237,7 @@ impl crate::Repository {
     /// Create a tag reference named `name` (without `refs/tags/` prefix) pointing to a newly created tag object
     /// which in turn points to `target` and return the newly created reference.
     ///
-    /// It will be created with `constraint` which is most commonly to [only create it][PreviousValue::MustNotExist]
+    /// It will be created with `constraint` which is most commonly to [only create it](PreviousValue::MustNotExist)
     /// or to [force overwriting a possibly existing tag](PreviousValue::Any).
     pub fn tag(
         &self,
@@ -376,6 +379,49 @@ impl crate::Repository {
         self.commit_as(committer, author, reference, message, tree, parents)
     }
 
+    /// Create a new commit object with `message` referring to `tree` with `parents`, and write it to the object database.
+    /// Do not, however, update any references.
+    ///
+    /// The commit is created without message encoding field, which can be assumed to be UTF-8.
+    /// `author` and `committer` fields are pre-set from the configuration, which can be altered
+    /// [temporarily](crate::Repository::config_snapshot_mut()) before the call if required.
+    pub fn new_commit(
+        &self,
+        message: impl AsRef<str>,
+        tree: impl Into<ObjectId>,
+        parents: impl IntoIterator<Item = impl Into<ObjectId>>,
+    ) -> Result<Commit<'_>, new_commit::Error> {
+        let author = self.author().ok_or(new_commit::Error::AuthorMissing)??;
+        let committer = self.committer().ok_or(new_commit::Error::CommitterMissing)??;
+        Ok(self.new_commit_as(committer, author, message, tree, parents)?)
+    }
+
+    /// Create a nwe commit object with `message` referring to `tree` with `parents`, using the specified
+    /// `committer` and `author`, and write it to the object database. Do not, however, update any references.
+    ///
+    /// This forces setting the commit time and author time by hand. Note that typically, committer and author are the same.
+    /// The commit is created without message encoding field, which can be assumed to be UTF-8.
+    pub fn new_commit_as<'a, 'c>(
+        &self,
+        committer: impl Into<gix_actor::SignatureRef<'c>>,
+        author: impl Into<gix_actor::SignatureRef<'a>>,
+        message: impl AsRef<str>,
+        tree: impl Into<ObjectId>,
+        parents: impl IntoIterator<Item = impl Into<ObjectId>>,
+    ) -> Result<Commit<'_>, new_commit_as::Error> {
+        let commit = gix_object::Commit {
+            message: message.as_ref().into(),
+            tree: tree.into(),
+            author: author.into().into(),
+            committer: committer.into().into(),
+            encoding: None,
+            parents: parents.into_iter().map(Into::into).collect(),
+            extra_headers: Default::default(),
+        };
+        let id = self.write_object(commit)?;
+        Ok(id.object()?.into_commit())
+    }
+
     /// Return an empty tree object, suitable for [getting changes](Tree::changes()).
     ///
     /// Note that the returned object is special and doesn't necessarily physically exist in the object database.
@@ -392,7 +438,7 @@ impl crate::Repository {
     /// This means that this object can be used in an uninitialized, empty repository which would report to have no objects at all.
     pub fn empty_blob(&self) -> Blob<'_> {
         Blob {
-            id: gix_hash::ObjectId::empty_blob(self.object_hash()),
+            id: self.object_hash().empty_blob(),
             data: Vec::new(),
             repo: self,
         }
