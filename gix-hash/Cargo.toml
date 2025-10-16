@@ -9,13 +9,16 @@ repository = "https://github.com/GitoxideLabs/gitoxide"
 license = "MIT OR Apache-2.0"
 edition = "2021"
 include = ["src/**/*", "LICENSE-*"]
-rust-version = "1.70"
+rust-version = "1.82"
 
 [lib]
 doctest = false
 test = false
 
 [features]
+default = ["sha1"]
+## Support for SHA-1 digests.
+sha1 = []
 ## Data structures implement `serde::Serialize` and `serde::Deserialize`.
 serde = ["dep:serde", "faster-hex/serde"]
 
