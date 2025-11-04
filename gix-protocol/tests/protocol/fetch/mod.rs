@@ -106,7 +106,6 @@ impl DelegateBlocking for CloneRefInWantDelegate {
         &mut self,
         _server: &Capabilities,
         _arguments: &mut Vec<BString>,
-        _features: &mut Vec<(&str, Option<Cow<'_, str>>)>,
     ) -> io::Result<ls_refs::Action> {
         Ok(ls_refs::Action::Skip)
     }
@@ -150,7 +149,6 @@ impl DelegateBlocking for LsRemoteDelegate {
         &mut self,
         _server: &Capabilities,
         _arguments: &mut Vec<BString>,
-        _features: &mut Vec<(&str, Option<Cow<'_, str>>)>,
     ) -> std::io::Result<ls_refs::Action> {
         match self.abort_with.take() {
             Some(err) => Err(err),
@@ -302,9 +300,9 @@ pub fn transport<W: futures_io::AsyncWrite + Unpin>(
     path: &str,
     desired_version: gix_transport::Protocol,
     mode: gix_transport::client::git::ConnectMode,
-) -> gix_transport::client::git::Connection<Cursor, W> {
+) -> gix_transport::client::git::async_io::Connection<Cursor, W> {
     let response = fixture_bytes(path);
-    gix_transport::client::git::Connection::new(
+    gix_transport::client::git::async_io::Connection::new(
         Cursor::new(response),
         out,
         desired_version,
@@ -321,9 +319,9 @@ pub fn transport<W: std::io::Write>(
     path: &str,
     version: gix_transport::Protocol,
     mode: gix_transport::client::git::ConnectMode,
-) -> gix_transport::client::git::Connection<Cursor, W> {
+) -> gix_transport::client::git::blocking_io::Connection<Cursor, W> {
     let response = fixture_bytes(path);
-    gix_transport::client::git::Connection::new(
+    gix_transport::client::git::blocking_io::Connection::new(
         Cursor::new(response),
         out,
         version,
