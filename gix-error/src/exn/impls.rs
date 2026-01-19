@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::collections::VecDeque;
 use std::error::Error;
 use std::fmt;
-use std::fmt::Formatter;
 use std::marker::PhantomData;
 use std::ops::Deref;
 use std::panic::Location;
 
-use crate::Exn;
+use crate::{write_location, ChainedError, Exn};
 
 impl<E: Error + Send + Sync + 'static> From<E> for Exn<E> {
     #[track_caller]
@@ -69,10 +69,8 @@ impl<E: Error + Send + Sync + 'static> Exn<E> {
     }
 
     /// Create a new exception with the given error and children.
-    ///
-    /// It's no error if `children` is empty.
     #[track_caller]
-    pub fn from_iter<T, I>(children: I, err: E) -> Self
+    pub fn raise_all<T, I>(children: I, err: E) -> Self
     where
         T: Error + Send + Sync + 'static,
         I: IntoIterator,
@@ -94,9 +92,17 @@ impl<E: Error + Send + Sync + 'static> Exn<E> {
         new_exn
     }
 
+    /// Use the current exception as the head of a chain, adding `err` to its children.
+    #[track_caller]
+    pub fn chain<T: Error + Send + Sync + 'static>(mut self, err: impl Into<Exn<T>>) -> Exn<E> {
+        let err = err.into();
+        self.frame.children.push(*err.frame);
+        self
+    }
+
     /// Use the current exception the head of a chain, adding `errors` to its children.
     #[track_caller]
-    pub fn chain_iter<T, I>(mut self, errors: I) -> Exn<E>
+    pub fn chain_all<T, I>(mut self, errors: I) -> Exn<E>
     where
         T: Error + Send + Sync + 'static,
         I: IntoIterator,
@@ -114,14 +120,6 @@ impl<E: Error + Send + Sync + 'static> Exn<E> {
     /// This is useful if one wants to re-organise errors, and the error layout is well known.
     pub fn drain_children(&mut self) -> impl Iterator<Item = Exn> + '_ {
         self.frame.children.drain(..).map(Exn::from)
-    }
-
-    /// Use the current exception the head of a chain, adding all `err` to its children.
-    #[track_caller]
-    pub fn chain<T: Error + Send + Sync + 'static>(mut self, err: impl Into<Exn<T>>) -> Exn<E> {
-        let err = err.into();
-        self.frame.children.push(*err.frame);
-        self
     }
 
     /// Erase the type of this instance and turn it into a bare `Exn`.
@@ -148,7 +146,7 @@ impl<E: Error + Send + Sync + 'static> Exn<E> {
     }
 
     /// Return the current exception.
-    pub fn as_error(&self) -> &E {
+    pub fn error(&self) -> &E {
         self.frame
             .error
             .downcast_ref()
@@ -175,25 +173,35 @@ impl<E: Error + Send + Sync + 'static> Exn<E> {
     }
 
     /// Turn ourselves into a top-level [Error] that implements [`std::error::Error`].
+    ///
+    /// [Error]: crate::Error
     pub fn into_error(self) -> crate::Error {
         self.into()
     }
 
+    /// Convert this error tree into a chain of errors, breadth first, which flattens the tree
+    /// but retains all type dynamic type information.
+    ///
+    /// This is useful for inter-op with `anyhow`.
+    pub fn into_chain(self) -> crate::ChainedError {
+        self.into()
+    }
+
     /// Return the underlying exception frame.
-    pub fn as_frame(&self) -> &Frame {
+    pub fn frame(&self) -> &Frame {
         &self.frame
     }
 
     /// Iterate over all frames in breadth-first order. The first frame is this instance,
     /// followed by all of its children.
     pub fn iter(&self) -> impl Iterator<Item = &Frame> {
-        self.as_frame().iter()
+        self.frame().iter_frames()
     }
 
     /// Iterate over all frames and find one that downcasts into error of type `T`.
     /// Note that the search includes this instance as well.
     pub fn downcast_any_ref<T: Error + 'static>(&self) -> Option<&T> {
-        self.iter().find_map(|e| e.downcast())
+        self.iter().find_map(|e| e.error.downcast_ref())
     }
 }
 
@@ -204,18 +212,18 @@ where
     type Target = E;
 
     fn deref(&self) -> &Self::Target {
-        self.as_error()
+        self.error()
     }
 }
 
 impl<E: Error + Send + Sync + 'static> fmt::Debug for Exn<E> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write_frame_recursive(f, self.as_frame(), "", ErrorMode::Display, TreeMode::Linearize)
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write_frame_recursive(f, self.frame(), "", ErrorMode::Display, TreeMode::Linearize)
     }
 }
 
 impl fmt::Debug for Frame {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write_frame_recursive(f, self, "", ErrorMode::Display, TreeMode::Linearize)
     }
 }
@@ -233,20 +241,20 @@ enum TreeMode {
 }
 
 fn write_frame_recursive(
-    f: &mut Formatter<'_>,
+    f: &mut fmt::Formatter<'_>,
     frame: &Frame,
     prefix: &str,
     err_mode: ErrorMode,
     tree_mode: TreeMode,
 ) -> fmt::Result {
     match err_mode {
-        ErrorMode::Display => fmt::Display::fmt(frame.as_error(), f),
+        ErrorMode::Display => fmt::Display::fmt(frame.error(), f),
         ErrorMode::Debug => {
-            write!(f, "{:?}", frame.as_error())
+            write!(f, "{:?}", frame.error())
         }
     }?;
     if !f.alternate() {
-        write_location(f, frame)?;
+        write_location(f, frame.location)?;
     }
 
     let children = frame.children();
@@ -257,9 +265,8 @@ fn write_frame_recursive(
         write!(f, "\n{prefix}└─ ")?;
 
         let child_child_len = child.children().len();
-        let may_linerarize_chain =
-            matches!(tree_mode, TreeMode::Linearize) && children_len == 1 && child_child_len == 1;
-        if may_linerarize_chain {
+        let may_linearize_chain = matches!(tree_mode, TreeMode::Linearize) && children_len == 1 && child_child_len == 1;
+        if may_linearize_chain {
             write_frame_recursive(f, child, prefix, err_mode, tree_mode)?;
         } else if cidx < children_len - 1 {
             write_frame_recursive(f, child, &format!("{prefix}|   "), err_mode, tree_mode)?;
@@ -271,14 +278,9 @@ fn write_frame_recursive(
     Ok(())
 }
 
-fn write_location(f: &mut Formatter<'_>, exn: &Frame) -> fmt::Result {
-    let location = exn.location();
-    write!(f, ", at {}:{}:{}", location.file(), location.line(), location.column())
-}
-
 impl<E: Error + Send + Sync + 'static> fmt::Display for Exn<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        std::fmt::Display::fmt(&self.frame, f)
+        fmt::Display::fmt(&self.frame, f)
     }
 }
 
@@ -288,7 +290,7 @@ impl fmt::Display for Frame {
             // Avoid printing alternate versions of the debug info, keep it in one line, also print the tree.
             write_frame_recursive(f, self, "", ErrorMode::Debug, TreeMode::Verbatim)
         } else {
-            fmt::Display::fmt(self.as_error(), f)
+            fmt::Display::fmt(self.error(), f)
         }
     }
 }
@@ -305,13 +307,8 @@ pub struct Frame {
 
 impl Frame {
     /// Return the error as a reference to [`Error`].
-    pub fn as_error(&self) -> &(dyn Error + Send + Sync + 'static) {
+    pub fn error(&self) -> &(dyn Error + Send + Sync + 'static) {
         &*self.error
-    }
-
-    /// Try to downcast this error into the exact type T, or return `None`
-    pub fn downcast<T: Error + 'static>(&self) -> Option<&T> {
-        self.error.downcast_ref()
     }
 
     /// Return the source code location where this exception frame was created.
@@ -322,13 +319,6 @@ impl Frame {
     /// Return a slice of the children of the exception.
     pub fn children(&self) -> &[Frame] {
         &self.children
-    }
-}
-
-impl Frame {
-    /// Return the error as a reference to [`Error`].
-    pub(crate) fn as_error_no_send_sync(&self) -> &(dyn Error + 'static) {
-        &*self.error
     }
 }
 
@@ -394,7 +384,7 @@ impl Frame {
 
     /// Iterate over all frames in breadth-first order. The first frame is this instance,
     /// followed by all of its children.
-    pub fn iter(&self) -> impl Iterator<Item = &Frame> + '_ {
+    pub fn iter_frames(&self) -> impl Iterator<Item = &Frame> + '_ {
         let mut queue = std::collections::VecDeque::new();
         queue.push_back(self);
         BreadthFirstFrames { queue }
@@ -427,6 +417,16 @@ where
     }
 }
 
+#[cfg(feature = "anyhow")]
+impl<E> From<Exn<E>> for anyhow::Error
+where
+    E: Error + Send + Sync + 'static,
+{
+    fn from(err: Exn<E>) -> Self {
+        anyhow::Error::from(err.into_chain())
+    }
+}
+
 impl<E> From<Exn<E>> for Frame
 where
     E: Error + Send + Sync + 'static,
@@ -451,14 +451,14 @@ impl From<Frame> for Exn {
 pub struct Untyped(Box<dyn Error + Send + Sync + 'static>);
 
 impl fmt::Display for Untyped {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        std::fmt::Display::fmt(&self.0, f)
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.0, f)
     }
 }
 
 impl fmt::Debug for Untyped {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        std::fmt::Debug::fmt(&self.0, f)
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.0, f)
     }
 }
 
@@ -468,14 +468,14 @@ impl Error for Untyped {}
 pub struct Something;
 
 impl fmt::Display for Something {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("Something went wrong")
     }
 }
 
 impl fmt::Debug for Something {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        std::fmt::Display::fmt(&self, f)
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self, f)
     }
 }
 
@@ -518,4 +518,30 @@ impl SourceError {
             alt_debug: format!("{err:#?}"),
         }
     }
+}
+
+impl<E> From<Exn<E>> for ChainedError
+where
+    E: std::error::Error + Send + Sync + 'static,
+{
+    fn from(mut err: Exn<E>) -> Self {
+        let stack: VecDeque<_> = err.frame.children.drain(..).collect();
+        let location = err.frame.location;
+        ChainedError {
+            err: err.into_box(),
+            location,
+            source: recurse_source_frames(stack),
+        }
+    }
+}
+
+fn recurse_source_frames(mut stack: VecDeque<Frame>) -> Option<Box<ChainedError>> {
+    let frame = stack.pop_front()?;
+    stack.extend(frame.children);
+    Box::new(ChainedError {
+        err: frame.error,
+        location: frame.location,
+        source: recurse_source_frames(stack),
+    })
+    .into()
 }
