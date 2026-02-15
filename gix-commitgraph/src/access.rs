@@ -11,6 +11,13 @@ impl Graph {
         r.file.commit_at(r.pos)
     }
 
+    /// The kind of hash used in this `Graph`.
+    ///
+    /// Note that it is always conforming to the hash used in the owning repository.
+    pub fn object_hash(&self) -> gix_hash::Kind {
+        self.files.first().object_hash()
+    }
+
     /// Returns the commit matching the given `id`.
     pub fn commit_by_id(&self, id: impl AsRef<gix_hash::oid>) -> Option<Commit<'_>> {
         let r = self.lookup_by_id(id.as_ref())?;
