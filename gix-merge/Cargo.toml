@@ -7,6 +7,7 @@ description = "A crate of the gitoxide project implementing merge algorithms"
 authors = ["Sebastian Thiel <sebastian.thiel@icloud.com>"]
 edition = "2021"
 rust-version = "1.82"
+include = ["/src/**/*", "/LICENSE-*"]
 
 [lints]
 workspace = true
@@ -35,7 +36,7 @@ gix-revision = { version = "^0.43.0", path = "../gix-revision", default-features
 gix-revwalk = { version = "^0.29.0", path = "../gix-revwalk" }
 gix-diff = { version = "^0.61.0", path = "../gix-diff", default-features = false, features = ["blob"] }
 gix-index = { version = "^0.49.0", path = "../gix-index" }
-imara-diff = { package = "gix-imara-diff-01", version = "0.1.8", path = "../gix-imara-diff-01" }
+imara-diff = { package = "gix-imara-diff", version = "0.2.0", path = "../gix-imara-diff" }
 
 thiserror = "2.0.18"
 bstr = { version = "1.12.0", default-features = false }

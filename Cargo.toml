@@ -10,7 +10,7 @@ license = "MIT OR Apache-2.0"
 version = "0.52.0"
 rust-version = "1.82"
 default-run = "gix"
-include = ["src/**/*", "/build.rs", "LICENSE-*", "README.md"]
+include = ["/src/**/*", "/build.rs", "/LICENSE-*", "/README.md"]
 resolver = "2"
 
 [[bin]]
@@ -242,7 +242,6 @@ members = [
     "gix-object",
     "gix-glob",
     "gix-diff",
-    "gix-imara-diff-01",
     "gix-imara-diff",
     "gix-merge",
     "gix-date",
