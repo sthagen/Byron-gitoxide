@@ -4,7 +4,7 @@
     doc = ::document_features::document_features!()
 )]
 #![cfg_attr(all(doc, feature = "document-features"), feature(doc_cfg))]
-#![deny(unsafe_code, missing_docs, rust_2018_idioms)]
+#![deny(unsafe_code, missing_docs)]
 
 use std::{ops::Range, path::PathBuf};
 
@@ -112,6 +112,12 @@ pub struct AccelerateLookup<'a> {
 /// As opposed to a snapshot, it's meant to be altered and eventually be written back to disk or converted into a tree.
 /// We treat index and its state synonymous.
 ///
+/// # Path Format
+///
+/// All entry paths stored by [`State`], and all path-like arguments used to access entries, are repository-relative byte
+/// strings with `/` as separator. They are not platform-native filesystem paths, must not be absolute, and must not use
+/// separators like `\`; convert worktree or absolute paths to this representation before lookup or insertion.
+///
 /// # A note on safety
 ///
 /// An index (i.e. [`State`]) created by hand is not guaranteed to have valid entry paths as they are entirely controlled
@@ -159,7 +165,7 @@ pub struct State {
 mod impls {
     use std::fmt::{Debug, Formatter};
 
-    use crate::{entry::Stage, State};
+    use crate::{State, entry::Stage};
 
     impl Debug for State {
         fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {

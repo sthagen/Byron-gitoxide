@@ -1,10 +1,10 @@
 use gix_diff::{
+    Rewrites,
     rewrites::{Copies, CopySource},
     tree::{recorder::Location, visit::Relation},
     tree_with_rewrites::{Change, Options},
-    Rewrites,
 };
-use gix_object::{bstr::BStr, TreeRefIter};
+use gix_object::{TreeRefIter, bstr::BStr};
 
 #[test]
 fn empty_to_new_tree_without_rename_tracking() -> crate::Result {
@@ -107,8 +107,8 @@ fn empty_to_new_tree_without_rename_tracking() -> crate::Result {
     {
         let (lhs, rhs, mut cache, odb) = repo_with_trees(None, "c1 - initial")?;
         let err = gix_diff::tree_with_rewrites(
-            TreeRefIter::from_bytes(&lhs, gix_testtools::hash_kind_from_env().unwrap_or_default()),
-            TreeRefIter::from_bytes(&rhs, gix_testtools::hash_kind_from_env().unwrap_or_default()),
+            TreeRefIter::from_bytes(&lhs, gix_testtools::object_hash()),
+            TreeRefIter::from_bytes(&rhs, gix_testtools::object_hash()),
             &mut cache,
             &mut Default::default(),
             &odb,
@@ -1960,7 +1960,7 @@ mod util {
     }
 
     pub fn fixture_hash_kind() -> gix_hash::Kind {
-        gix_testtools::hash_kind_from_env().unwrap_or_default()
+        gix_testtools::object_hash()
     }
 
     pub fn repo_with_trees(

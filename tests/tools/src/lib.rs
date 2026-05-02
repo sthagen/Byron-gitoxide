@@ -985,8 +985,7 @@ where
             let (ro_dir, _res_ignored) =
                 rust_fixture_read_only_inner(name, version, object_hash, &mut make_fixture, None, root)?;
             copy_recursively_into_existing_dir(ro_dir, dst.path())?;
-            let res = make_fixture(FixtureState::Fresh(dst.path()))?;
-            res
+            make_fixture(FixtureState::Fresh(dst.path()))?
         }
         Creation::Execute => {
             let (_, res) =
@@ -1059,7 +1058,7 @@ fn force_and_dir(
     destination_dir: Option<&Path>,
     root: DirectoryRoot,
     archive_name: impl AsRef<Path>,
-    hash_kind: Option<gix_hash::Kind>,
+    object_hash: Option<gix_hash::Kind>,
     script_identity: &dyn std::fmt::Display,
 ) -> (bool, PathBuf) {
     destination_dir.map_or_else(
@@ -1067,11 +1066,7 @@ fn force_and_dir(
             let dir = fixture_path_inner(
                 Path::new("generated-do-not-edit")
                     .join(archive_name)
-                    .join(
-                        hash_kind
-                            .unwrap_or_else(|| hash_kind_from_env().unwrap_or_default())
-                            .to_string(),
-                    )
+                    .join(object_hash.unwrap_or_else(self::object_hash).to_string())
                     .join(format!("{}-{}", script_identity, family_name())),
                 root,
             );
@@ -1166,7 +1161,7 @@ where
         gix_tempfile::signal::handler::Mode::DeleteTempfilesOnTerminationAndRestoreDefaultBehaviour,
     );
 
-    let hash_kind = hash_kind_from_env().unwrap_or_default();
+    let object_hash = object_hash();
 
     let script_location = script_name.as_ref();
     let script_path = fixture_path_inner(script_location, root);
@@ -1176,10 +1171,10 @@ where
     let post_version = post_process.as_ref().map(|(v, _)| *v);
     let script_identity = {
         let mut map = SCRIPT_IDENTITY.lock();
-        let init = if hash_kind == gix_hash::Kind::Sha1 {
+        let init = if object_hash == gix_hash::Kind::Sha1 {
             script_path.clone()
         } else {
-            script_path.clone().join(hash_kind.to_string())
+            script_path.clone().join(object_hash.to_string())
         };
         let key = args.iter().fold(init, |p, a| p.join(a));
         // Include post_version in the key if present
@@ -1224,10 +1219,10 @@ where
                 }
                 ArgsInHash::No => "".into(),
             };
-            let potential_hash_suffix = if hash_kind == gix_hash::Kind::Sha1 {
+            let potential_hash_suffix = if object_hash == gix_hash::Kind::Sha1 {
                 "".into()
             } else {
-                format!("_{hash_kind}")
+                format!("_{object_hash}")
             };
             Path::new(ARCHIVE_DIR_NAME).join(format!(
                 "{}{suffix}{potential_hash_suffix}.{}",
@@ -1241,7 +1236,7 @@ where
         destination_dir,
         root,
         script_basename,
-        Some(hash_kind),
+        Some(object_hash),
         &script_identity,
     );
     let _marker = marker_if_needed(destination_dir, script_basename)?;
@@ -1262,14 +1257,14 @@ where
         |fixture_state| {
             if let FixtureState::Uninitialized(dir) = fixture_state {
                 let mut cmd = std::process::Command::new(&script_absolute_path);
-                let output = match configure_command(&mut cmd, hash_kind, &args, dir).output() {
+                let output = match configure_command(&mut cmd, object_hash, &args, dir).output() {
                     Ok(out) => out,
                     Err(err)
                         if err.kind() == std::io::ErrorKind::PermissionDenied
                             || err.raw_os_error() == Some(193) /* windows */ =>
                     {
                         cmd = std::process::Command::new(bash_program());
-                        configure_command(cmd.arg(&script_absolute_path), hash_kind, &args, dir).output()?
+                        configure_command(cmd.arg(&script_absolute_path), object_hash, &args, dir).output()?
                     }
                     Err(err) => return Err(err.into()),
                 };
@@ -1301,7 +1296,7 @@ where
 /// # Panics
 ///
 /// If the value set in `GIX_TEST_FIXTURE_HASH` is not valid.
-pub fn hash_kind_from_env() -> Option<gix_hash::Kind> {
+pub fn object_hash_from_env() -> Option<gix_hash::Kind> {
     static FIXTURE_HASH: LazyLock<Option<gix_hash::Kind>> = LazyLock::new(|| {
         env::var_os("GIX_TEST_FIXTURE_HASH").and_then(|value| value.into_string().ok()).map(|object_kind| {
         gix_hash::Kind::from_str(&object_kind).unwrap_or_else(|_| {
@@ -1315,6 +1310,11 @@ pub fn hash_kind_from_env() -> Option<gix_hash::Kind> {
     *FIXTURE_HASH
 }
 
+/// Like [`object_hash_from_env()`], but returns the default hash if `GIX_TEST_FIXTURE_HASH` is not set.
+pub fn object_hash() -> gix_hash::Kind {
+    object_hash_from_env().unwrap_or_default()
+}
+
 #[cfg(windows)]
 const NULL_DEVICE: &str = "nul"; // See `gix_path::env::git::NULL_DEVICE` on why this form is used.
 #[cfg(not(windows))]
@@ -1322,7 +1322,7 @@ const NULL_DEVICE: &str = "/dev/null";
 
 fn configure_command<'a, I: IntoIterator<Item = S>, S: AsRef<OsStr>>(
     cmd: &'a mut std::process::Command,
-    hash_kind: gix_hash::Kind,
+    object_hash: gix_hash::Kind,
     args: I,
     script_result_directory: &Path,
 ) -> &'a mut std::process::Command {
@@ -1362,7 +1362,7 @@ fn configure_command<'a, I: IntoIterator<Item = S>, S: AsRef<OsStr>>(
         .env("GIT_CONFIG_VALUE_2", "main")
         .env("GIT_CONFIG_KEY_3", "protocol.file.allow")
         .env("GIT_CONFIG_VALUE_3", "always")
-        .env("GIT_DEFAULT_HASH", hash_kind.to_string())
+        .env("GIT_DEFAULT_HASH", object_hash.to_string())
 }
 
 /// Get the path attempted as a `bash` interpreter, for fixture scripts having no `#!` we can use.
@@ -1608,17 +1608,25 @@ fn extract_archive(
 }
 
 fn family_name() -> &'static str {
-    if cfg!(windows) {
-        "windows"
-    } else {
-        "unix"
-    }
+    if cfg!(windows) { "windows" } else { "unix" }
 }
 
 /// A utility to set and unset environment variables, while restoring or removing them on drop.
 #[derive(Default)]
 pub struct Env<'a> {
     altered_vars: Vec<(&'a str, Option<OsString>)>,
+}
+
+fn set_var(var: &str, value: impl AsRef<OsStr>) {
+    // SAFETY: Tests using this helper are responsible for serializing access to
+    // process-wide environment variables they mutate.
+    unsafe { env::set_var(var, value) };
+}
+
+fn remove_var(var: &str) {
+    // SAFETY: Tests using this helper are responsible for serializing access to
+    // process-wide environment variables they mutate.
+    unsafe { env::remove_var(var) };
 }
 
 impl<'a> Env<'a> {
@@ -1632,7 +1640,7 @@ impl<'a> Env<'a> {
     /// Set `var` to `value`.
     pub fn set(mut self, var: &'a str, value: impl Into<String>) -> Self {
         let prev = env::var_os(var);
-        env::set_var(var, value.into());
+        set_var(var, value.into());
         self.altered_vars.push((var, prev));
         self
     }
@@ -1640,7 +1648,7 @@ impl<'a> Env<'a> {
     /// Unset `var`.
     pub fn unset(mut self, var: &'a str) -> Self {
         let prev = env::var_os(var);
-        env::remove_var(var);
+        remove_var(var);
         self.altered_vars.push((var, prev));
         self
     }
@@ -1650,8 +1658,8 @@ impl Drop for Env<'_> {
     fn drop(&mut self) {
         for (var, prev_value) in self.altered_vars.iter().rev() {
             match prev_value {
-                Some(value) => env::set_var(var, value),
-                None => env::remove_var(var),
+                Some(value) => set_var(var, value),
+                None => remove_var(var),
             }
         }
     }
@@ -1695,11 +1703,7 @@ pub fn umask() -> u32 {
 }
 
 fn tar_extension() -> &'static str {
-    if cfg!(feature = "xz") {
-        "tar.xz"
-    } else {
-        "tar"
-    }
+    if cfg!(feature = "xz") { "tar.xz" } else { "tar" }
 }
 
 #[cfg(test)]

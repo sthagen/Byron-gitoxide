@@ -7,11 +7,11 @@ description = "Interact with git repositories just like git would"
 license = "MIT OR Apache-2.0"
 version = "0.83.0"
 authors = ["Sebastian Thiel <sebastian.thiel@icloud.com>"]
-edition = "2021"
+edition = "2024"
 include = ["/src/**/*", "/LICENSE-*"]
-# This MSRV is dictated by `firefox` to support the `helix` editor, but is now probably
-# effectively controlled by `jiff`, which also aligns with `regex`.
-rust-version = "1.82"
+# Rust 1.85 is required so hash-related dependencies can use Rust 2024 crates,
+# notably `sha2` 0.11 and `hashbrown` 0.17.
+rust-version = "1.85"
 
 [lib]
 doctest = true
@@ -360,7 +360,7 @@ cache-efficiency-debug = ["gix-features/cache-efficiency-debug"]
 [dependencies]
 gix-error = { version = "^0.2.3", path = "../gix-error" }
 gix-utils = { version = "^0.3.2", path = "../gix-utils" }
-gix-fs = { version = "^0.21.0", path = "../gix-fs" }
+gix-fs = { version = "^0.21.1", path = "../gix-fs" }
 gix-ref = { version = "^0.63.0", path = "../gix-ref" }
 gix-discover = { version = "^0.51.0", path = "../gix-discover" }
 gix-tempfile = { version = "^23.0.0", path = "../gix-tempfile", default-features = false }

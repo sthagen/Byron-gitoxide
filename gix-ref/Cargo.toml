@@ -7,9 +7,9 @@ repository = "https://github.com/GitoxideLabs/gitoxide"
 license = "MIT OR Apache-2.0"
 description = "A crate to handle git references"
 authors = ["Sebastian Thiel <sebastian.thiel@icloud.com>"]
-edition = "2021"
+edition = "2024"
 include = ["/src/**/*", "/LICENSE-*"]
-rust-version = "1.82"
+rust-version = "1.85"
 autotests = false
 
 [lib]
@@ -26,7 +26,7 @@ serde = ["dep:serde", "gix-hash/serde", "gix-actor/serde", "gix-object/serde"]
 
 [dependencies]
 gix-features = { version = "^0.48.0", path = "../gix-features", features = ["walkdir"] }
-gix-fs = { version = "^0.21.0", path = "../gix-fs" }
+gix-fs = { version = "^0.21.1", path = "../gix-fs" }
 gix-path = { version = "^0.12.0", path = "../gix-path" }
 gix-hash = { version = "^0.25.0", path = "../gix-hash" }
 gix-object = { version = "^0.60.0", path = "../gix-object" }
