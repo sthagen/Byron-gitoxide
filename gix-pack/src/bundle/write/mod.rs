@@ -109,7 +109,7 @@ impl crate::Bundle {
                         writer: data_file.clone(),
                     },
                     pack_version,
-                    gix_hash::Kind::Sha1, // Thin packs imply a pack being transported, and there we only ever know SHA1 at the moment.
+                    object_hash,
                 );
                 (Box::new(pack_entries_iter), pack_version)
             }
