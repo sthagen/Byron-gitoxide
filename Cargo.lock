@@ -1460,6 +1460,7 @@ dependencies = [
  "tracing",
  "tracing-forest 0.2.0",
  "tracing-subscriber",
+ "unicode-width",
 ]
 
 [[package]]
@@ -2159,7 +2160,7 @@ dependencies = [
 
 [[package]]
 name = "gix-packetline"
-version = "0.21.4"
+version = "0.21.5"
 dependencies = [
  "async-std",
  "bstr",

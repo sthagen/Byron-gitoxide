@@ -11,6 +11,32 @@ fn open_permissions_is_isolated() {
 }
 
 #[test]
+#[serial_test::serial]
+fn discover_with_git_dir_environment_override_sets_trust() -> crate::Result {
+    let tmp = gix_testtools::tempfile::TempDir::new()?;
+    let initialized = gix::init(tmp.path())?;
+    let _env = gix_testtools::Env::new()
+        .unset("GIT_WORK_TREE")
+        .set("GIT_DIR", initialized.git_dir().to_string_lossy().into_owned());
+
+    let repo = gix::ThreadSafeRepository::discover_with_environment_overrides_opts(
+        tmp.path(),
+        Default::default(),
+        gix_sec::trust::Mapping {
+            full: crate::restricted(),
+            reduced: crate::restricted(),
+        },
+    )?;
+
+    assert_eq!(
+        repo.git_dir(),
+        initialized.git_dir(),
+        "the git-dir from the environment opens without panicking on missing trust"
+    );
+    Ok(())
+}
+
+#[test]
 fn on_root_with_decomposed_unicode() -> crate::Result {
     let tmp = gix_testtools::tempfile::TempDir::new()?;
 
@@ -350,6 +376,50 @@ mod not_a_repository {
             let err = gix::open_opts(&repo_path, gix::open::Options::isolated()).unwrap_err();
             assert!(matches!(err, gix::open::Error::NotARepository { path, .. } if path == repo_path));
         }
+        Ok(())
+    }
+}
+
+mod object_format_extension {
+    use crate::util::named_subrepo_opts;
+
+    #[test]
+    fn rejects_object_format_on_v0_repo() -> crate::Result {
+        // objectFormat is a "v1-only" extension: git refuses to operate on a version-0 repo that
+        // sets it, even for sha1 (unlike grandfathered extensions like preciousObjects, which v0
+        // still honours). This rejection was introduced in git 2.29.0 (2020). We match it.
+        for name in [
+            "objectformat-sha256-with-repository-format-v0",
+            "objectformat-sha1-with-repository-format-v0",
+        ] {
+            let err = named_subrepo_opts("make_config_repos.sh", name, gix::open::Options::isolated())
+                .expect_err("a v0 repository setting extensions.objectFormat must be rejected");
+            assert!(
+                matches!(
+                    err,
+                    gix::open::Error::Config(gix::config::Error::ObjectFormatRequiresV1)
+                ),
+                "objectFormat on a v0 repository must be rejected, got {err:?} for {name}"
+            );
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn rejects_future_repository_format_versions() -> crate::Result {
+        let err = named_subrepo_opts(
+            "make_config_repos.sh",
+            "repository-format-v2-with-objectformat-sha1",
+            gix::open::Options::isolated(),
+        )
+        .expect_err("future repository format versions must be rejected");
+        assert!(
+            matches!(
+                err,
+                gix::open::Error::Config(gix::config::Error::UnsupportedRepositoryFormatVersion { version: 2 })
+            ),
+            "future repository format versions must be rejected before interpreting extensions, got {err:?}"
+        );
         Ok(())
     }
 }
