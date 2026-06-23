@@ -2,7 +2,7 @@ lints.workspace = true
 
 [package]
 name = "gix-transport"
-version = "0.57.1"
+version = "0.57.2"
 repository = "https://github.com/GitoxideLabs/gitoxide"
 license = "MIT OR Apache-2.0"
 description = "A crate of the gitoxide project dedicated to implementing the git transport layer"
@@ -78,6 +78,11 @@ required-features = ["blocking-client", "http-client-insecure-credentials", "may
 name = "blocking-transport-http-only"
 path = "tests/blocking-transport-http.rs"
 required-features = ["http-client-curl", "http-client-insecure-credentials", "maybe-async/is_sync"]
+
+[[test]]
+name = "blocking-transport-http-reqwest"
+path = "tests/blocking-transport-http-reqwest.rs"
+required-features = ["http-client-reqwest", "maybe-async/is_sync"]
 
 [[test]]
 name = "async-transport"
