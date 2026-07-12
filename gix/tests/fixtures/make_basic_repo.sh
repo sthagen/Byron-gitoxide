@@ -11,12 +11,21 @@ echo hello >> this
 git commit -q -am c2
 
 mkdir -p some/very/deeply/nested/subdir
+mkdir -p some-with-file/very/deeply/nested/subdir
+touch some-with-file/very/deeply/nested/subdir/empty-file
 
 git init --bare bare.git
 
 git init --bare bare-repo-with-index.git
 (cd bare-repo-with-index.git
   touch index
+)
+
+git init -q repo.git
+(cd repo.git
+  touch this
+  git add this
+  git commit -q -m "init non-bare repo with git suffix"
 )
 
 git init non-bare-repo-without-index

@@ -77,7 +77,6 @@ pub(crate) mod error {
     }
 }
 pub use error::Error;
-use gix_features::zlib;
 
 use crate::store::types::PackId;
 
@@ -89,7 +88,7 @@ where
         &'b self,
         mut id: &'b gix_hash::oid,
         buffer: &'a mut Vec<u8>,
-        inflate: &mut zlib::Inflate,
+        inflate: &mut gix_zlib::Inflate,
         pack_cache: &mut dyn DecodeEntry,
         snapshot: &mut load_index::Snapshot,
         recursion: Option<error::DeltaBaseRecursion<'_>>,
@@ -411,7 +410,7 @@ where
                         // This allocation is driven by on-disk pack metadata, so keep it aligned with
                         // `gix_pack::data::File::with_alloc_limit_bytes()`.
                         let size: usize = entry.decompressed_size.try_into().ok()?;
-                        if pack.alloc_limit_bytes().is_some_and(|limit| size > limit) {
+                        if pack.alloc_limit_bytes.is_some_and(|limit| size > limit) {
                             return None;
                         }
                         buf.resize(size, 0);
@@ -434,12 +433,10 @@ where
                 }
             }
 
-            match self.store.load_one_index(self.refresh, snapshot.marker).ok()? {
-                Some(new_snapshot) => {
-                    *snapshot = new_snapshot;
-                    self.clear_cache();
-                }
-                None => return None,
+            {
+                let new_snapshot = self.store.load_one_index(self.refresh, snapshot.marker).ok()??;
+                *snapshot = new_snapshot;
+                self.clear_cache();
             }
         }
     }
@@ -460,12 +457,10 @@ where
                 }
             }
 
-            match self.store.load_one_index(self.refresh, snapshot.marker).ok()? {
-                Some(new_snapshot) => {
-                    drop(snapshot);
-                    *self.snapshot.borrow_mut() = new_snapshot;
-                }
-                None => return None,
+            {
+                let new_snapshot = self.store.load_one_index(self.refresh, snapshot.marker).ok()??;
+                drop(snapshot);
+                *self.snapshot.borrow_mut() = new_snapshot;
             }
         }
     }
