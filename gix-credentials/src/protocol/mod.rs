@@ -16,7 +16,7 @@ pub type Result = std::result::Result<Option<Outcome>, Error>;
 
 /// The error returned top-level credential functions.
 #[derive(Debug, thiserror::Error)]
-#[allow(missing_docs)]
+#[expect(missing_docs)]
 pub enum Error {
     #[error(transparent)]
     UrlParse(#[from] gix_url::parse::Error),
@@ -42,6 +42,8 @@ pub enum Error {
 /// Additional context to be passed to the credentials helper.
 #[derive(Debug, Default, Clone, Eq, PartialEq)]
 pub struct Context {
+    /// Options controlling how this context is encoded and decoded.
+    pub options: ContextOptions,
     /// The protocol over which the credential will be used (e.g., https).
     pub protocol: Option<String>,
     /// The remote hostname for a network credential. This includes the port number if one was specified (e.g., "example.com:8088").
@@ -65,8 +67,26 @@ pub struct Context {
     pub quit: Option<bool>,
 }
 
+/// Options for encoding and decoding a [`Context`].
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct ContextOptions {
+    /// If true, carriage returns in credential values are rejected to protect credential-protocol parsing.
+    ///
+    /// NUL bytes and newlines are always rejected.
+    pub protect_protocol: bool,
+}
+
+impl Default for ContextOptions {
+    fn default() -> Self {
+        ContextOptions { protect_protocol: true }
+    }
+}
+
 /// Convert the outcome of a helper invocation to a helper result, assuring that the identity is complete in the process.
-#[allow(clippy::result_large_err)]
+#[expect(
+    clippy::result_large_err,
+    reason = "will be removed once `gix-error` is used consistently"
+)]
 pub fn helper_outcome_to_result(outcome: Option<helper::Outcome>, action: helper::Action) -> Result {
     match (action, outcome) {
         (helper::Action::Get(ctx), None) => Err(Error::IdentityMissing {

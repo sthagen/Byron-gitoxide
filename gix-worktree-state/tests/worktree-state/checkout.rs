@@ -1,5 +1,5 @@
 #[cfg(unix)]
-use std::os::unix::prelude::MetadataExt;
+use std::os::unix::prelude::{MetadataExt, PermissionsExt};
 use std::{
     fs,
     io::{ErrorKind, ErrorKind::AlreadyExists},
@@ -122,12 +122,81 @@ fn writes_through_symlinks_are_prevented_even_if_overwriting_is_allowed() {
 }
 
 #[test]
+fn nonexclusive_checkout_does_not_follow_terminal_symlinks() -> crate::Result {
+    let mut opts = opts_from_probe();
+    // the test needs filesystem symlink support;
+    if !opts.fs.symlink {
+        return Ok(());
+    }
+    opts.destination_is_initially_empty = false;
+
+    for overwrite_existing in [false, true] {
+        opts.overwrite_existing = overwrite_existing;
+        let outside = gix_testtools::tempfile::tempdir_in(std::env::current_dir()?)?;
+        let canary = outside.path().join("canary");
+        std::fs::write(&canary, b"untouched")?;
+        let (_source, destination, _index, outcome) = checkout_index_in_tmp_dir_opts(
+            opts.clone(),
+            "make_mixed_without_submodules_and_symlinks",
+            None,
+            |_| true,
+            |destination| gix_fs::symlink::create(&canary, &destination.join("executable")),
+        )?;
+
+        assert!(
+            outcome.errors.is_empty(),
+            "checkout should not encounter non-collision errors"
+        );
+        let checked_out = destination.path().join("executable");
+        if overwrite_existing {
+            assert!(
+                outcome.collisions.is_empty(),
+                "forced checkout should replace the symlink"
+            );
+            assert!(
+                checked_out.symlink_metadata()?.is_file(),
+                "the symlink must become a regular file"
+            );
+            assert_eq!(
+                std::fs::read(&checked_out)?,
+                b"content",
+                "the regular file must be checked out"
+            );
+        } else {
+            assert_eq!(
+                outcome.collisions.len(),
+                1,
+                "non-forced checkout should report the terminal symlink as a collision"
+            );
+            assert_eq!(
+                outcome.collisions[0].path, "executable",
+                "the collision should identify the terminal symlink"
+            );
+            #[cfg(windows)]
+            assert_eq!(
+                outcome.collisions[0].error_kind, AlreadyExists,
+                "the collision error kind differs by platform and is only stable on Windows"
+            );
+            assert!(
+                checked_out.symlink_metadata()?.file_type().is_symlink(),
+                "non-forced checkout must leave the symlink in place"
+            );
+        }
+        assert_eq!(
+            std::fs::read(&canary)?,
+            b"untouched",
+            "the symlink target must stay unchanged"
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn delayed_driver_process() -> crate::Result {
     let mut opts = opts_from_probe();
-    opts.overwrite_existing = true;
     opts.filter_process_delay = gix_filter::driver::apply::Delay::Allow;
-    opts.destination_is_initially_empty = false;
     setup_filter_pipeline(opts.filters.options_mut());
+    let fs_supports_executable_bit = opts.fs.executable_bit;
     let (_source, destination, _index, outcome) = checkout_index_in_tmp_dir_opts(
         opts,
         "make_mixed_without_submodules_and_symlinks",
@@ -137,7 +206,7 @@ fn delayed_driver_process() -> crate::Result {
     )?;
     assert_eq!(outcome.collisions.len(), 0);
     assert_eq!(outcome.errors.len(), 0);
-    assert_eq!(outcome.files_updated, 5);
+    assert_eq!(outcome.files_updated, 6);
 
     let dest = destination.path();
     assert_eq!(
@@ -146,6 +215,19 @@ fn delayed_driver_process() -> crate::Result {
         "unfiltered"
     );
     assert_eq!(
+        std::fs::read(dest.join("filtered-executable"))?.as_bstr(),
+        "➡filtered content",
+        "filtered executable"
+    );
+    #[cfg(unix)]
+    if fs_supports_executable_bit {
+        assert_ne!(
+            std::fs::metadata(dest.join("filtered-executable"))?.mode() & 0o111,
+            0,
+            "a delayed filter must not prevent executable bits from being applied"
+        );
+    }
+    assert_eq!(
         std::fs::read(dest.join("dir").join("content"))?.as_bstr(),
         "➡other content\r\n"
     );
@@ -153,6 +235,80 @@ fn delayed_driver_process() -> crate::Result {
         std::fs::read(dest.join("dir").join("sub-dir").join("file"))?.as_bstr(),
         "➡even other content\r\n"
     );
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn delayed_driver_process_removes_obsolete_executable_bits() -> crate::Result {
+    let mut opts = opts_from_probe();
+    opts.destination_is_initially_empty = false;
+    opts.filter_process_delay = gix_filter::driver::apply::Delay::Allow;
+    setup_filter_pipeline(opts.filters.options_mut());
+    let (_source, destination, _index, outcome) = checkout_index_in_tmp_dir_opts(
+        opts,
+        "make_mixed_without_submodules_and_symlinks",
+        None,
+        |_| true,
+        |destination| {
+            let filtered_non_executable = destination.join("empty");
+            std::fs::write(&filtered_non_executable, [])?;
+            std::fs::set_permissions(&filtered_non_executable, std::fs::Permissions::from_mode(0o755))?;
+            Ok(())
+        },
+    )?;
+
+    assert!(outcome.collisions.is_empty(), "regular files should not collide");
+    assert!(outcome.errors.is_empty(), "checkout should succeed");
+    assert_eq!(
+        std::fs::metadata(destination.path().join("empty"))?.mode() & 0o111,
+        0,
+        "a delayed filter must not prevent obsolete executable bits from being removed"
+    );
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn nonexclusive_checkout_adjusts_executable_bits_in_both_directions() -> crate::Result {
+    for overwrite_existing in [false, true] {
+        let mut opts = opts_from_probe();
+        opts.destination_is_initially_empty = false;
+        opts.overwrite_existing = overwrite_existing;
+        let (_source, destination, _index, outcome) = checkout_index_in_tmp_dir_opts(
+            opts,
+            "make_mixed_without_submodules_and_symlinks",
+            None,
+            |_| true,
+            |destination| {
+                let soon_non_executable = destination.join("empty");
+                std::fs::write(&soon_non_executable, [])?;
+                std::fs::set_permissions(&soon_non_executable, std::fs::Permissions::from_mode(0o755))?;
+
+                let soon_executable = destination.join("executable");
+                std::fs::write(&soon_executable, b"old content")?;
+                std::fs::set_permissions(&soon_executable, std::fs::Permissions::from_mode(0o644))?;
+                Ok(())
+            },
+        )?;
+
+        assert!(outcome.collisions.is_empty(), "regular files should not collide");
+        assert!(outcome.errors.is_empty(), "checkout should succeed");
+
+        let non_executable_mode = std::fs::metadata(destination.path().join("empty"))?.mode();
+        assert_eq!(
+            non_executable_mode & 0o111,
+            0,
+            "checkout must remove obsolete executable bits with overwrite_existing={overwrite_existing}"
+        );
+
+        let executable_mode = std::fs::metadata(destination.path().join("executable"))?.mode();
+        assert_ne!(
+            executable_mode & 0o111,
+            0,
+            "checkout must add tracked executable bits with overwrite_existing={overwrite_existing}"
+        );
+    }
     Ok(())
 }
 
@@ -175,7 +331,7 @@ fn overwriting_files_and_lone_directories_works() -> crate::Result {
             |_| true,
             |d| {
                 let empty = d.join("empty");
-                symlink::symlink_dir(d.join(".."), &empty)?; // empty is symlink to the directory above
+                gix_fs::symlink::create(&d.join(".."), &empty)?; // empty is symlink to the directory above
                 std::fs::write(d.join("executable"), b"longer content foo bar")?; // executable is regular file and has different content
                 let dir = d.join("dir");
                 std::fs::create_dir(&dir)?;
@@ -184,7 +340,7 @@ fn overwriting_files_and_lone_directories_works() -> crate::Result {
                 let dir = dir.join("sub-dir");
                 std::fs::create_dir(&dir)?;
 
-                symlink::symlink_dir(empty, dir.join("symlink"))?; // 'symlink' is a symlink to a directory.
+                gix_fs::symlink::create(&empty, &dir.join("symlink"))?; // 'symlink' is a symlink to a directory.
                 Ok(())
             },
         )?;

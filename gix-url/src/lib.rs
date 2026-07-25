@@ -3,7 +3,7 @@
 //! ## Examples
 //!
 //! ```
-//! let mut url = gix_url::parse("ssh://git@example.com/gitoxide".into()).unwrap();
+//! let mut url = gix_url::parse("ssh://git@example.com/gitoxide").unwrap();
 //! assert_eq!(url.user(), Some("git"));
 //! assert_eq!(url.host(), Some("example.com"));
 //! assert_eq!(url.to_bstring(), "ssh://git@example.com/gitoxide");
@@ -12,7 +12,7 @@
 //! assert_eq!(url.user_argument_safe(), Some("byron"));
 //! assert_eq!(url.to_bstring(), "ssh://byron@example.com/gitoxide");
 //!
-//! let suspicious = gix_url::parse("ssh://-Fconfig@host/repo".into()).unwrap();
+//! let suspicious = gix_url::parse("ssh://-Fconfig@host/repo").unwrap();
 //! assert_eq!(suspicious.user_argument_safe(), None, "The user isn't returned as it looks like an argument");
 //! ```
 //! ## Feature Flags
@@ -27,6 +27,7 @@
 use std::{borrow::Cow, path::PathBuf};
 
 use bstr::{BStr, BString};
+use gix_utils::AsBStr;
 
 ///
 pub mod expand_path;
@@ -47,8 +48,9 @@ mod simple_url;
 ///
 /// We cannot and should never have to deal with UTF-16 encoded windows strings, so bytes input is acceptable.
 /// For file-paths, we don't expect UTF8 encoding either.
-pub fn parse(input: &BStr) -> Result<Url, parse::Error> {
+pub fn parse(input: impl AsBStr) -> Result<Url, parse::Error> {
     use parse::InputScheme;
+    let input = input.as_bstr();
     match parse::find_scheme(input) {
         InputScheme::Local => parse::local(input),
         InputScheme::Url { protocol_end } if input[..protocol_end].eq_ignore_ascii_case(b"file") => {
@@ -193,8 +195,7 @@ impl Url {
                 path,
                 serialize_alternative_form,
             }
-            .to_bstring()
-            .as_ref(),
+            .to_bstring(),
         )
     }
 }
@@ -389,7 +390,7 @@ impl Url {
     }
 
     fn write_canonical_form_to(&self, out: &mut dyn std::io::Write) -> std::io::Result<()> {
-        fn percent_encode(s: &str) -> Cow<'_, str> {
+        fn percent_encode(s: &str, encode_colon: bool) -> Cow<'_, str> {
             /// Characters that must be percent-encoded in the userinfo component of a URL.
             ///
             /// According to RFC 3986, userinfo can contain:
@@ -418,7 +419,14 @@ impl Url {
                 .add(b'{')
                 .add(b'|')
                 .add(b'}');
-            percent_encoding::utf8_percent_encode(s, USERINFO_ENCODE_SET).into()
+            const USERNAME_ENCODE_SET: &percent_encoding::AsciiSet = &USERINFO_ENCODE_SET.add(b':');
+
+            let encode_set = if encode_colon {
+                USERNAME_ENCODE_SET
+            } else {
+                USERINFO_ENCODE_SET
+            };
+            percent_encoding::utf8_percent_encode(s, encode_set).into()
         }
 
         out.write_all(self.scheme.as_str().as_bytes())?;
@@ -428,10 +436,10 @@ impl Url {
 
         match (&self.user, &self.host) {
             (Some(user), Some(host)) => {
-                out.write_all(percent_encode(user).as_bytes())?;
+                out.write_all(percent_encode(user, true).as_bytes())?;
                 if let Some(password) = &self.password {
                     out.write_all(b":")?;
-                    out.write_all(percent_encode(password).as_bytes())?;
+                    out.write_all(percent_encode(password, false).as_bytes())?;
                 }
                 out.write_all(b"@")?;
                 if needs_brackets {

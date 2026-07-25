@@ -12,7 +12,7 @@ fn username_expansion_is_unsupported() -> crate::Result {
 
 #[test]
 fn empty_user_cannot_roundtrip() -> crate::Result {
-    let actual = gix_url::parse("http://@example.com/~byron/hello".into())?;
+    let actual = gix_url::parse("http://@example.com/~byron/hello")?;
     let expected = url(Scheme::Http, None, "example.com", None, b"/~byron/hello");
     assert_eq!(actual, expected);
     assert_eq!(
@@ -28,6 +28,22 @@ fn username_and_password() -> crate::Result {
     assert_url_roundtrip(
         "http://user:password@example.com/~byron/hello",
         url_with_pass(Scheme::Http, "user", "password", "example.com", None, b"/~byron/hello"),
+    )
+}
+
+#[test]
+fn colon_in_username_roundtrips() -> crate::Result {
+    assert_url_roundtrip(
+        "http://a%3Ab@example.com/",
+        url(Scheme::Http, "a:b", "example.com", None, b"/"),
+    )
+}
+
+#[test]
+fn colon_in_password_roundtrips() -> crate::Result {
+    assert_url_roundtrip(
+        "http://user:a:b@example.com/",
+        url_with_pass(Scheme::Http, "user", "a:b", "example.com", None, b"/"),
     )
 }
 
@@ -69,7 +85,7 @@ fn only_password() -> crate::Result {
 
 #[test]
 fn username_and_empty_password() -> crate::Result {
-    let actual = gix_url::parse("http://user:@example.com/~byron/hello".into())?;
+    let actual = gix_url::parse("http://user:@example.com/~byron/hello")?;
     let expected = url(Scheme::Http, "user", "example.com", None, b"/~byron/hello");
     assert_eq!(actual, expected);
     assert_eq!(
@@ -142,14 +158,14 @@ fn https_with_ipv6_user_and_port() -> crate::Result {
 
 #[test]
 fn percent_encoded_path() -> crate::Result {
-    let url = gix_url::parse("https://example.com/path/with%20spaces/file".into())?;
+    let url = gix_url::parse("https://example.com/path/with%20spaces/file")?;
     assert_eq!(url.path, "/path/with spaces/file", "paths are now decoded");
     Ok(())
 }
 
 #[test]
 fn percent_encoded_international_path() -> crate::Result {
-    let url = gix_url::parse("https://example.com/caf%C3%A9".into())?;
+    let url = gix_url::parse("https://example.com/caf%C3%A9")?;
     assert_eq!(url.path, "/café", "international characters are decoded in path");
     Ok(())
 }
@@ -160,12 +176,12 @@ fn percent_encoded_path_roundtrips_in_lossless_serialization() -> crate::Result 
         ("https://%20@%40:example.org/%20%25", "%40:example.org", "/ %"),
         ("https://%20@%40:example.org/%20%25/%20%25", "%40:example.org", "/ %/ %"),
     ] {
-        let url = gix_url::parse(input.into())?;
+        let url = gix_url::parse(input)?;
         let serialized = url.to_bstring();
         assert_eq!(serialized, input);
         assert_eq!(url.host(), Some(expected_host));
         assert_eq!(url.path, expected_path);
-        assert_eq!(gix_url::parse(serialized.as_ref())?, url);
+        assert_eq!(gix_url::parse(&serialized)?, url);
     }
     Ok(())
 }

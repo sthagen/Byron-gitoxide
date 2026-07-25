@@ -54,13 +54,8 @@ where
             })
         };
 
-        let skip_hash = self
-            .repo
-            .config
-            .resolved
-            .boolean(crate::config::tree::Index::SKIP_HASH)
-            .map(|res| crate::config::tree::Index::SKIP_HASH.enrich_error(res))
-            .transpose()
+        let skip_hash = crate::config::tree::Index::SKIP_HASH
+            .enrich_error(self.repo.config.resolved.boolean(crate::config::tree::Index::SKIP_HASH))
             .with_lenient_default(self.repo.config.lenient_config)?
             .unwrap_or_default();
         let should_interrupt = self.should_interrupt.clone().unwrap_or_default();
@@ -226,7 +221,7 @@ where
 
 /// The error returned for each item returned by [`Iter`].
 #[derive(Debug, thiserror::Error)]
-#[allow(missing_docs)]
+#[expect(missing_docs)]
 pub enum Error {
     #[error(transparent)]
     IndexWorktree(#[from] index_worktree::Error),

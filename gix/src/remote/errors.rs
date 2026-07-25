@@ -4,7 +4,7 @@ pub mod find {
 
     /// The error returned by [`Repository::find_remote(…)`](crate::Repository::find_remote()).
     #[derive(Debug, thiserror::Error)]
-    #[allow(missing_docs)]
+    #[expect(missing_docs)]
     pub enum Error {
         #[error("The value for 'remote.<name>.tagOpt` is invalid and must either be '--tags' or '--no-tags'")]
         TagOpt(#[from] config::key::GenericErrorWithValue),
@@ -14,8 +14,6 @@ pub mod find {
             remote_name: BString,
             source: config::refspec::Error,
         },
-        #[error("Neither 'url` nor 'pushUrl' fields were set in the remote's configuration.")]
-        UrlMissing,
         #[error("The {kind} url under `remote.{remote_name}` was invalid")]
         Url {
             kind: &'static str,
@@ -32,7 +30,7 @@ pub mod find {
 
         /// The error returned by [`Repository::find_remote(…)`](crate::Repository::find_remote()).
         #[derive(Debug, thiserror::Error)]
-        #[allow(missing_docs)]
+        #[expect(missing_docs)]
         pub enum Error {
             #[error(transparent)]
             Find(#[from] super::Error),
@@ -47,7 +45,7 @@ pub mod find {
     pub mod for_fetch {
         /// The error returned by [`Repository::find_fetch_remote(…)`](crate::Repository::find_fetch_remote()).
         #[derive(Debug, thiserror::Error)]
-        #[allow(missing_docs)]
+        #[expect(missing_docs)]
         pub enum Error {
             #[error(transparent)]
             FindExisting(#[from] super::existing::Error),

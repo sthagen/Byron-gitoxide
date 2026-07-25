@@ -15,7 +15,6 @@ use crate::checkout::chunk;
 ///
 /// Note that interruption still produce an `Ok(…)` value, so the caller should look at `should_interrupt` to communicate the outcome.
 ///
-#[allow(clippy::too_many_arguments)]
 pub fn checkout<Find>(
     index: &mut gix_index::State,
     dir: impl Into<std::path::PathBuf>,
@@ -34,7 +33,7 @@ where
     res
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 fn checkout_inner<Find>(
     index: &mut gix_index::State,
     paths: &gix_index::PathStorage,
@@ -58,20 +57,24 @@ where
         None,
     );
 
+    let mut path_cache = Stack::from_state_and_ignore_case(
+        dir,
+        options.fs.ignore_case,
+        stack::State::for_checkout(
+            options.overwrite_existing,
+            options.validate,
+            std::mem::take(&mut options.attributes),
+        ),
+        index,
+        paths,
+    );
+    if !options.destination_is_initially_empty {
+        path_cache.enable_terminal_symlink_check();
+    }
     let mut ctx = chunk::Context {
         buf: Vec::new(),
         options: (&options).into(),
-        path_cache: Stack::from_state_and_ignore_case(
-            dir,
-            options.fs.ignore_case,
-            stack::State::for_checkout(
-                options.overwrite_existing,
-                options.validate,
-                std::mem::take(&mut options.attributes),
-            ),
-            index,
-            paths,
-        ),
+        path_cache,
         filters: options.filters,
         objects,
     };

@@ -87,18 +87,13 @@ fn on_root_with_decomposed_unicode() -> crate::Result {
 
 #[test]
 fn non_bare_reftable() -> crate::Result {
-    let repo = match named_subrepo_opts(
-        "make_reftable_repo.sh",
-        "reftable-clone",
-        gix::open::Options::isolated(),
-    ) {
-        Ok(r) => r,
-        Err(_) if *gix_testtools::GIT_VERSION < (2, 44, 0) => {
-            eprintln!("Fixture script failure ignored as it looks like Git isn't recent enough.");
-            return Ok(());
-        }
-        Err(err) => panic!("{err}"),
+    let Some(root) = gix_testtools::scripted_fixture_read_only_with_git_version("make_reftable_repo.sh", |version| {
+        version >= (2, 44, 0)
+    })?
+    else {
+        return Ok(());
     };
+    let repo = gix::open_opts(root.join("reftable-clone"), gix::open::Options::isolated())?;
     assert!(
         repo.head_id().is_err(),
         "Trying to do anything with head will fail as we don't support reftables yet"
@@ -191,6 +186,51 @@ fn worktree_of_bare_repo() -> crate::Result {
 }
 
 #[test]
+fn worktree_of_natively_bare_repo() -> crate::Result {
+    let repo = named_subrepo_opts(
+        "make_worktree_repo.sh",
+        "worktree-of-natively-bare-repo",
+        gix::open::Options::isolated(),
+    )?;
+    assert_ne!(
+        repo.workdir(),
+        None,
+        "we have opened the repo through a worktree, which is never bare"
+    );
+    assert!(
+        !repo
+            .worktree()
+            .expect("the worktree is available, it's linked")
+            .is_main(),
+        "linked worktrees can exist for any repository, even bare"
+    );
+    assert!(
+        repo.is_bare(),
+        "the shared config has core.bare=true, which a linked worktree inherits even though it has a workdir"
+    );
+    assert_eq!(repo.kind(), gix::repository::Kind::LinkedWorkTree);
+    Ok(())
+}
+
+#[test]
+fn natively_bare_repo_itself_is_common() -> crate::Result {
+    let repo = named_subrepo_opts(
+        "make_worktree_repo.sh",
+        "natively-bare-repo",
+        gix::open::Options::isolated(),
+    )?;
+    assert!(repo.is_bare());
+    assert_eq!(repo.workdir(), None, "the bare repository itself has no worktree");
+    assert_eq!(
+        repo.git_dir(),
+        repo.common_dir(),
+        "there is no linked-worktree redirection"
+    );
+    assert_eq!(repo.kind(), gix::repository::Kind::Common);
+    Ok(())
+}
+
+#[test]
 fn non_bare_non_git_repo_without_worktree() -> crate::Result {
     let repo = named_subrepo_opts(
         "make_basic_repo.sh",
@@ -229,7 +269,7 @@ fn none_bare_repo_without_index() -> crate::Result {
         repo.workdir_path(BString::from("this")).map(|p| p.is_file()),
         Some(true)
     );
-    #[allow(clippy::needless_borrows_for_generic_args)]
+    #[expect(clippy::needless_borrows_for_generic_args)]
     let actual = repo.workdir_path(&BString::from("this")).map(|p| p.is_file());
     assert_eq!(actual, Some(true));
     assert!(
@@ -691,15 +731,15 @@ mod worktree {
             );
 
             assert_eq!(
-                base_config.string("worktree.setting").expect("exists").as_ref(),
+                base_config.string("worktree.setting").expect("exists"),
                 "set in the main worktree"
             );
             assert_eq!(
-                base_config.string("shared.setting").expect("exists").as_ref(),
+                base_config.string("shared.setting").expect("exists"),
                 "set in the shared config"
             );
             assert_eq!(
-                base_config.string("override.setting").expect("exists").as_ref(),
+                base_config.string("override.setting").expect("exists"),
                 "set in the shared config"
             );
         }
@@ -723,16 +763,13 @@ mod worktree {
                 "the common dir is the `git-dir` of the repository with the main worktree"
             );
 
+            assert_eq!(wt1_config.string("worktree.setting").expect("exists"), "set in wt-1");
             assert_eq!(
-                wt1_config.string("worktree.setting").expect("exists").as_ref(),
-                "set in wt-1"
-            );
-            assert_eq!(
-                wt1_config.string("shared.setting").expect("exists").as_ref(),
+                wt1_config.string("shared.setting").expect("exists"),
                 "set in the shared config"
             );
             assert_eq!(
-                wt1_config.string("override.setting").expect("exists").as_ref(),
+                wt1_config.string("override.setting").expect("exists"),
                 "set in the shared config"
             );
         }
@@ -748,16 +785,13 @@ mod worktree {
             assert_eq!(wt2.git_dir(), worktree_base.join("wt-2"));
             assert_eq!(wt2.common_dir(), worktree_base.join("wt-2/../.."));
 
+            assert_eq!(wt2_config.string("worktree.setting").expect("exists"), "set in wt-2");
             assert_eq!(
-                wt2_config.string("worktree.setting").expect("exists").as_ref(),
-                "set in wt-2"
-            );
-            assert_eq!(
-                wt2_config.string("shared.setting").expect("exists").as_ref(),
+                wt2_config.string("shared.setting").expect("exists"),
                 "set in the shared config"
             );
             assert_eq!(
-                wt2_config.string("override.setting").expect("exists").as_ref(),
+                wt2_config.string("override.setting").expect("exists"),
                 "override in wt-2"
             );
         }

@@ -101,6 +101,7 @@ impl crate::Bundle {
                         object_hash,
                     )?,
                     thin_pack_lookup,
+                    options.compression,
                 );
                 let pack_version = pack_entries_iter.inner.version();
                 let pack_entries_iter = data::input::EntriesToBytesIter::new(
@@ -209,6 +210,7 @@ impl crate::Bundle {
                         object_hash,
                     )?,
                     thin_pack_lookup,
+                    options.compression,
                 );
                 let pack_kind = pack_entries_iter.inner.version();
                 (Box::new(pack_entries_iter), pack_kind)
@@ -270,6 +272,7 @@ impl crate::Bundle {
             index_version: index_kind,
             object_hash,
             alloc_limit_bytes,
+            compression: _,
         }: Options,
         data_file: SharedTempFile,
         mut pack_entries_iter: Box<dyn Iterator<Item = Result<data::input::Entry, data::input::Error>> + 'a>,
@@ -368,7 +371,7 @@ fn resolve_entry(range: data::EntryRange, mapped_file: &memmap2::Mmap) -> Option
     mapped_file.get(range.start as usize..range.end as usize)
 }
 
-#[allow(clippy::type_complexity)] // cannot typedef impl Fn
+#[expect(clippy::type_complexity)] // cannot typedef impl Fn
 fn new_pack_file_resolver(
     data_file: SharedTempFile,
 ) -> io::Result<(

@@ -1,3 +1,42 @@
+/// Print the effective URL or URLs of the selected remote.
+///
+/// Without an explicit remote, selection follows the fetch or push configuration for the current branch according to `direction`.
+pub fn url(
+    repo: gix::Repository,
+    name: Option<&str>,
+    direction: gix::remote::Direction,
+    all: bool,
+    mut out: impl std::io::Write,
+) -> anyhow::Result<()> {
+    let remote = match (name, direction) {
+        (Some(name), _) => repo.find_fetch_remote(Some(name.into()))?,
+        (None, gix::remote::Direction::Fetch) => repo.find_fetch_remote(None)?,
+        (None, gix::remote::Direction::Push) => repo
+            .head()?
+            .into_remote(gix::remote::Direction::Push)
+            .or_else(|| repo.find_default_remote(gix::remote::Direction::Push))
+            .transpose()?
+            .ok_or_else(|| anyhow::anyhow!("Could not determine a remote for pushing"))?,
+    };
+    if all {
+        let mut urls = remote.urls(direction).peekable();
+        if urls.peek().is_none() {
+            anyhow::bail!("The remote has no {} URL", direction.as_str());
+        }
+        for url in urls {
+            out.write_all(&url.to_bstring())?;
+            out.write_all(b"\n")?;
+        }
+    } else {
+        let url = remote
+            .url(direction)
+            .ok_or_else(|| anyhow::anyhow!("The remote has no {} URL", direction.as_str()))?;
+        out.write_all(&url.to_bstring())?;
+        out.write_all(b"\n")?;
+    }
+    Ok(())
+}
+
 #[cfg(any(feature = "blocking-client", feature = "async-client"))]
 mod refs_impl {
     use anyhow::bail;
@@ -34,7 +73,7 @@ mod refs_impl {
         pub(crate) use super::{print, print_ref};
     }
 
-    #[gix::protocol::maybe_async::maybe_async]
+    #[gix::protocol::bisync::bisync]
     pub async fn refs_fn(
         repo: gix::Repository,
         kind: refs::Kind,

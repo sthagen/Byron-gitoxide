@@ -10,7 +10,7 @@ use gix_status::index_as_worktree::traits::{CompareBlobs, SubmoduleStatus};
 
 /// The error returned by [Repository::index_worktree_status()].
 #[derive(Debug, thiserror::Error)]
-#[allow(missing_docs)]
+#[expect(missing_docs)]
 pub enum Error {
     #[error("A working tree is required to perform a directory walk")]
     MissingWorkDir,
@@ -86,7 +86,7 @@ impl Repository {
     /// ### Note
     ///
     /// This is a lower-level method, prefer the [`status`](Repository::status()) method for greater ease of use.
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn index_worktree_status<'index, T, U, E>(
         &self,
         index: &'index gix_index::State,
@@ -121,12 +121,8 @@ impl Repository {
         let cwd = self.current_dir();
         let git_dir_realpath = crate::path::realpath_opts(self.git_dir(), cwd, crate::path::realpath::MAX_SYMLINKS)?;
         let fs_caps = self.filesystem_options()?;
-        let fscache = self
-            .config
-            .resolved
-            .boolean(config::tree::Core::FS_CACHE)
-            .map(|res| config::tree::Core::FS_CACHE.enrich_error(res))
-            .transpose()
+        let fscache = config::tree::Core::FS_CACHE
+            .enrich_error(self.config.resolved.boolean(config::tree::Core::FS_CACHE))
             .with_lenient_default(self.config.lenient_config)?
             // if unset, default to enabled on Windows. Good for missing Git installations that would turn it on by installation config
             .unwrap_or(cfg!(windows));
@@ -216,8 +212,6 @@ pub struct BuiltinSubmoduleStatus {
 
 ///
 mod submodule_status {
-    use std::borrow::Cow;
-
     use crate::config::cache::util::ApplyLeniency;
     use crate::{
         bstr,
@@ -235,7 +229,7 @@ mod submodule_status {
             let local_repo = repo.to_thread_local();
             let submodule_paths = match local_repo.submodules() {
                 Ok(Some(sm)) => {
-                    let mut v: Vec<_> = sm.filter_map(|sm| sm.path().ok().map(Cow::into_owned)).collect();
+                    let mut v: Vec<_> = sm.filter_map(|sm| sm.path().ok()).collect();
                     v.sort();
                     v
                 }
@@ -255,7 +249,6 @@ mod submodule_status {
 
     /// The error returned submodule status checks.
     #[derive(Debug, thiserror::Error)]
-    #[allow(missing_docs)]
     pub enum Error {
         #[error(transparent)]
         SubmoduleStatus(#[from] crate::submodule::status::Error),

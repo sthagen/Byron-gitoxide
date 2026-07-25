@@ -2,7 +2,7 @@ lints.workspace = true
 
 [package]
 name = "gix-utils"
-version = "0.3.3"
+version = "0.3.5"
 repository = "https://github.com/GitoxideLabs/gitoxide"
 license = "MIT OR Apache-2.0"
 description = "A crate with `gitoxide` utilities that don't need feature toggles"
@@ -29,3 +29,6 @@ unicode-normalization = { version = "0.1.19", default-features = false }
 # best-effort seed (see `src/rng.rs`).
 [target.'cfg(not(all(target_arch = "wasm32", target_os = "unknown")))'.dependencies]
 getrandom = "0.4"
+
+[dev-dependencies]
+gix-utils = { path = ".", features = ["bstr" ]}

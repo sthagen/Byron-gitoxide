@@ -1,11 +1,24 @@
 use bstr::BString;
 
+use crate::protocol::{Context, ContextOptions};
+
 /// Indicates key or values contain errors that can't be encoded.
 #[derive(Debug, thiserror::Error)]
-#[allow(missing_docs)]
+#[expect(missing_docs)]
 pub enum Error {
     #[error("{key:?}={value:?} must not contain null bytes or newlines neither in key nor in value.")]
     Encoding { key: String, value: BString },
+}
+
+impl Context {
+    /// Create a context containing `url`, encoded and decoded according to `options`.
+    pub fn from_url(url: impl Into<BString>, options: ContextOptions) -> Self {
+        Context {
+            options,
+            url: Some(url.into()),
+            ..Default::default()
+        }
+    }
 }
 
 mod access {
@@ -17,6 +30,7 @@ mod access {
         /// Clear all fields that are considered secret.
         pub fn clear_secrets(&mut self) {
             let Context {
+                options: _,
                 protocol: _,
                 host: _,
                 path: _,
@@ -34,6 +48,7 @@ mod access {
         /// Replace existing secrets with the word `<redacted>`.
         pub fn redacted(mut self) -> Self {
             let Context {
+                options: _,
                 protocol: _,
                 host: _,
                 path: _,
@@ -90,13 +105,16 @@ mod mutate {
         /// Destructure the url at our `url` field into parts like protocol, host, username and path and store
         /// them in our respective fields. If `use_http_path` is set, http paths are significant even though
         /// normally this isn't the case.
-        #[allow(clippy::result_large_err)]
+        #[expect(
+            clippy::result_large_err,
+            reason = "will be removed once `gix-error` is used consistently"
+        )]
         pub fn destructure_url_in_place(&mut self, use_http_path: bool) -> Result<&mut Self, protocol::Error> {
             if self.url.is_none() {
                 self.url = Some(self.to_url().ok_or(protocol::Error::UrlMissing)?);
             }
 
-            let url = gix_url::parse(self.url.as_ref().expect("URL is present after check above").as_ref())?;
+            let url = gix_url::parse(self.url.as_ref().expect("URL is present after check above"))?;
             self.protocol = Some(url.scheme.as_str().into());
             self.username = url.user().map(ToOwned::to_owned);
             self.password = url.password().map(ToOwned::to_owned);

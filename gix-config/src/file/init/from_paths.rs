@@ -7,7 +7,7 @@ use crate::{
 
 /// The error returned by [`File::from_paths_metadata()`] and [`File::from_path_no_includes()`].
 #[derive(Debug, thiserror::Error)]
-#[allow(missing_docs)]
+#[expect(missing_docs)]
 pub enum Error {
     #[error("The configuration file at \"{}\" could not be read", path.display())]
     Io {
@@ -19,7 +19,7 @@ pub enum Error {
 }
 
 /// Instantiation from one or more paths
-impl File<'static> {
+impl File {
     /// Load the single file at `path` with `source` without following include directives.
     ///
     /// Note that the path will be checked for ownership to derive trust.
@@ -125,7 +125,7 @@ impl File<'static> {
                     target = Some(config);
                 }
                 Some(target) => {
-                    target.append(config);
+                    target.append(config).map_err(init::Error::from)?;
                 }
             }
         }

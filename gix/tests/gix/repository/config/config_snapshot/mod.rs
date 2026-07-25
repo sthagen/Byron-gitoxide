@@ -1,4 +1,4 @@
-use gix::config::tree::{Branch, Core, Key, gitoxide};
+use gix::config::tree::{Branch, Core, Key, Pack, gitoxide};
 
 use crate::{named_repo, repo_rw};
 
@@ -7,7 +7,7 @@ mod credential_helpers;
 
 #[test]
 fn commit_auto_rollback() -> crate::Result {
-    let mut repo: gix::Repository = named_repo("make_basic_repo.sh")?;
+    let mut repo = named_repo("make_basic_repo.sh")?;
     let default_abbrev = repo.head_id()?.to_string()[..7].to_owned();
     let short_abbrev = repo.head_id()?.to_string()[..4].to_owned();
     assert_eq!(repo.head_id()?.shorten()?.to_string(), default_abbrev);
@@ -40,23 +40,19 @@ mod trusted_path {
 
     #[test]
     fn optional_is_respected() -> crate::Result {
-        let mut repo: gix::Repository = named_repo("make_basic_repo.sh")?;
+        let mut repo = named_repo("make_basic_repo.sh")?;
         repo.config_snapshot_mut().set_raw_value("my.path", "does-not-exist")?;
 
-        let actual = repo
-            .config_snapshot()
-            .trusted_path("my.path")
-            .transpose()?
-            .expect("is set");
+        let actual = repo.config_snapshot().trusted_path("my.path")?.expect("is set");
         assert_eq!(
-            actual.as_ref(),
-            "does-not-exist",
+            actual,
+            std::path::PathBuf::from("does-not-exist"),
             "the path isn't evaluated by default, and may not exist"
         );
 
         repo.config_snapshot_mut()
             .set_raw_value("my.path", ":(optional)does-not-exist")?;
-        let actual = repo.config_snapshot().trusted_path("my.path").transpose()?;
+        let actual = repo.config_snapshot().trusted_path("my.path")?;
         assert_eq!(actual, None, "non-existing paths aren't returned to the caller");
         Ok(())
     }
@@ -64,7 +60,7 @@ mod trusted_path {
 
 #[test]
 fn snapshot_mut_commit_and_forget() -> crate::Result {
-    let mut repo: gix::Repository = named_repo("make_basic_repo.sh")?;
+    let mut repo = named_repo("make_basic_repo.sh")?;
     let repo = {
         let mut repo = repo.config_snapshot_mut();
         repo.set_value(&Core::ABBREV, "4")?;
@@ -77,6 +73,69 @@ fn snapshot_mut_commit_and_forget() -> crate::Result {
         repo.forget();
     }
     assert_eq!(repo.config_snapshot().integer("core.abbrev"), Some(4));
+    Ok(())
+}
+
+#[test]
+fn committing_loose_compression_requires_reopening_the_object_store() -> crate::Result {
+    use gix::objs::Write;
+
+    fn loose_object_size(repo: &gix::Repository, id: gix::ObjectId) -> std::io::Result<u64> {
+        let hex = id.to_string();
+        std::fs::metadata(repo.git_dir().join("objects").join(&hex[..2]).join(&hex[2..])).map(|meta| meta.len())
+    }
+
+    let (mut repo, _tmp) = repo_rw("make_basic_repo.sh")?;
+    let mut data = vec![b'a'; 128 * 1024];
+    let compressed = repo.objects.write_buf(gix::objs::Kind::Blob, &data)?;
+    let compressed_size = loose_object_size(&repo, compressed)?;
+
+    let mut config = repo.config_snapshot_mut();
+    config.set_value(&Core::LOOSE_COMPRESSION, "0")?;
+    config.commit()?;
+
+    data[0] = b'b';
+    let still_compressed = repo.objects.write_buf(gix::objs::Kind::Blob, &data)?;
+    let still_compressed_size = loose_object_size(&repo, still_compressed)?;
+
+    let git_dir = repo.git_dir().to_owned();
+    let options = repo
+        .open_options()
+        .clone()
+        .config_overrides(["core.looseCompression=0"]);
+    repo = gix::open_opts(git_dir, options)?;
+
+    data[1] = b'b';
+    let uncompressed = repo.write_blob(&data)?;
+    let uncompressed_size = loose_object_size(&repo, uncompressed.detach())?;
+    assert!(
+        uncompressed_size > compressed_size * 10 && uncompressed_size > still_compressed_size * 10,
+        "the override should take effect after reopening the object store: {compressed_size}, {still_compressed_size} vs {uncompressed_size}"
+    );
+    Ok(())
+}
+
+#[test]
+fn compression_levels() -> crate::Result {
+    use gix::zlib::Compression;
+
+    let mut repo = named_repo("make_basic_repo.sh")?;
+    assert_eq!(repo.loose_compression(), Compression::BEST_SPEED);
+    assert_eq!(repo.pack_compression()?, Compression::DEFAULT);
+
+    let mut config = repo.config_snapshot_mut();
+    config.set_value(&Core::COMPRESSION, "4")?;
+    config.commit()?;
+    assert_eq!(repo.loose_compression(), Compression::new(4).expect("valid level"));
+    assert_eq!(repo.pack_compression()?, Compression::new(4).expect("valid level"));
+
+    let mut config = repo.config_snapshot_mut();
+    config.set_value(&Core::LOOSE_COMPRESSION, "2")?;
+    config.set_value(&Pack::COMPRESSION, "8")?;
+    config.commit()?;
+    assert_eq!(repo.loose_compression(), Compression::new(2).expect("valid level"));
+    assert_eq!(repo.pack_compression()?, Compression::new(8).expect("valid level"));
+
     Ok(())
 }
 
@@ -103,8 +162,10 @@ fn values_are_set_in_memory_only() {
         "value was set and applied"
     );
     assert_eq!(
-        repo.config_snapshot().string(key_subsection).as_deref(),
-        Some("refs/heads/foo".into())
+        repo.config_snapshot()
+            .string(key_subsection)
+            .expect("value was just set"),
+        "refs/heads/foo"
     );
 
     assert_eq!(
@@ -126,8 +187,7 @@ fn set_value_in_subsection() {
         assert_eq!(
             config
                 .string(&*gitoxide::Credentials::TERMINAL_PROMPT.logical_name())
-                .expect("just set")
-                .as_ref(),
+                .expect("just set"),
             "yes"
         );
     }
@@ -147,15 +207,15 @@ fn apply_cli_overrides() -> crate::Result {
     )?;
 
     let config = repo.config_snapshot();
-    assert_eq!(config.string("a.b").expect("present").as_ref(), "c");
-    assert_eq!(config.string("remote.origin.url").expect("present").as_ref(), "url");
+    assert_eq!(config.string("a.b").expect("present"), "c");
+    assert_eq!(config.string("remote.origin.url").expect("present"), "url");
     assert_eq!(
         config.string("implicit.bool-true"),
         None,
         "no keysep is interpreted as 'not present' as we don't make up values"
     );
     assert_eq!(
-        config.string("implicit.bool-false").expect("present").as_ref(),
+        config.string("implicit.bool-false").expect("present"),
         "",
         "empty values are fine"
     );

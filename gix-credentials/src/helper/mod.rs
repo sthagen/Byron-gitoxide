@@ -3,7 +3,6 @@ use bstr::{BStr, BString};
 use crate::{Program, protocol, protocol::Context};
 
 /// A list of helper programs to run in order to obtain credentials.
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct Cascade {
     /// The programs to run in order to obtain credentials
@@ -13,6 +12,8 @@ pub struct Cascade {
     /// If true, http(s) urls will take their path portion into account when obtaining credentials. Default is false.
     /// Other protocols like ssh will always use the path portion.
     pub use_http_path: bool,
+    /// Options controlling how credential contexts are encoded and decoded.
+    pub context_options: protocol::ContextOptions,
     /// If true, default false, when getting credentials, we will set a bogus password to only obtain the user name.
     /// Storage and cancellation work the same, but without a password set.
     pub query_user_only: bool,
@@ -57,7 +58,7 @@ pub type Result = std::result::Result<Option<Outcome>, Error>;
 
 /// The error used in the [credentials helper invocation][crate::helper::invoke()].
 #[derive(Debug, thiserror::Error)]
-#[allow(missing_docs)]
+#[expect(missing_docs)]
 pub enum Error {
     #[error(transparent)]
     ContextDecode(#[from] protocol::context::decode::Error),
@@ -80,13 +81,14 @@ pub enum Action {
 
 /// Initialization
 impl Action {
-    /// Create a `Get` action with context containing the given URL.
-    /// Note that this creates an `Action` suitable for the credential helper cascade only.
+    /// Create a `Get` action with a default context containing only the given URL.
+    ///
+    /// This initializes [`Context::options`] with its default. Use it when only the URL is needed
+    /// and the default options are suitable. Otherwise, configure the context options afterwards
+    /// and before invoking a helper. Credential cascades do this automatically from
+    /// [`Cascade::context_options`].
     pub fn get_for_url(url: impl Into<BString>) -> Action {
-        Action::Get(Context {
-            url: Some(url.into()),
-            ..Default::default()
-        })
+        Action::Get(Context::from_url(url, protocol::ContextOptions::default()))
     }
 }
 
@@ -141,22 +143,25 @@ impl Action {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NextAction {
     previous_output: BString,
+    options: protocol::ContextOptions,
 }
 
 impl TryFrom<&NextAction> for Context {
     type Error = protocol::context::decode::Error;
 
     fn try_from(value: &NextAction) -> std::result::Result<Self, Self::Error> {
-        Context::from_bytes(value.previous_output.as_ref())
+        Context::from_bytes(value.previous_output.as_ref(), value.options)
     }
 }
 
 impl From<Context> for NextAction {
     fn from(ctx: Context) -> Self {
+        let options = ctx.options;
         let mut buf = Vec::<u8>::new();
         ctx.write_to(&mut buf).expect("cannot fail");
         NextAction {
             previous_output: buf.into(),
+            options,
         }
     }
 }

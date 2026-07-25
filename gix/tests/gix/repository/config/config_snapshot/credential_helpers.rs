@@ -55,7 +55,7 @@ mod baseline {
     });
 
     pub fn works_but_we_dont_parse_invalid_url(url: &str) {
-        assert!(gix::url::parse(url.into()).is_err(), "{url:?} should not be parseable");
+        assert!(gix::url::parse(url).is_err(), "{url:?} should not be parseable");
         assert!(
             BASELINE.get(url).is_some(),
             "Url {url} must be in baseline, whether it's valid or not"
@@ -66,7 +66,7 @@ mod baseline {
         let repo = remote::repo("credential-helpers");
         let (cascade, mut action, prompt_options) = repo
             .config_snapshot()
-            .credential_helpers(gix::url::parse(url.into()).expect("valid input URL"))
+            .credential_helpers(gix::url::parse(url).expect("valid input URL"))
             .unwrap();
 
         assert_ne!(
@@ -124,6 +124,37 @@ mod baseline {
 #[test]
 fn any_url_calls_global() {
     baseline::agrees_with("https://hit-global.helper");
+}
+
+#[test]
+fn protect_protocol_defaults_to_true_and_can_be_overridden_per_url() -> crate::Result {
+    let mut repo = remote::repo("credential-helpers");
+    let url = "https://example.com";
+    let (cascade, action, _) = repo.config_snapshot().credential_helpers(url.try_into()?)?;
+    assert!(
+        cascade.context_options.protect_protocol,
+        "protocol protection is enabled by default"
+    );
+    assert_eq!(action.context().expect("get action").options, cascade.context_options);
+
+    repo.config_snapshot_mut()
+        .set_raw_value("credential.protectProtocol", "false")?;
+    let (cascade, action, _) = repo.config_snapshot().credential_helpers(url.try_into()?)?;
+    assert!(
+        !cascade.context_options.protect_protocol,
+        "global configuration is honored"
+    );
+    assert_eq!(action.context().expect("get action").options, cascade.context_options);
+
+    repo.config_snapshot_mut()
+        .set_raw_value("credential.https://example.com.protectProtocol", "true")?;
+    let (cascade, action, _) = repo.config_snapshot().credential_helpers(url.try_into()?)?;
+    assert!(
+        cascade.context_options.protect_protocol,
+        "URL-specific configuration wins"
+    );
+    assert_eq!(action.context().expect("get action").options, cascade.context_options);
+    Ok(())
 }
 
 #[test]

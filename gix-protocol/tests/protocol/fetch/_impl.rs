@@ -11,18 +11,17 @@ pub enum RefsAction {
 }
 
 mod fetch_fn {
+    use crate::bisync::bisync;
     use gix_features::progress::NestedProgress;
     use gix_protocol::{
         Command, LsRefsCommand, credentials,
         fetch::{Arguments, Response},
         indicate_end_of_interaction,
     };
-    #[cfg(feature = "async-client")]
+    #[cfg(all(feature = "async-client", not(feature = "blocking-client")))]
     use gix_transport::client::async_io::{ExtendedBufRead, HandleProgress, Transport};
     #[cfg(feature = "blocking-client")]
     use gix_transport::client::blocking_io::{ExtendedBufRead, HandleProgress, Transport};
-    use maybe_async::maybe_async;
-    use std::borrow::Cow;
     use std::ops::ControlFlow;
 
     use super::{Action, Delegate, RefsAction};
@@ -66,8 +65,7 @@ mod fetch_fn {
     /// # WARNING - Do not use!
     ///
     /// As it will hang when having multiple negotiation rounds.
-    #[allow(clippy::result_large_err)]
-    #[maybe_async]
+    #[bisync]
     // TODO: remove this without losing test coverage - we have the same but better in `gix` and it's
     //       not really worth it to maintain the delegates here.
     pub async fn legacy_fetch<F, D, T, P>(
@@ -106,16 +104,19 @@ mod fetch_fn {
             None => match delegate.action() {
                 Ok(RefsAction::Skip) => Vec::new(),
                 Ok(RefsAction::Continue) => {
-                    #[cfg(feature = "async-client")]
+                    #[cfg(all(feature = "async-client", not(feature = "blocking-client")))]
                     {
-                        LsRefsCommand::new(None, &capabilities, ("agent", Some(Cow::Owned(agent.clone()))))
+                        LsRefsCommand::new(None, &capabilities, ("agent", Some(agent.clone())))
                             .invoke_async(&mut transport, &mut progress, trace)
                             .await?
                     }
                     #[cfg(feature = "blocking-client")]
                     {
-                        LsRefsCommand::new(None, &capabilities, ("agent", Some(Cow::Owned(agent.clone()))))
-                            .invoke_blocking(&mut transport, &mut progress, trace)?
+                        LsRefsCommand::new(None, &capabilities, ("agent", Some(agent.clone()))).invoke_blocking(
+                            &mut transport,
+                            &mut progress,
+                            trace,
+                        )?
                     }
                 }
                 Err(err) => {
@@ -150,7 +151,7 @@ mod fetch_fn {
 
         Response::check_required_features(protocol_version, &fetch_features)?;
         let sideband_all = fetch_features.iter().any(|(n, _)| *n == "sideband-all");
-        fetch_features.push(("agent", Some(Cow::Owned(agent))));
+        fetch_features.push(("agent", Some(agent)));
         let mut arguments = Arguments::new(protocol_version, fetch_features, trace);
         let mut previous_response = None::<Response>;
         let mut round = 1;
@@ -211,12 +212,12 @@ pub use fetch_fn::{FetchConnection, legacy_fetch as fetch};
 
 mod delegate {
     use std::{
-        borrow::Cow,
         io,
         ops::{Deref, DerefMut},
     };
 
     use gix_protocol::{
+        command::Feature,
         fetch::{Arguments, Response},
         handshake::Ref,
     };
@@ -274,7 +275,7 @@ mod delegate {
             &mut self,
             _version: gix_transport::Protocol,
             _server: &Capabilities,
-            _features: &mut Vec<(&str, Option<Cow<'_, str>>)>,
+            _features: &mut Vec<Feature>,
             _refs: &[Ref],
         ) -> std::io::Result<Action> {
             Ok(Action::Continue)
@@ -328,7 +329,7 @@ mod delegate {
             &mut self,
             _version: gix_transport::Protocol,
             _server: &Capabilities,
-            _features: &mut Vec<(&str, Option<Cow<'_, str>>)>,
+            _features: &mut Vec<Feature>,
             _refs: &[Ref],
         ) -> io::Result<Action> {
             self.deref_mut().prepare_fetch(_version, _server, _features, _refs)
@@ -357,7 +358,7 @@ mod delegate {
             &mut self,
             _version: gix_transport::Protocol,
             _server: &Capabilities,
-            _features: &mut Vec<(&str, Option<Cow<'_, str>>)>,
+            _features: &mut Vec<Feature>,
             _refs: &[Ref],
         ) -> io::Result<Action> {
             self.deref_mut().prepare_fetch(_version, _server, _features, _refs)
@@ -435,7 +436,7 @@ mod delegate {
     #[cfg(feature = "blocking-client")]
     pub use blocking_io::Delegate;
 
-    #[cfg(feature = "async-client")]
+    #[cfg(all(feature = "async-client", not(feature = "blocking-client")))]
     mod async_io {
         use std::{io, ops::DerefMut};
 
@@ -500,7 +501,7 @@ mod delegate {
             }
         }
     }
-    #[cfg(feature = "async-client")]
+    #[cfg(all(feature = "async-client", not(feature = "blocking-client")))]
     pub use async_io::Delegate;
 }
 #[cfg(any(feature = "async-client", feature = "blocking-client"))]

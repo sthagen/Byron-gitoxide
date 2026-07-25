@@ -1,22 +1,23 @@
-use crate::{
-    Remote,
-    bstr::{BStr, BString},
-    config, remote,
-};
+use crate::{Remote, bstr::BStr, config, remote};
+use gix_utils::AsBStr;
 
 /// The error returned by [`Remote::save_to()`].
 #[derive(Debug, thiserror::Error)]
-#[allow(missing_docs)]
+#[expect(missing_docs)]
 pub enum Error {
     #[error("The remote pointing to {} is anonymous and can't be saved.", url.to_bstring())]
     NameMissing { url: gix_url::Url },
+    #[error(transparent)]
+    Span(#[from] gix_config::parse::span::Error),
+    #[error(transparent)]
+    ConfigValue(#[from] gix_config::file::section::value::Error),
 }
 
 /// The error returned by [`Remote::save_as_to()`].
 ///
 /// Note that this type should rather be in the `as` module, but cannot be as it's part of the Rust syntax.
 #[derive(Debug, thiserror::Error)]
-#[allow(missing_docs)]
+#[expect(missing_docs)]
 pub enum AsError {
     #[error(transparent)]
     Save(#[from] Error),
@@ -31,19 +32,22 @@ impl Remote<'_> {
     /// Note that all sections named `remote "<name>"` will be cleared of all values we are about to write,
     /// and the last `remote "<name>"` section will be containing all relevant values so that reloading the remote
     /// from `config` would yield the same in-memory state.
-    #[allow(clippy::result_large_err)]
-    pub fn save_to(&self, config: &mut gix_config::File<'static>) -> Result<(), Error> {
-        fn as_key(name: &str) -> gix_config::parse::section::ValueName<'_> {
-            name.try_into().expect("valid")
-        }
+    #[expect(
+        clippy::result_large_err,
+        reason = "will be removed once `gix-error` is used consistently"
+    )]
+    pub fn save_to(&self, config: &mut gix_config::File) -> Result<(), Error> {
         let name = self.name().ok_or_else(|| Error::NameMissing {
             url: self
-                .url
-                .as_ref()
-                .or(self.push_url.as_ref())
+                .urls
+                .first()
+                .or_else(|| self.push_urls.first())
                 .expect("one url is always set")
                 .to_owned(),
         })?;
+        let target_meta = config.meta().clone();
+        let mut needs_url_reset = false;
+        let mut needs_push_url_reset = false;
         if let Some(section_ids) = config.sections_and_ids_by_name("remote").map(|it| {
             it.filter_map(|(s, id)| (s.header().subsection_name() == Some(name.as_bstr())).then_some(id))
                 .collect::<Vec<_>>()
@@ -59,6 +63,15 @@ impl Remote<'_> {
             for id in section_ids {
                 let mut section = config.section_mut_by_id(id).expect("just queried");
                 let was_empty = section.num_values() == 0;
+                let url_values = section.values(config::tree::Remote::URL.name);
+                let push_url_values = section.values(config::tree::Remote::PUSH_URL.name);
+                if *section.meta() != target_meta {
+                    needs_url_reset |= !url_values.is_empty();
+                    needs_push_url_reset |= !push_url_values.is_empty();
+                } else {
+                    needs_url_reset |= url_values.iter().any(|url| url.is_empty());
+                    needs_push_url_reset |= push_url_values.iter().any(|url| url.is_empty());
+                }
 
                 for key in KEYS_TO_REMOVE {
                     while section.remove(key).is_some() {}
@@ -78,26 +91,39 @@ impl Remote<'_> {
         // be mutated in place, mixing foreign metadata with our values and getting lost when the
         // caller writes back only the local sections. In that case, create a fresh local section.
         // We assume that `config.meta()` is truly the 'identity' of the configuration file.
-        let target_meta = config.meta().clone();
-        let mut section = config
-            .section_mut_or_create_new_filter("remote", Some(name.as_ref()), |meta| *meta == target_meta)
-            .expect("section name is validated and 'remote' is acceptable");
-        if let Some(url) = self.url.as_ref() {
-            section.push(as_key("url"), Some(url.to_bstring().as_ref()));
+        let mut section = if needs_url_reset || needs_push_url_reset {
+            // A foreign section may occur after the last local one, notably when an include follows
+            // it. The reset must follow all such values or reopening the written file would append
+            // the foreign values once more.
+            config
+                .new_section("remote", name.as_bstr())
+                .expect("section name is validated and 'remote' is acceptable")
+        } else {
+            config
+                .section_mut_or_create_new_filter("remote", name.as_bstr(), |meta| *meta == target_meta)
+                .expect("section name is validated and 'remote' is acceptable")
+        };
+        if needs_url_reset {
+            section.push(config::tree::Remote::URL.name, "")?;
         }
-        if let Some(url) = self.push_url.as_ref() {
-            section.push(as_key("pushurl"), Some(url.to_bstring().as_ref()));
+        for url in &self.urls {
+            section.push("url", url.to_bstring())?;
+        }
+        if needs_push_url_reset {
+            section.push(config::tree::Remote::PUSH_URL.name, "")?;
+        }
+        for url in &self.push_urls {
+            section.push("pushurl", url.to_bstring())?;
         }
         if self.fetch_tags != Default::default() {
             section.push(
-                as_key(config::tree::Remote::TAG_OPT.name),
+                config::tree::Remote::TAG_OPT.name,
                 BStr::new(match self.fetch_tags {
                     remote::fetch::Tags::All => "--tags",
                     remote::fetch::Tags::None => "--no-tags",
                     remote::fetch::Tags::Included => unreachable!("BUG: the default shouldn't be written and we try"),
-                })
-                .into(),
-            );
+                }),
+            )?;
         }
         for (key, spec) in self
             .fetch_specs
@@ -105,7 +131,7 @@ impl Remote<'_> {
             .map(|spec| ("fetch", spec))
             .chain(self.push_specs.iter().map(|spec| ("push", spec)))
         {
-            section.push(as_key(key), Some(spec.to_ref().to_bstring().as_ref()));
+            section.push(key, spec.to_ref().to_bstring())?;
         }
         Ok(())
     }
@@ -115,13 +141,12 @@ impl Remote<'_> {
     /// Note that this sets a name for anonymous remotes, but overwrites the name for those who were named before.
     /// If this name is different from the current one, the git configuration will still contain the previous name,
     /// and the caller should account for that.
-    #[allow(clippy::result_large_err)]
-    pub fn save_as_to(
-        &mut self,
-        name: impl Into<BString>,
-        config: &mut gix_config::File<'static>,
-    ) -> Result<(), AsError> {
-        let name = crate::remote::name::validated(name)?;
+    #[expect(
+        clippy::result_large_err,
+        reason = "will be removed once `gix-error` is used consistently"
+    )]
+    pub fn save_as_to(&mut self, name: impl AsBStr, config: &mut gix_config::File) -> Result<(), AsError> {
+        let name = crate::remote::name::validated(name.as_bstr().to_owned())?;
         let prev_name = self.name.take();
         self.name = Some(name.into());
         self.save_to(config).map_err(|err| {

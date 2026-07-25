@@ -8,7 +8,7 @@ fn pipeline_in_nonbare_repo_without_index() -> crate::Result {
 }
 
 use gix::bstr::ByteSlice;
-use gix_filter::driver::apply::Delay;
+use gix_filter::pipeline::convert::to_worktree;
 
 use super::blob_id;
 use crate::util::{named_repo, named_subrepo_opts};
@@ -25,7 +25,7 @@ fn pipeline_in_repo_without_special_options() -> crate::Result {
     }
 
     {
-        let out = pipe.convert_to_worktree(input.as_bytes(), "file".into(), Delay::Forbid)?;
+        let out = pipe.convert_to_worktree(input.as_bytes(), "file".into(), to_worktree::Options::default())?;
         assert!(!out.is_changed(), "no filtering is configured, nothing changes");
     }
 
@@ -94,6 +94,49 @@ fn pipeline_worktree_file_to_object() -> crate::Result {
 }
 
 #[test]
+#[cfg(unix)]
+fn worktree_file_to_object_opens_submodules_after_path_options_were_consumed() -> crate::Result {
+    let repo = named_repo("repo_with_untracked_files.sh")?;
+    let submodule = gix::open_opts(
+        repo.workdir().expect("non-bare").join("submodule"),
+        gix::open::Options::isolated(),
+    )?;
+    let checked_out_head = submodule.head_id()?;
+    let mut repo = gix::open_opts(repo.git_dir(), gix::open::Options::isolated().open_path_as_is(true))?;
+
+    fn submodule_entry(repo: &gix::Repository) -> crate::Result<Option<(gix::ObjectId, gix::object::tree::EntryKind)>> {
+        let (mut pipe, index) = repo.filter_pipeline(None)?;
+        Ok(pipe
+            .worktree_file_to_object("submodule".into(), &index)?
+            .map(|(id, kind, _)| (id, kind)))
+    }
+
+    let (id, kind) = submodule_entry(&repo)?.expect("the submodule can be opened");
+    assert_eq!(
+        id, checked_out_head,
+        "the ID comes from the opened submodule's HEAD, not the superproject's index"
+    );
+    assert_eq!(
+        kind,
+        gix::object::tree::EntryKind::Commit,
+        "an option used to open the parent repository must not affect opening its submodule"
+    );
+
+    repo.reload()?;
+    let (id, kind) = submodule_entry(&repo)?.expect("the submodule can still be opened after reload");
+    assert_eq!(
+        id, checked_out_head,
+        "reload-only options must not prevent reading the opened submodule's HEAD"
+    );
+    assert_eq!(
+        kind,
+        gix::object::tree::EntryKind::Commit,
+        "reload-only options must not affect opening a submodule afterward"
+    );
+    Ok(())
+}
+
+#[test]
 fn pipeline_with_autocrlf() -> crate::Result {
     let repo = named_repo("make_config_repo.sh")?;
     let (mut pipe, index) = repo.filter_pipeline(None)?;
@@ -111,7 +154,7 @@ fn pipeline_with_autocrlf() -> crate::Result {
     }
 
     {
-        let out = pipe.convert_to_worktree("hi\n".as_bytes(), "file".into(), Delay::Forbid)?;
+        let out = pipe.convert_to_worktree("hi\n".as_bytes(), "file".into(), to_worktree::Options::default())?;
         assert_eq!(
             out.as_bytes()
                 .expect("a buffer is needed for eol conversions")

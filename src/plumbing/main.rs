@@ -122,7 +122,7 @@ pub fn main() -> Result<()> {
                 let mut config_mut = repo.config_snapshot_mut();
                 // Enable precious file parsing unless the user made a choice.
                 if config_mut
-                    .boolean(gix::config::tree::Gitoxide::PARSE_PRECIOUS)
+                    .boolean(gix::config::tree::Gitoxide::PARSE_PRECIOUS)?
                     .is_none()
                 {
                     config_mut.set_raw_value(gix::config::tree::Gitoxide::PARSE_PRECIOUS, "true")?;
@@ -147,7 +147,7 @@ pub fn main() -> Result<()> {
     let auto_verbose = !progress && !args.no_verbose;
 
     let should_interrupt = Arc::new(AtomicBool::new(false));
-    #[allow(unsafe_code)]
+    #[expect(unsafe_code)]
     unsafe {
         // SAFETY: The closure doesn't use mutexes or memory allocation, so it should be safe to call from a signal handler.
         gix::interrupt::init_handler(1, {
@@ -157,6 +157,30 @@ pub fn main() -> Result<()> {
     }
 
     match cmd {
+        #[cfg(feature = "tix")]
+        Subcommands::Tix {
+            help: _,
+            quit_on_finish,
+            screen,
+            hide,
+            revisions,
+        } => {
+            let screen = match screen.as_str() {
+                "auto" => gix_tix::Screen::Auto,
+                "always" => gix_tix::Screen::Always,
+                "half" => gix_tix::Screen::Half,
+                value => anyhow::bail!("invalid screen mode: {value}"),
+            };
+            gix_tix::run(
+                repository(Mode::Lenient)?.into_sync(),
+                revisions,
+                gix_tix::Options {
+                    quit_on_finish,
+                    hide,
+                    screen,
+                },
+            )
+        }
         Subcommands::Env => prepare_and_run(
             "env",
             trace,
@@ -719,6 +743,17 @@ pub fn main() -> Result<()> {
         }) => {
             use crate::plumbing::options::remote;
             match cmd {
+                remote::Subcommands::Url { all, push } => core::repository::remote::url(
+                    repository(Mode::LenientWithGitInstallConfig)?,
+                    name.as_deref(),
+                    if push {
+                        gix::remote::Direction::Push
+                    } else {
+                        gix::remote::Direction::Fetch
+                    },
+                    all,
+                    std::io::stdout(),
+                ),
                 remote::Subcommands::Refs | remote::Subcommands::RefMap { .. } => {
                     let kind = match cmd {
                         remote::Subcommands::Refs => core::repository::remote::refs::Kind::Remote,
@@ -729,6 +764,7 @@ pub fn main() -> Result<()> {
                             ref_specs: ref_spec,
                             show_unmapped_remote_refs,
                         },
+                        remote::Subcommands::Url { .. } => unreachable!("handled above"),
                     };
                     let context = core::repository::remote::refs::Options {
                         name_or_url: name,
@@ -776,24 +812,63 @@ pub fn main() -> Result<()> {
                 }
             }
         }
-        Subcommands::Config(config::Platform { filter }) => prepare_and_run(
-            "config-list",
-            trace,
-            verbose,
-            progress,
-            progress_keep_open,
-            None,
-            move |_progress, out, _err| {
-                core::repository::config::list(
-                    repository(Mode::LenientWithGitInstallConfig)?,
-                    filter,
-                    config,
-                    format,
-                    out,
-                )
-            },
-        )
-        .map(|_| ()),
+        Subcommands::Config(config::Platform { filter, cmd }) => match cmd {
+            Some(config::Subcommands::Show) | None => prepare_and_run(
+                "config-show",
+                trace,
+                verbose,
+                progress,
+                progress_keep_open,
+                None,
+                move |_progress, out, _err| {
+                    core::repository::config::show(
+                        repository(Mode::LenientWithGitInstallConfig)?,
+                        filter,
+                        config,
+                        format,
+                        out,
+                    )
+                },
+            )
+            .map(|_| ()),
+            Some(config::Subcommands::List) => prepare_and_run(
+                "config-list-files",
+                trace,
+                verbose,
+                progress,
+                progress_keep_open,
+                None,
+                move |_progress, out, _err| {
+                    core::repository::config::list_files(
+                        repository(Mode::LenientWithGitInstallConfig)?,
+                        config,
+                        format,
+                        out,
+                    )
+                },
+            )
+            .map(|_| ()),
+            Some(config::Subcommands::Fmt {
+                in_place,
+                in_file,
+                out_file,
+            }) => prepare_and_run(
+                "config-fmt",
+                trace,
+                verbose,
+                progress,
+                progress_keep_open,
+                None,
+                move |_progress, out, _err| {
+                    let repo = in_file
+                        .is_none()
+                        .then(|| repository(Mode::LenientWithGitInstallConfig))
+                        .transpose()?;
+                    core::repository::config::fmt(repo, in_file, out_file, in_place, out)
+                },
+            )
+            .map(|_| ()),
+        },
         Subcommands::Free(subcommands) => match subcommands {
             free::Subcommands::Discover => prepare_and_run(
                 "discover",
@@ -1602,7 +1677,7 @@ pub fn main() -> Result<()> {
             exclude::Subcommands::Query {
                 statistics,
                 patterns,
-                pathspec,
+                paths,
                 show_ignore_patterns,
             } => prepare_and_run(
                 "exclude-query",
@@ -1613,16 +1688,16 @@ pub fn main() -> Result<()> {
                 None,
                 move |_progress, out, err| {
                     let repo = repository(Mode::Strict)?;
-                    let pathspecs = if pathspec.is_empty() {
+                    let paths = if paths.is_empty() {
                         PathsOrPatterns::Paths(Box::new(
                             stdin_or_bail()?.byte_lines().filter_map(Result::ok).map(BString::from),
                         ))
                     } else {
-                        PathsOrPatterns::Patterns(pathspec)
+                        PathsOrPatterns::Patterns(paths)
                     };
                     core::repository::exclude::query(
                         repo,
-                        pathspecs,
+                        paths,
                         out,
                         err,
                         core::repository::exclude::query::Options {
@@ -1774,5 +1849,53 @@ mod tests {
     fn clap() {
         use clap::CommandFactory;
         Args::command().debug_assert();
+    }
+
+    #[test]
+    #[cfg(feature = "tix")]
+    fn tix_aliases_are_visible_and_route_to_tix() {
+        use clap::{CommandFactory, Parser};
+
+        let command = Args::command();
+        let tix = command.find_subcommand("tix").expect("tix is registered");
+        assert_eq!(
+            tix.get_visible_aliases().collect::<Vec<_>>(),
+            ["tui", "interactive", "i"],
+            "all aliases are shown in help"
+        );
+        for name in ["tix", "tui", "interactive", "i"] {
+            let args = Args::try_parse_from(["gix", name]).expect("the command or alias parses");
+            assert!(
+                matches!(args.cmd, Subcommands::Tix { .. }),
+                "{name} routes to the tix command"
+            );
+        }
+
+        let args = Args::try_parse_from(["gix", "tix", "-h", "main", "--hide", "tag", "topic"])
+            .expect("hide options and a visible revision parse");
+        let Subcommands::Tix { hide, revisions, .. } = args.cmd else {
+            panic!("tix arguments route to tix")
+        };
+        assert_eq!(hide, ["main", "tag"], "short and long hide options append");
+        assert_eq!(revisions, ["topic"], "positional revisions remain visible tips");
+        let args = Args::try_parse_from(["gix", "tix", "--screen", "half"]).expect("the half-screen mode parses");
+        let Subcommands::Tix { screen, .. } = args.cmd else {
+            panic!("tix arguments route to tix")
+        };
+        assert_eq!(screen, "half", "the requested screen mode is retained");
+        assert_eq!(
+            Args::try_parse_from(["gix", "tix", "--screen", "other"])
+                .expect_err("unknown screen modes are rejected")
+                .kind(),
+            clap::error::ErrorKind::InvalidValue,
+            "screen mode validation happens at the command line"
+        );
+        assert_eq!(
+            Args::try_parse_from(["gix", "tix", "--help"])
+                .expect_err("help exits through clap")
+                .kind(),
+            clap::error::ErrorKind::DisplayHelp,
+            "long help remains available while -h belongs to hide"
+        );
     }
 }

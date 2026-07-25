@@ -15,7 +15,7 @@ use crate::{
 pub fn main() -> Result<()> {
     let args: Args = Args::parse_from(gix::env::args_os());
     let should_interrupt = Arc::new(AtomicBool::new(false));
-    #[allow(unsafe_code)]
+    #[expect(unsafe_code)]
     unsafe {
         // SAFETY: The closure doesn't use mutexes or memory allocation, so it should be safe to call from a signal handler.
         gix::interrupt::init_handler(1, {
@@ -73,7 +73,13 @@ pub fn main() -> Result<()> {
                         match cmd {
                             None => writeln!(err, "Choose a command for the query engine")?,
                             Some(crate::porcelain::options::tools::query::Command::TracePath { path }) => {
-                                engine.run(query::Command::TracePath { spec: path }, out, progress)?;
+                                engine.run(
+                                    query::Command::TracePath {
+                                        spec: crate::shared::parse_pathspec_argument(path),
+                                    },
+                                    out,
+                                    progress,
+                                )?;
                             }
                         }
                         Ok(())

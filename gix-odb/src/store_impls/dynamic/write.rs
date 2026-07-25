@@ -10,7 +10,7 @@ mod error {
 
     /// The error returned by the [dynamic Store's][crate::Store] [`Write`](gix_object::Write) implementation.
     #[derive(Debug, thiserror::Error)]
-    #[allow(missing_docs)]
+    #[expect(missing_docs)]
     pub enum Error {
         #[error(transparent)]
         LoadIndex(#[from] store::load_index::Error),
@@ -35,7 +35,7 @@ where
             None => {
                 let new_snapshot = self
                     .store
-                    .load_one_index(self.refresh, snapshot.marker)
+                    .load_one_index(self.index_ctx(snapshot.marker))
                     .map_err(Box::new)?
                     .expect("there is always at least one ODB, and this code runs only once for initialization");
                 *snapshot = new_snapshot;
@@ -56,7 +56,7 @@ where
             None => {
                 let new_snapshot = self
                     .store
-                    .load_one_index(self.refresh, snapshot.marker)
+                    .load_one_index(self.index_ctx(snapshot.marker))
                     .map_err(Box::new)?
                     .expect("there is always at least one ODB, and this code runs only once for initialization");
                 *snapshot = new_snapshot;
@@ -78,7 +78,7 @@ where
             None => {
                 let new_snapshot = self
                     .store
-                    .load_one_index(self.refresh, snapshot.marker)
+                    .load_one_index(self.index_ctx(snapshot.marker))
                     .map_err(Box::new)?
                     .expect("there is always at least one ODB, and this code runs only once for initialization");
                 *snapshot = new_snapshot;

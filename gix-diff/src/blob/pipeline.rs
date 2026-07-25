@@ -7,7 +7,7 @@ use std::{
 use bstr::{BStr, ByteSlice};
 use gix_filter::{
     driver::apply::{Delay, MaybeDelayed},
-    pipeline::convert::{ToGitOutcome, ToWorktreeOutcome},
+    pipeline::convert::{ToGitOutcome, ToWorktreeOutcome, to_worktree},
 };
 use gix_object::tree::EntryKind;
 
@@ -131,7 +131,7 @@ pub mod convert_to_diffable {
 
     /// The error returned by [Pipeline::convert_to_diffable()](super::Pipeline::convert_to_diffable()).
     #[derive(Debug, thiserror::Error)]
-    #[allow(missing_docs)]
+    #[expect(missing_docs)]
     pub enum Error {
         #[error("Entry at '{rela_path}' must be regular file or symlink, but was {actual:?}")]
         InvalidEntryKind { rela_path: BString, actual: EntryKind },
@@ -229,7 +229,7 @@ impl Pipeline {
     ///
     /// As these files are ultimately named tempfiles, they will be leaked unless the [gix_tempfile] is configured with
     /// a signal handler. If they leak, they would remain in the system's `$TMP` directory.
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn convert_to_diffable(
         &mut self,
         id: &gix_hash::oid,
@@ -422,9 +422,15 @@ impl Pipeline {
                             || (convert == Mode::ToGitUnlessBinaryToTextIsPresent
                                 && driver.is_some_and(|d| d.binary_to_text_command.is_some()))
                         {
-                            let res =
-                                self.worktree_filter
-                                    .convert_to_worktree(out, rela_path, attributes, Delay::Forbid)?;
+                            let res = self.worktree_filter.convert_to_worktree(
+                                out,
+                                rela_path,
+                                attributes,
+                                to_worktree::Options {
+                                    can_delay: Delay::Forbid,
+                                    unknown_encoding: to_worktree::UnknownEncoding::Fail,
+                                },
+                            )?;
 
                             let cmd_and_file = driver
                                 .and_then(|d| {

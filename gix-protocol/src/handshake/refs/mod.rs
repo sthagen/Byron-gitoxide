@@ -8,7 +8,7 @@ pub mod parse {
 
     /// The error returned when parsing References/refs from the server response.
     #[derive(Debug, thiserror::Error)]
-    #[allow(missing_docs)]
+    #[expect(missing_docs)]
     pub enum Error {
         #[error(transparent)]
         Io(#[from] std::io::Error),
@@ -66,11 +66,11 @@ impl Ref {
 pub(crate) mod shared;
 
 #[cfg(feature = "async-client")]
-mod async_io;
-#[cfg(feature = "async-client")]
+pub(crate) mod async_io;
+#[cfg(all(feature = "async-client", not(feature = "blocking-client")))]
 pub use async_io::{from_v1_refs_received_as_part_of_handshake_and_capabilities, from_v2_refs};
 
 #[cfg(feature = "blocking-client")]
-mod blocking_io;
+pub(crate) mod blocking_io;
 #[cfg(feature = "blocking-client")]
 pub use blocking_io::{from_v1_refs_received_as_part_of_handshake_and_capabilities, from_v2_refs};

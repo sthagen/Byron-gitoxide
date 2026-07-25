@@ -2,7 +2,7 @@ lints.workspace = true
 
 [package]
 name = "gix-pack"
-version = "0.72.0"
+version = "0.73.0"
 repository = "https://github.com/GitoxideLabs/gitoxide"
 authors = ["Sebastian Thiel <sebastian.thiel@icloud.com>"]
 license = "MIT OR Apache-2.0"
@@ -36,25 +36,25 @@ pack-cache-lru-dynamic = ["dep:clru"]
 ## If set, select algorithms may additionally use a full-object cache which is queried before the pack itself.
 object-cache-dynamic = ["dep:clru", "dep:gix-hashtable"]
 ## Data structures implement `serde::Serialize` and `serde::Deserialize`.
-serde = ["dep:serde", "gix-object/serde"]
+serde = ["dep:serde", "gix-object/serde", "gix-zlib/serde"]
 ## Enable parallel algorithms.
 parallel = ["gix-features/parallel"]
 ## Make it possible to compile to the `wasm32-unknown-unknown` target.
 wasm = ["gix-diff?/wasm"]
 
 [dependencies]
-gix-features = { version = "^0.48.1", path = "../gix-features", features = ["crc32", "progress"] }
+gix-features = { version = "^0.49.0", path = "../gix-features", features = ["crc32", "progress"] }
 gix-zlib = { version = "^0.1.0", path = "../gix-zlib" }
-gix-path = { version = "^0.12.1", path = "../gix-path" }
-gix-hash = { version = "^0.25.1", path = "../gix-hash" }
-gix-chunk = { version = "^0.7.2", path = "../gix-chunk" }
-gix-error = { version = "^0.2.4", path = "../gix-error" }
-gix-object = { version = "^0.62.0", path = "../gix-object" }
-gix-hashtable = { version = "^0.15.2", path = "../gix-hashtable", optional = true }
+gix-path = { version = "^0.12.3", path = "../gix-path" }
+gix-hash = { version = "^0.26.0", path = "../gix-hash" }
+gix-chunk = { version = "^0.7.3", path = "../gix-chunk" }
+gix-error = { version = "^0.2.5", path = "../gix-error" }
+gix-object = { version = "^0.63.0", path = "../gix-object" }
+gix-hashtable = { version = "^0.16.0", path = "../gix-hashtable", optional = true }
 
 # for streaming of packs (input, output)
-gix-traverse = { version = "^0.59.0", path = "../gix-traverse", optional = true }
-gix-diff = { version = "^0.65.0", path = "../gix-diff", default-features = false, optional = true }
+gix-traverse = { version = "^0.60.0", path = "../gix-traverse", optional = true }
+gix-diff = { version = "^0.66.0", path = "../gix-diff", default-features = false, optional = true }
 
 memmap2 = "0.9.11"
 smallvec = "1.15.1"
@@ -71,7 +71,7 @@ document-features = { version = "0.2.0", optional = true }
 
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-gix-tempfile = { version = "^23.0.0", default-features = false, path = "../gix-tempfile", optional = true }
+gix-tempfile = { version = "^24.0.0", default-features = false, path = "../gix-tempfile", optional = true }
 
 [dev-dependencies]
 gix-pack = { path = ".", features = ["sha1", "sha256", "pack-cache-lru-dynamic", "pack-cache-lru-static", "object-cache-dynamic", "serde", "parallel"] }

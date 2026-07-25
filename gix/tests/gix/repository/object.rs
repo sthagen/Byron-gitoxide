@@ -40,7 +40,7 @@ mod edit_tree {
 
     #[test]
     // Some part of the test validation the implementation for this exists, but it's needless nonetheless.
-    #[allow(clippy::needless_borrows_for_generic_args)]
+    #[expect(clippy::needless_borrows_for_generic_args)]
     fn from_head_tree() -> crate::Result {
         let (repo, _tmp) = crate::repo_rw("make_packed_and_loose.sh")?;
         let head_tree_id = repo.head_tree_id()?;
@@ -400,7 +400,13 @@ mod write_blob {
 #[test]
 fn writes_avoid_io_using_duplicate_check() -> crate::Result {
     let mut repo = crate::named_repo("make_packed_and_loose.sh")?;
-    let store = gix::odb::loose::Store::at(repo.git_dir().join("objects"), repo.object_hash(), None);
+    let store = gix::odb::loose::Store::at(
+        repo.git_dir().join("objects"),
+        gix::odb::loose::Options {
+            object_hash: repo.object_hash(),
+            ..Default::default()
+        },
+    );
     let loose_count = store.iter().count();
     assert_eq!(loose_count, 3, "there are some loose objects");
     assert_eq!(

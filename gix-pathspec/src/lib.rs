@@ -52,7 +52,7 @@ pub mod normalize {
 
     /// The error returned by [Pattern::normalize()](super::Pattern::normalize()).
     #[derive(Debug, thiserror::Error)]
-    #[allow(missing_docs)]
+    #[expect(missing_docs)]
     pub enum Error {
         #[error("The path '{}' is not inside of the worktree '{}'", path.display(), worktree_path.display())]
         AbsolutePathOutsideOfWorktree { path: PathBuf, worktree_path: PathBuf },
@@ -99,6 +99,10 @@ pub struct Search {
     ///
     /// During matching, this order is reversed.
     patterns: Vec<gix_glob::search::pattern::Mapping<search::Spec>>,
+
+    /// The synthetic pattern returned when an empty search matches everything.
+    /// Can't be static as it's not (always) `Send` due to `gix-attributes/?parallel`.
+    match_all: Pattern,
 
     /// The path from which the patterns were read, or `None` if the patterns
     /// don't originate in a file on disk.

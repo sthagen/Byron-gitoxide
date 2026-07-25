@@ -1,6 +1,6 @@
 use bstr::ByteSlice;
 use gix_attributes::glob::pattern::Case;
-use gix_filter::eol;
+use gix_filter::{eol, pipeline::convert::to_worktree};
 
 mod convert_to_git;
 mod convert_to_worktree;
@@ -12,7 +12,10 @@ fn default() -> crate::Result {
         b"hi",
         "file".into(),
         &mut |_, _| {},
-        gix_filter::driver::apply::Delay::Allow,
+        to_worktree::Options {
+            can_delay: gix_filter::driver::apply::Delay::Allow,
+            unknown_encoding: to_worktree::UnknownEncoding::Fail,
+        },
     )?;
     assert_eq!(
         out.as_bytes().expect("unchanged").as_bstr(),
@@ -69,4 +72,11 @@ fn pipeline(
         },
     );
     Ok((cache, pipe))
+}
+
+#[cfg(feature = "parallel")]
+#[test]
+fn is_send_with_parallel_enabled() {
+    fn assert_send<T: Send>() {}
+    assert_send::<gix_filter::Pipeline>();
 }

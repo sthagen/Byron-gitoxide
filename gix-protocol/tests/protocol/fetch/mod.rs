@@ -1,7 +1,8 @@
-use std::{borrow::Cow, io};
+use std::io;
 
 use bstr::{BString, ByteSlice};
 use gix_protocol::{
+    command::Feature,
     fetch::{Arguments, Response},
     handshake,
 };
@@ -22,7 +23,7 @@ mod error {
 
     /// The error used in [`fetch()`][crate::fetch()].
     #[derive(Debug, thiserror::Error)]
-    #[allow(missing_docs)]
+    #[expect(missing_docs)]
     pub enum Error {
         #[error(transparent)]
         Handshake(#[from] handshake::Error),
@@ -42,10 +43,10 @@ mod arguments;
 
 #[cfg(feature = "blocking-client")]
 type Cursor = std::io::Cursor<Vec<u8>>;
-#[cfg(feature = "async-client")]
+#[cfg(all(feature = "async-client", not(feature = "blocking-client")))]
 type Cursor = futures_lite::io::Cursor<Vec<u8>>;
 
-#[allow(clippy::result_large_err)]
+#[expect(clippy::result_large_err)]
 fn helper_unused(_action: gix_credentials::helper::Action) -> gix_credentials::protocol::Result {
     panic!("Call to credentials helper is unexpected")
 }
@@ -61,7 +62,7 @@ impl DelegateBlocking for CloneDelegate {
         &mut self,
         _version: gix_transport::Protocol,
         _server: &Capabilities,
-        _features: &mut Vec<(&str, Option<Cow<'_, str>>)>,
+        _features: &mut Vec<Feature>,
         _refs: &[handshake::Ref],
     ) -> io::Result<Action> {
         if _refs.is_empty() {
@@ -112,7 +113,7 @@ impl DelegateBlocking for CloneRefInWantDelegate {
         &mut self,
         _version: gix_transport::Protocol,
         _server: &Capabilities,
-        _features: &mut Vec<(&str, Option<Cow<'_, str>>)>,
+        _features: &mut Vec<Feature>,
         refs: &[handshake::Ref],
     ) -> io::Result<Action> {
         refs.clone_into(&mut self.refs);
@@ -153,7 +154,7 @@ impl DelegateBlocking for LsRemoteDelegate {
         &mut self,
         _version: gix_transport::Protocol,
         _server: &Capabilities,
-        _features: &mut Vec<(&str, Option<Cow<'_, str>>)>,
+        _features: &mut Vec<Feature>,
         refs: &[handshake::Ref],
     ) -> io::Result<Action> {
         refs.clone_into(&mut self.refs);
@@ -224,7 +225,7 @@ mod blocking_io {
     }
 }
 
-#[cfg(feature = "async-client")]
+#[cfg(all(feature = "async-client", not(feature = "blocking-client")))]
 mod async_io {
     use std::io;
 
@@ -288,7 +289,7 @@ pub fn oid(hex_sha: &str) -> gix_hash::ObjectId {
     gix_hash::ObjectId::from_hex(hex_sha.as_bytes()).expect("valid input")
 }
 
-#[cfg(feature = "async-client")]
+#[cfg(all(feature = "async-client", not(feature = "blocking-client")))]
 pub fn transport<W: futures_io::AsyncWrite + Unpin>(
     out: W,
     path: &str,

@@ -4,7 +4,7 @@ use crate::{parse, path::interpolate};
 
 /// The error returned when following includes.
 #[derive(Debug, thiserror::Error)]
-#[allow(missing_docs)]
+#[expect(missing_docs)]
 pub enum Error {
     #[error("Failed to copy configuration file into buffer")]
     CopyBuffer(#[source] std::io::Error),
@@ -12,6 +12,8 @@ pub enum Error {
     Io { path: PathBuf, source: std::io::Error },
     #[error(transparent)]
     Parse(#[from] parse::Error),
+    #[error(transparent)]
+    Span(#[from] parse::span::Error),
     #[error(transparent)]
     Interpolate(#[from] interpolate::Error),
     #[error("The maximum allowed length {} of the file include chain built by following nested resolve_includes is exceeded", .max_depth)]

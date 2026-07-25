@@ -7,7 +7,7 @@ pub mod options {
     pub mod init {
         /// The error returned when instantiating [diff options](crate::diff::Options).
         #[derive(Debug, thiserror::Error)]
-        #[allow(missing_docs)]
+        #[cfg_attr(feature = "blob-diff", expect(missing_docs))]
         pub enum Error {
             #[cfg(feature = "blob-diff")]
             #[error(transparent)]
@@ -142,7 +142,7 @@ pub(crate) mod utils {
     pub mod new_rewrites {
         /// The error returned by [`new_rewrites()`](super::new_rewrites()).
         #[derive(Debug, thiserror::Error)]
-        #[allow(missing_docs)]
+        #[expect(missing_docs)]
         pub enum Error {
             #[error(transparent)]
             ConfigDiffRenames(#[from] crate::config::key::GenericError),
@@ -155,7 +155,7 @@ pub(crate) mod utils {
     pub mod resource_cache {
         /// The error returned by [`resource_cache()`](super::resource_cache()).
         #[derive(Debug, thiserror::Error)]
-        #[allow(missing_docs)]
+        #[expect(missing_docs)]
         pub enum Error {
             #[error(transparent)]
             DiffAlgorithm(#[from] crate::config::diff::algorithm::Error),
@@ -174,24 +174,21 @@ pub(crate) mod utils {
     /// Returns `Ok((None, false))` if nothing is configured, or `Ok((None, true))` if it's configured and disabled.
     ///
     /// Note that missing values will be defaulted similar to what git does.
-    #[allow(clippy::result_large_err)]
     pub fn new_rewrites(
-        config: &gix_config::File<'static>,
+        config: &gix_config::File,
         lenient: bool,
     ) -> Result<(Option<Rewrites>, bool), new_rewrites::Error> {
         new_rewrites_inner(config, lenient, &Diff::RENAMES, &Diff::RENAME_LIMIT)
     }
 
     pub(crate) fn new_rewrites_inner(
-        config: &gix_config::File<'static>,
+        config: &gix_config::File,
         lenient: bool,
         renames: &'static crate::config::tree::diff::Renames,
         rename_limit: &'static crate::config::tree::keys::UnsignedInteger,
     ) -> Result<(Option<Rewrites>, bool), new_rewrites::Error> {
-        let copies = match config
-            .boolean(renames)
-            .map(|value| renames.try_into_renames(value))
-            .transpose()
+        let copies = match renames
+            .try_into_renames(config.boolean(renames))
             .with_leniency(lenient)?
         {
             Some(renames) => match renames {
@@ -206,10 +203,8 @@ pub(crate) mod utils {
         Ok((
             Rewrites {
                 copies,
-                limit: config
-                    .integer(rename_limit)
-                    .map(|value| rename_limit.try_into_usize(value))
-                    .transpose()
+                limit: rename_limit
+                    .try_into_usize(config.integer(rename_limit))
                     .with_leniency(lenient)?
                     .unwrap_or(default.limit),
                 ..default

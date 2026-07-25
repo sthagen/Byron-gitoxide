@@ -6,7 +6,7 @@ use std::{
 use bstr::BStr;
 use gix_filter::{
     driver::apply::{Delay, MaybeDelayed},
-    pipeline::convert::{ToGitOutcome, ToWorktreeOutcome},
+    pipeline::convert::{ToGitOutcome, ToWorktreeOutcome, to_worktree},
 };
 use gix_object::tree::EntryKind;
 
@@ -119,7 +119,7 @@ pub mod convert_to_mergeable {
 
     /// The error returned by [Pipeline::convert_to_mergeable()](super::Pipeline::convert_to_mergeable()).
     #[derive(Debug, thiserror::Error)]
-    #[allow(missing_docs)]
+    #[expect(missing_docs)]
     pub enum Error {
         #[error("Entry at '{rela_path}' must be regular file or symlink, but was {actual:?}")]
         InvalidEntryKind { rela_path: BString, actual: EntryKind },
@@ -161,7 +161,7 @@ impl Pipeline {
     /// Only blobs are allowed.
     ///
     /// Use `convert` to control what kind of the resource will be produced.
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn convert_to_mergeable(
         &mut self,
         id: &gix_hash::oid,
@@ -277,9 +277,15 @@ impl Pipeline {
 
                         if convert == Mode::Renormalize {
                             {
-                                let res = self
-                                    .filter
-                                    .convert_to_worktree(out, rela_path, attributes, Delay::Forbid)?;
+                                let res = self.filter.convert_to_worktree(
+                                    out,
+                                    rela_path,
+                                    attributes,
+                                    to_worktree::Options {
+                                        can_delay: Delay::Forbid,
+                                        unknown_encoding: to_worktree::UnknownEncoding::Fail,
+                                    },
+                                )?;
 
                                 match res {
                                     ToWorktreeOutcome::Unchanged(_) => {}

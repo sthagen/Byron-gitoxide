@@ -23,10 +23,11 @@ impl Action {
 /// On successful usage, use [`NextAction::store()`], otherwise [`NextAction::erase()`], which is when this function
 /// returns `Ok(None)` as no outcome is expected.
 pub fn invoke(helper: &mut crate::Program, action: &Action) -> Result {
+    let options = action.context().map(|ctx| ctx.options).unwrap_or_default();
     match raw(helper, action)? {
         None => Ok(None),
         Some(stdout) => {
-            let ctx = Context::from_bytes(stdout.as_slice())?;
+            let ctx = Context::from_bytes(stdout.as_slice(), options)?;
             Ok(Some(Outcome {
                 username: ctx.username,
                 password: ctx.password,
@@ -34,6 +35,7 @@ pub fn invoke(helper: &mut crate::Program, action: &Action) -> Result {
                 quit: ctx.quit.unwrap_or(false),
                 next: NextAction {
                     previous_output: stdout.into(),
+                    options,
                 },
             }))
         }

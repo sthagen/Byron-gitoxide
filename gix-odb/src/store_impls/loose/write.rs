@@ -9,7 +9,7 @@ use crate::store_impls::loose;
 
 /// Returned by the [`gix_object::Write`] trait implementation of [`Store`]
 #[derive(thiserror::Error, Debug)]
-#[allow(missing_docs)]
+#[expect(missing_docs)]
 pub enum Error {
     #[error("Could not {message} '{path}'")]
     Io {
@@ -170,13 +170,14 @@ impl Store {
             let perms = std::fs::Permissions::from_mode(0o444);
             builder.permissions(perms);
         }
-        Ok(deflate::Write::new(builder.tempfile_in(&self.path).map_err(|err| {
-            Error::Io {
+        Ok(deflate::Write::new(
+            builder.tempfile_in(&self.path).map_err(|err| Error::Io {
                 source: err.into(),
                 message: "create named temp file in",
                 path: self.path.to_owned(),
-            }
-        })?))
+            })?,
+            self.compression,
+        ))
     }
 
     fn finalize_object(

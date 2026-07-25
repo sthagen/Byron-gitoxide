@@ -4,6 +4,20 @@ use crate::{bstr::ByteSlice, config};
 
 /// General Configuration
 impl crate::Repository {
+    /// Return the compression level used when writing loose objects.
+    pub fn loose_compression(&self) -> gix_zlib::Compression {
+        self.config.loose_compression
+    }
+
+    /// Return the effective compression level used when writing pack entries.
+    pub fn pack_compression(&self) -> Result<gix_zlib::Compression, config::Error> {
+        config::cache::access::pack_compression(
+            &self.config.resolved,
+            self.config.lenient_config,
+            self.filter_config_section(),
+        )
+    }
+
     /// Return a snapshot of the configuration as seen upon opening the repository.
     ///
     /// Use [`reload()`](Self::reload()) to refresh it from disk.
@@ -100,21 +114,14 @@ impl crate::Repository {
         use crate::config::{cache::util::ApplyLeniency, tree::gitoxide};
 
         let pathspec_boolean = |key: &'static config::tree::keys::Boolean| {
-            self.config
-                .resolved
-                .boolean(key)
-                .map(|value| key.enrich_error(value))
-                .transpose()
+            key.enrich_error(self.config.resolved.boolean(key))
                 .with_leniency(self.config.lenient_config)
         };
 
         Ok(gix_command::Context {
             stderr: {
-                self.config
-                    .resolved
-                    .boolean(gitoxide::Core::EXTERNAL_COMMAND_STDERR)
-                    .map(|value| gitoxide::Core::EXTERNAL_COMMAND_STDERR.enrich_error(value))
-                    .transpose()
+                gitoxide::Core::EXTERNAL_COMMAND_STDERR
+                    .enrich_error(self.config.resolved.boolean(gitoxide::Core::EXTERNAL_COMMAND_STDERR))
                     .with_leniency(self.config.lenient_config)?
                     .unwrap_or(true)
                     .into()

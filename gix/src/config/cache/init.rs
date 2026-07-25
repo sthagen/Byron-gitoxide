@@ -1,5 +1,5 @@
 #![allow(clippy::result_large_err)]
-use std::{borrow::Cow, ffi::OsString};
+use std::ffi::OsString;
 
 use gix_sec::Permission;
 
@@ -18,7 +18,7 @@ use crate::{
 
 /// Initialization
 impl Cache {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn from_stage_one(
         StageOne {
             git_dir_config,
@@ -91,7 +91,7 @@ impl Cache {
                 }
                 source
                     .storage_location(&mut Self::make_source_env(environment))
-                    .map(|p| (source, p.into_owned()))
+                    .map(|p| (source, p))
             })
             .map(|(source, path)| gix_config::file::Metadata {
                 path: Some(path),
@@ -117,10 +117,10 @@ impl Cache {
             .unwrap_or_default();
 
             let local_meta = git_dir_config.meta_owned();
-            globals.append(git_dir_config);
+            globals.append(git_dir_config)?;
             globals.resolve_includes(options)?;
             if use_env {
-                globals.append(gix_config::File::from_env(options)?.unwrap_or_default());
+                globals.append(gix_config::File::from_env(options)?.unwrap_or_default())?;
             }
             if !cli_config_overrides.is_empty() {
                 config::overrides::append(&mut globals, cli_config_overrides, gix_config::Source::Cli, |_| None)
@@ -158,6 +158,7 @@ impl Cache {
         let object_kind_hint = util::disambiguate_hint(&config, lenient_config)?;
         let (static_pack_cache_limit_bytes, pack_cache_bytes, object_cache_bytes, alloc_limit_bytes) =
             util::parse_object_caches(&config, lenient_config, filter_config_section)?;
+        let loose_compression = super::access::loose_compression(&config, lenient_config, filter_config_section)?;
         // NOTE: When adding a new initial cache, consider adjusting `reread_values_and_clear_caches()` as well.
         Ok(Cache {
             resolved: config.into(),
@@ -169,6 +170,7 @@ impl Cache {
             pack_cache_bytes,
             object_cache_bytes,
             alloc_limit_bytes,
+            loose_compression,
             reflog,
             refs_namespace,
             is_bare,
@@ -248,6 +250,9 @@ impl Cache {
             self.object_cache_bytes,
             self.alloc_limit_bytes,
         ) = util::parse_object_caches(config, self.lenient_config, self.filter_config_section)?;
+        let loose_compression =
+            super::access::loose_compression(config, self.lenient_config, self.filter_config_section)?;
+        self.loose_compression = loose_compression;
         #[cfg(any(feature = "blocking-network-client", feature = "async-network-client"))]
         {
             self.url_scheme = Default::default();
@@ -288,18 +293,29 @@ impl crate::Repository {
         &mut self,
         config: crate::Config,
     ) -> Result<(), Error> {
-        let (a, b, c) = (
+        let (
+            previous_static_pack_cache_limit_bytes,
+            previous_pack_cache_bytes,
+            previous_object_cache_bytes,
+            previous_loose_compression,
+        ) = (
             self.config.static_pack_cache_limit_bytes,
             self.config.pack_cache_bytes,
             self.config.object_cache_bytes,
+            self.config.loose_compression,
         );
         self.config.reread_values_and_clear_caches_replacing_config(config)?;
         self.apply_changed_values();
-        if a != self.config.static_pack_cache_limit_bytes
-            || b != self.config.pack_cache_bytes
-            || c != self.config.object_cache_bytes
+        if previous_static_pack_cache_limit_bytes != self.config.static_pack_cache_limit_bytes
+            || previous_pack_cache_bytes != self.config.pack_cache_bytes
+            || previous_object_cache_bytes != self.config.object_cache_bytes
         {
             setup_objects(&mut self.objects, &self.config);
+        }
+        if previous_loose_compression != self.config.loose_compression {
+            // This will only affect newly opened object databases.
+            // This is fine for now, it's not expected to be changed at runtime.
+            self.objects.loose_compression = self.config.loose_compression;
         }
         Ok(())
     }
@@ -311,7 +327,7 @@ impl crate::Repository {
 }
 
 fn apply_environment_overrides(
-    config: &mut gix_config::File<'static>,
+    config: &mut gix_config::File,
     git_prefix: Permission,
     http_transport: Permission,
     identity: Permission,
@@ -372,7 +388,7 @@ fn apply_environment_overrides(
         ),
         (
             "gitoxide",
-            Some(Cow::Borrowed("https".into())),
+            Some("https"),
             http_transport,
             &[
                 ("HTTPS_PROXY", gitoxide::Https::PROXY.name),
@@ -381,7 +397,7 @@ fn apply_environment_overrides(
         ),
         (
             "gitoxide",
-            Some(Cow::Borrowed("http".into())),
+            Some("http"),
             http_transport,
             &[
                 ("ALL_PROXY", "allProxy"),
@@ -410,7 +426,7 @@ fn apply_environment_overrides(
         ),
         (
             "gitoxide",
-            Some(Cow::Borrowed("http".into())),
+            Some("http"),
             git_prefix,
             &[{
                 let key = &gitoxide::Http::SSL_NO_VERIFY;
@@ -419,7 +435,7 @@ fn apply_environment_overrides(
         ),
         (
             "gitoxide",
-            Some(Cow::Borrowed("credentials".into())),
+            Some("credentials"),
             git_prefix,
             &[
                 {
@@ -434,7 +450,7 @@ fn apply_environment_overrides(
         ),
         (
             "gitoxide",
-            Some(Cow::Borrowed("committer".into())),
+            Some("committer"),
             identity,
             &[
                 {
@@ -449,7 +465,7 @@ fn apply_environment_overrides(
         ),
         (
             "gitoxide",
-            Some(Cow::Borrowed("core".into())),
+            Some("core"),
             git_prefix,
             &[
                 {
@@ -468,7 +484,7 @@ fn apply_environment_overrides(
         ),
         (
             "gitoxide",
-            Some(Cow::Borrowed("author".into())),
+            Some("author"),
             identity,
             &[
                 {
@@ -483,7 +499,7 @@ fn apply_environment_overrides(
         ),
         (
             "gitoxide",
-            Some(Cow::Borrowed("commit".into())),
+            Some("commit"),
             git_prefix,
             &[
                 {
@@ -498,13 +514,13 @@ fn apply_environment_overrides(
         ),
         (
             "gitoxide",
-            Some(Cow::Borrowed("allow".into())),
+            Some("allow"),
             http_transport,
             &[("GIT_PROTOCOL_FROM_USER", "protocolFromUser")],
         ),
         (
             "gitoxide",
-            Some(Cow::Borrowed("user".into())),
+            Some("user"),
             identity,
             &[{
                 let key = &gitoxide::User::EMAIL_FALLBACK;
@@ -513,7 +529,7 @@ fn apply_environment_overrides(
         ),
         (
             "gitoxide",
-            Some(Cow::Borrowed("objects".into())),
+            Some("objects"),
             objects,
             &[
                 {
@@ -532,7 +548,7 @@ fn apply_environment_overrides(
         ),
         (
             "gitoxide",
-            Some(Cow::Borrowed("ssh".into())),
+            Some("ssh"),
             git_prefix,
             &[{
                 let key = &gitoxide::Ssh::COMMAND_WITHOUT_SHELL_FALLBACK;
@@ -541,7 +557,7 @@ fn apply_environment_overrides(
         ),
         (
             "gitoxide",
-            Some(Cow::Borrowed("pathspec".into())),
+            Some("pathspec"),
             git_prefix,
             &[
                 {
@@ -583,15 +599,11 @@ fn apply_environment_overrides(
         ),
     ] {
         let mut section = env_override
-            .new_section(section_name, subsection_name)
+            .new_section(section_name, subsection_name.map(BString::from))
             .expect("statically known valid section name");
         for (var, key) in data {
             if let Some(value) = var_as_bstring(var, permission) {
-                section.push_with_comment(
-                    (*key).try_into().expect("statically known to be valid"),
-                    Some(value.as_ref()),
-                    format!("from {var}").as_str(),
-                );
+                section.push_with_comment(*key, value, format!("from {var}"))?;
             }
         }
         if section.num_values() == 0 {
@@ -620,11 +632,7 @@ fn apply_environment_overrides(
             },
         ] {
             if let Some(value) = var_as_bstring(var, permission) {
-                section.push_with_comment(
-                    key.try_into().expect("statically known to be valid"),
-                    Some(value.as_ref()),
-                    format!("from {var}").as_str(),
-                );
+                section.push_with_comment(key, value, format!("from {var}"))?;
             }
         }
 
@@ -635,7 +643,7 @@ fn apply_environment_overrides(
     }
 
     if !env_override.is_void() {
-        config.append(env_override);
+        config.append(env_override)?;
     }
     Ok(())
 }

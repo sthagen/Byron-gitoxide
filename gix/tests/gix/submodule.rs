@@ -127,6 +127,28 @@ mod open {
         Ok(())
     }
 
+    #[test]
+    fn absolute_looking_names_remain_below_the_modules_directory() -> crate::Result {
+        let repo = repo("absolute-looking-submodule-names")?;
+        let modules_dir = repo.common_dir().join("modules");
+        let mut count = 0;
+        for sm in repo.submodules()?.expect("submodule configuration present") {
+            let git_dir = sm.git_dir()?;
+            assert!(
+                git_dir.starts_with(&modules_dir),
+                "Git-compatible name {:?} must remain below {} instead of producing {}",
+                sm.name(),
+                modules_dir.display(),
+                git_dir.display()
+            );
+            assert!(sm.index_id()?.is_some(), "Git added the submodule to the index");
+            assert!(sm.head_id()?.is_some(), "Git committed the submodule as a gitlink");
+            count += 1;
+        }
+        assert_eq!(count, 2, "both absolute-looking names were parsed as submodules");
+        Ok(())
+    }
+
     /// Reproducer for GHSA-p3hw-mv63-rf9w: `Submodule::open()` must not inherit
     /// `git_dir_trust` from the parent repository because doing so skips recomputing
     /// trust for the submodule git-dir and can bypass ownership-based trust checks.
@@ -252,6 +274,38 @@ mod open {
                 Some(false),
                 "status must succeed and report the clean detached-worktree submodule"
             );
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    #[cfg(unix)] // symlinks are used here, let's not try our luck on Windows.
+    fn keeps_callers_path_namespace_when_opened_through_symlinked_ancestor() -> crate::Result {
+        let link = gix_testtools::scripted_fixture_read_only("make_submodules.sh")?.join("symlinked-ancestor");
+
+        for parent_name in ["with-submodules", "with-submodule-uninitialized-checkout"] {
+            let worktree = link.join(parent_name);
+            let repo = gix::open_opts(&worktree, gix::open::Options::isolated())?;
+            assert_eq!(
+                repo.workdir(),
+                Some(worktree.as_path()),
+                "the parent repository keeps the path it was opened with"
+            );
+            for sm in repo.submodules()?.expect("modules present") {
+                let sm_repo = sm.open()?.expect("submodule repository exists");
+                let sm_git_dir = sm_repo.path();
+                assert!(
+                    sm_git_dir.starts_with(&worktree),
+                    "the submodule git dir stays in the namespace of the path the parent was opened with: {sm_git_dir:?}"
+                );
+                assert_eq!(
+                    sm_repo.workdir(),
+                    Some(worktree.join(gix_path::from_bstr(sm.path()?).as_ref())).as_deref(),
+                    "the submodule workdir stays in the same namespace instead of being canonicalized, \
+                     so it can be related to the parent worktree and the submodule git dir with prefix logic"
+                );
+            }
         }
 
         Ok(())

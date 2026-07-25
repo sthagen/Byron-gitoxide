@@ -159,6 +159,7 @@ pub use gix_url as url;
 pub use gix_url::Url;
 pub use gix_utils as utils;
 pub use gix_validate as validate;
+pub use gix_zlib as zlib;
 pub use hash::{ObjectId, oid};
 
 pub use gix_error::{Error, Exn};
@@ -183,7 +184,7 @@ pub type OdbHandle = gix_odb::memory::Proxy<gix_odb::Handle>;
 pub type OdbHandleArc = gix_odb::memory::Proxy<gix_odb::HandleArc>;
 
 /// A way to access git configuration
-pub(crate) type Config = OwnShared<gix_config::File<'static>>;
+pub(crate) type Config = OwnShared<gix_config::File>;
 
 mod types;
 #[cfg(any(feature = "excludes", feature = "attributes"))]
@@ -253,15 +254,44 @@ pub mod merge;
 /// assert!(repo.workdir_path("this").expect("non-bare").is_file());
 /// # Ok(()) }
 /// ```
-#[allow(clippy::result_large_err)]
+#[expect(
+    clippy::result_large_err,
+    reason = "will be removed once `gix-error` is used consistently"
+)]
 pub fn discover(directory: impl AsRef<std::path::Path>) -> Result<Repository, discover::Error> {
     ThreadSafeRepository::discover(directory).map(Into::into)
+}
+
+/// Try to open a git repository in `directory` and search upwards through its parents until one is found,
+/// using `open_options` regardless of the trust level of the discovered repository.
+/// The detected trust level is retained, so repositories with reduced trust still restrict their behavior accordingly.
+#[expect(
+    clippy::result_large_err,
+    reason = "will be removed once `gix-error` is used consistently"
+)]
+pub fn discover_opts(
+    directory: impl AsRef<std::path::Path>,
+    options: discover::upwards::Options<'_>,
+    open_options: open::Options,
+) -> Result<Repository, discover::Error> {
+    ThreadSafeRepository::discover_opts(
+        directory,
+        options,
+        sec::trust::Mapping {
+            full: open_options.clone(),
+            reduced: open_options,
+        },
+    )
+    .map(Into::into)
 }
 
 /// Try to discover a git repository directly from the environment.
 ///
 /// For details, see [`ThreadSafeRepository::discover_with_environment_overrides_opts()`].
-#[allow(clippy::result_large_err)]
+#[expect(
+    clippy::result_large_err,
+    reason = "will be removed once `gix-error` is used consistently"
+)]
 pub fn discover_with_environment_overrides(
     directory: impl AsRef<std::path::Path>,
 ) -> Result<Repository, discover::Error> {
@@ -271,7 +301,10 @@ pub fn discover_with_environment_overrides(
 /// Try to open a git repository directly from the environment.
 ///
 /// See [`ThreadSafeRepository::open_with_environment_overrides()`].
-#[allow(clippy::result_large_err)]
+#[expect(
+    clippy::result_large_err,
+    reason = "will be removed once `gix-error` is used consistently"
+)]
 pub fn open_with_environment_overrides(directory: impl Into<std::path::PathBuf>) -> Result<Repository, open::Error> {
     ThreadSafeRepository::open_with_environment_overrides(directory, Default::default()).map(Into::into)
 }
@@ -291,13 +324,19 @@ pub fn open_with_environment_overrides(directory: impl Into<std::path::PathBuf>)
 /// assert!(repo.head()?.is_unborn());
 /// # Ok(()) }
 /// ```
-#[allow(clippy::result_large_err)]
+#[expect(
+    clippy::result_large_err,
+    reason = "will be removed once `gix-error` is used consistently"
+)]
 pub fn init(directory: impl AsRef<std::path::Path>) -> Result<Repository, init::Error> {
     ThreadSafeRepository::init(directory, create::Kind::WithWorktree, create::Options::default()).map(Into::into)
 }
 
 /// See [`ThreadSafeRepository::init()`], but returns a [`Repository`] instead.
-#[allow(clippy::result_large_err)]
+#[expect(
+    clippy::result_large_err,
+    reason = "will be removed once `gix-error` is used consistently"
+)]
 pub fn init_bare(directory: impl AsRef<std::path::Path>) -> Result<Repository, init::Error> {
     ThreadSafeRepository::init(directory, create::Kind::Bare, create::Options::default()).map(Into::into)
 }
@@ -306,7 +345,10 @@ pub fn init_bare(directory: impl AsRef<std::path::Path>) -> Result<Repository, i
 /// amended with using configuration from the git installation to ensure all authentication options are honored).
 ///
 /// See [`clone::PrepareFetch::new()`] for a function to take full control over all options.
-#[allow(clippy::result_large_err)]
+#[expect(
+    clippy::result_large_err,
+    reason = "will be removed once `gix-error` is used consistently"
+)]
 pub fn prepare_clone_bare<Url, E>(
     url: Url,
     path: impl AsRef<std::path::Path>,
@@ -328,7 +370,10 @@ where
 /// (but amended with using configuration from the git installation to ensure all authentication options are honored).
 ///
 /// See [`clone::PrepareFetch::new()`] for a function to take full control over all options.
-#[allow(clippy::result_large_err)]
+#[expect(
+    clippy::result_large_err,
+    reason = "will be removed once `gix-error` is used consistently"
+)]
 pub fn prepare_clone<Url, E>(url: Url, path: impl AsRef<std::path::Path>) -> Result<clone::PrepareFetch, clone::Error>
 where
     Url: std::convert::TryInto<gix_url::Url, Error = E>,
@@ -364,14 +409,20 @@ fn open_opts_with_git_binary_config() -> open::Options {
 /// assert_eq!(repo.head_commit()?.decode()?.message, "c2\n");
 /// # Ok(()) }
 /// ```
-#[allow(clippy::result_large_err)]
+#[expect(
+    clippy::result_large_err,
+    reason = "will be removed once `gix-error` is used consistently"
+)]
 #[doc(alias = "git2")]
 pub fn open(directory: impl Into<std::path::PathBuf>) -> Result<Repository, open::Error> {
     ThreadSafeRepository::open(directory).map(Into::into)
 }
 
 /// See [`ThreadSafeRepository::open_opts()`], but returns a [`Repository`] instead.
-#[allow(clippy::result_large_err)]
+#[expect(
+    clippy::result_large_err,
+    reason = "will be removed once `gix-error` is used consistently"
+)]
 #[doc(alias = "open_ext", alias = "git2")]
 pub fn open_opts(directory: impl Into<std::path::PathBuf>, options: open::Options) -> Result<Repository, open::Error> {
     ThreadSafeRepository::open_opts(directory, options).map(Into::into)

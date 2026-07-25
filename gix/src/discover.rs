@@ -7,7 +7,7 @@ use crate::{ThreadSafeRepository, bstr::BString};
 
 /// The error returned by [`crate::discover()`].
 #[derive(Debug, thiserror::Error)]
-#[allow(missing_docs)]
+#[expect(missing_docs)]
 pub enum Error {
     #[error(transparent)]
     Discover(#[from] upwards::Error),
@@ -80,7 +80,7 @@ impl ThreadSafeRepository {
             if let Some(cross_fs) = std::env::var_os("GIT_DISCOVERY_ACROSS_FILESYSTEM")
                 .and_then(|v| Vec::from_os_string(v).ok().map(BString::from))
             {
-                if let Ok(b) = gix_config::Boolean::try_from(cross_fs.as_ref()) {
+                if let Ok(b) = gix_config::Boolean::try_from(cross_fs) {
                     opts.cross_fs = b.into();
                 }
             }

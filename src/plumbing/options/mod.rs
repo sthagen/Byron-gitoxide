@@ -163,6 +163,30 @@ pub enum Subcommands {
     Env,
     Diff(diff::Platform),
     Log(log::Platform),
+    /// Interactively browse commits and their graph.
+    #[cfg(feature = "tix")]
+    #[clap(
+        visible_alias = "tui",
+        visible_alias = "interactive",
+        visible_alias = "i",
+        disable_help_flag = true
+    )]
+    Tix {
+        /// Print help.
+        #[clap(long, action = clap::ArgAction::HelpLong)]
+        help: Option<bool>,
+        /// Exit once all commits and graph lanes have been computed.
+        #[clap(long)]
+        quit_on_finish: bool,
+        /// Choose automatic, full alternate-screen, or compact half-screen display.
+        #[clap(long, value_name = "MODE", value_parser = ["auto", "always", "half"], default_value = "auto")]
+        screen: String,
+        /// Hide this revision and every commit reachable from it.
+        #[clap(short = 'h', long, value_name = "REVSPEC")]
+        hide: Vec<std::ffi::OsString>,
+        /// Revisions whose reachable commits should be shown, or HEAD if omitted.
+        revisions: Vec<std::ffi::OsString>,
+    },
     Worktree(worktree::Platform),
     /// Subcommands that need no Git repository to run.
     #[clap(subcommand)]
@@ -621,6 +645,8 @@ pub mod log {
 }
 
 pub mod config {
+    use std::path::PathBuf;
+
     use gix::bstr::BString;
 
     /// Print all entries in a configuration file or access other sub-commands.
@@ -633,6 +659,32 @@ pub mod config {
         /// and comparisons are case-insensitive.
         #[clap(value_parser = crate::shared::AsBString)]
         pub filter: Vec<BString>,
+
+        /// Subcommands for working with configuration files.
+        #[clap(subcommand)]
+        pub cmd: Option<Subcommands>,
+    }
+
+    #[derive(Debug, clap::Subcommand)]
+    pub enum Subcommands {
+        /// Show all resolved configuration entries, optionally filtered by section or subsection.
+        Show,
+        /// List all configuration files contributing to the resolved configuration.
+        ///
+        /// Included files are shown as well, along with the Source they inherit and their inclusion level.
+        List,
+        /// Format a git configuration file, normalizing insignificant whitespace.
+        ///
+        /// Includes are never resolved; only whitespace, newlines and the `=` separator are rewritten.
+        Fmt {
+            /// Write the formatted result back to the input file instead of to standard output.
+            #[clap(long)]
+            in_place: bool,
+            /// The configuration file to format. If unset, the repository-local configuration is used.
+            in_file: Option<PathBuf>,
+            /// Where to write the formatted result. If unset, it is written to standard output.
+            out_file: Option<PathBuf>,
+        },
     }
 }
 
@@ -808,6 +860,15 @@ pub mod remote {
     #[derive(Debug, clap::Subcommand)]
     #[clap(visible_alias = "remotes")]
     pub enum Subcommands {
+        /// Print the effective URL of the remote.
+        Url {
+            /// Print all effective URLs instead of only the first one.
+            #[clap(long)]
+            all: bool,
+            /// Print push URLs instead of fetch URLs.
+            #[clap(long)]
+            push: bool,
+        },
         /// Print all references available on the remote.
         Refs,
         /// Print all references available on the remote as filtered through ref-specs.
@@ -1172,11 +1233,11 @@ pub mod exclude {
 
     use gix::bstr::BString;
 
-    use crate::shared::CheckPathSpec;
+    use crate::shared::AsBString;
 
     #[derive(Debug, clap::Subcommand)]
     pub enum Subcommands {
-        /// Check if path-specs are excluded and print the result similar to `git check-ignore`.
+        /// Check if paths are excluded and print the result similar to `git check-ignore`.
         Query {
             /// Print various statistics to stderr.
             #[clap(long, short = 's')]
@@ -1191,9 +1252,9 @@ pub mod exclude {
             /// Useful for undoing previous patterns using the '!' prefix.
             #[clap(long, short = 'p')]
             patterns: Vec<OsString>,
-            /// The git path specifications to check for exclusion, or unset to read from stdin one per line.
-            #[clap(value_parser = CheckPathSpec)]
-            pathspec: Vec<BString>,
+            /// The paths to check for exclusion, or unset to read from stdin one per line.
+            #[clap(value_parser = AsBString)]
+            paths: Vec<BString>,
         },
     }
 }

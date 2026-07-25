@@ -34,7 +34,7 @@ pub struct Snapshot<'repo> {
 pub struct SnapshotMut<'repo> {
     /// The owning repository.
     pub repo: Option<&'repo mut Repository>,
-    pub(crate) config: gix_config::File<'static>,
+    pub(crate) config: gix_config::File,
 }
 
 /// A utility structure created by [`SnapshotMut::commit_auto_rollback()`] that restores the previous configuration on drop.
@@ -57,7 +57,7 @@ pub mod section {
 pub mod set_value {
     /// The error produced when calling [`SnapshotMut::set(_subsection)?_value()`][crate::config::SnapshotMut::set_value()]
     #[derive(Debug, thiserror::Error)]
-    #[allow(missing_docs)]
+    #[expect(missing_docs)]
     pub enum Error {
         #[error(transparent)]
         SetRaw(#[from] gix_config::file::set_raw_value::Error),
@@ -74,7 +74,7 @@ pub mod set_value {
 ///
 /// This configuration is on the critical path when opening a repository.
 #[derive(Debug, thiserror::Error)]
-#[allow(missing_docs)]
+#[expect(missing_docs)]
 pub enum Error {
     #[error(transparent)]
     ConfigBoolean(#[from] boolean::Error),
@@ -82,6 +82,8 @@ pub enum Error {
     ConfigUnsigned(#[from] unsigned_integer::Error),
     #[error(transparent)]
     ConfigTypedString(#[from] key::GenericErrorWithValue),
+    #[error(transparent)]
+    ConfigCompression(#[from] key::GenericError),
     #[error(transparent)]
     RefsNamespace(#[from] refs_namespace::Error),
     #[error("Cannot handle objects formatted as {:?}", .name)]
@@ -105,6 +107,10 @@ pub enum Error {
     #[error(transparent)]
     ResolveIncludes(#[from] gix_config::file::includes::Error),
     #[error(transparent)]
+    Span(#[from] gix_config::parse::span::Error),
+    #[error(transparent)]
+    ConfigValue(#[from] gix_config::file::section::value::Error),
+    #[error(transparent)]
     FromEnv(#[from] gix_config::file::init::from_env::Error),
     #[error("The path {path:?} at the 'core.worktree' configuration could not be interpolated")]
     PathInterpolation {
@@ -125,7 +131,7 @@ pub mod merge {
     pub mod pipeline_options {
         /// The error produced when obtaining options needed to fill in [gix_merge::blob::pipeline::Options].
         #[derive(Debug, thiserror::Error)]
-        #[allow(missing_docs)]
+        #[expect(missing_docs)]
         pub enum Error {
             #[error(transparent)]
             BigFileThreshold(#[from] crate::config::unsigned_integer::Error),
@@ -136,7 +142,7 @@ pub mod merge {
     pub mod drivers {
         /// The error produced when obtaining a list of [Drivers](gix_merge::blob::Driver).
         #[derive(Debug, thiserror::Error)]
-        #[allow(missing_docs)]
+        #[expect(missing_docs)]
         pub enum Error {
             #[error(transparent)]
             ConfigBoolean(#[from] crate::config::boolean::Error),
@@ -152,7 +158,7 @@ pub mod diff {
 
         /// The error produced when obtaining `diff.algorithm`.
         #[derive(Debug, thiserror::Error)]
-        #[allow(missing_docs)]
+        #[expect(missing_docs)]
         pub enum Error {
             #[error("Unknown diff algorithm named '{name}'")]
             Unknown { name: BString },
@@ -165,7 +171,7 @@ pub mod diff {
     pub mod pipeline_options {
         /// The error produced when obtaining options needed to fill in [gix_diff::blob::pipeline::Options].
         #[derive(Debug, thiserror::Error)]
-        #[allow(missing_docs)]
+        #[expect(missing_docs)]
         pub enum Error {
             #[error(transparent)]
             FilesystemCapabilities(#[from] crate::config::boolean::Error),
@@ -196,7 +202,7 @@ pub mod diff {
 pub mod stat_options {
     /// The error produced when collecting stat information, and returned by [Repository::stat_options()](crate::Repository::stat_options()).
     #[derive(Debug, thiserror::Error)]
-    #[allow(missing_docs)]
+    #[expect(missing_docs)]
     pub enum Error {
         #[error(transparent)]
         ConfigCheckStat(#[from] super::key::GenericErrorWithValue),
@@ -210,7 +216,7 @@ pub mod stat_options {
 pub mod checkout_options {
     /// The error produced when collecting all information needed for checking out files into a worktree.
     #[derive(Debug, thiserror::Error)]
-    #[allow(missing_docs)]
+    #[expect(missing_docs)]
     pub enum Error {
         #[error(transparent)]
         ConfigCheckStat(#[from] super::key::GenericErrorWithValue),
@@ -235,7 +241,7 @@ pub mod command_context {
     /// The error produced when collecting all information relevant to spawned commands,
     /// obtained via [Repository::command_context()](crate::Repository::command_context()).
     #[derive(Debug, thiserror::Error)]
-    #[allow(missing_docs)]
+    #[expect(missing_docs)]
     pub enum Error {
         #[error(transparent)]
         Boolean(#[from] config::boolean::Error),
@@ -251,7 +257,7 @@ pub mod exclude_stack {
 
     /// The error produced when setting up a stack to query `gitignore` information.
     #[derive(Debug, thiserror::Error)]
-    #[allow(missing_docs)]
+    #[expect(missing_docs)]
     pub enum Error {
         #[error("Could not read repository exclude")]
         Io(#[from] std::io::Error),
@@ -268,7 +274,7 @@ pub mod exclude_stack {
 pub mod attribute_stack {
     /// The error produced when setting up the attribute stack to query `gitattributes`.
     #[derive(Debug, thiserror::Error)]
-    #[allow(missing_docs)]
+    #[expect(missing_docs)]
     pub enum Error {
         #[error("An attribute file could not be read")]
         Io(#[from] std::io::Error),
@@ -285,7 +291,7 @@ pub mod protocol {
 
         /// The error returned when obtaining the permission for a particular scheme.
         #[derive(Debug, thiserror::Error)]
-        #[allow(missing_docs)]
+        #[expect(missing_docs)]
         #[error("The value {value:?} must be allow|deny|user in configuration key protocol{0}.allow", scheme.as_ref().map(|s| format!(".{s}")).unwrap_or_default())]
         pub struct Error {
             pub scheme: Option<String>,
@@ -298,7 +304,6 @@ pub mod protocol {
 pub mod ssh_connect_options {
     /// The error produced when obtaining ssh connection configuration.
     #[derive(Debug, thiserror::Error)]
-    #[allow(missing_docs)]
     #[error(transparent)]
     pub struct Error(#[from] super::key::GenericErrorWithValue);
 }
@@ -462,6 +467,19 @@ pub mod time {
 }
 
 ///
+pub mod commit_signature {
+    /// The error produced when obtaining or installing a fallback commit signature.
+    #[derive(Debug, thiserror::Error)]
+    #[allow(missing_docs)]
+    pub enum Error {
+        #[error(transparent)]
+        Time(#[from] super::time::Error),
+        #[error(transparent)]
+        Span(#[from] gix_config::parse::span::Error),
+    }
+}
+
+///
 pub mod lock_timeout {
     /// The error produced when failing to parse timeout for locks.
     pub type Error = super::key::Error<gix_config::value::Error, 'i', 'i'>;
@@ -517,13 +535,11 @@ pub mod ssl_version {
 
 ///
 pub mod transport {
-    use std::borrow::Cow;
-
-    use crate::bstr::BStr;
+    use crate::bstr::BString;
 
     /// The error produced when configuring a transport for a particular protocol.
     #[derive(Debug, thiserror::Error)]
-    #[allow(missing_docs)]
+    #[expect(missing_docs)]
     pub enum Error {
         #[error(
             "Could not interpret configuration key {key:?} as {kind} integer of desired range with value: {actual}"
@@ -545,7 +561,7 @@ pub mod transport {
         },
         #[error("Could not decode value at key {key:?} as UTF-8 string")]
         IllformedUtf8 {
-            key: Cow<'static, BStr>,
+            key: BString,
             source: crate::config::string::Error,
         },
         #[error("Invalid URL passed for configuration")]
@@ -556,13 +572,11 @@ pub mod transport {
 
     ///
     pub mod http {
-        use std::borrow::Cow;
-
-        use crate::bstr::BStr;
+        use crate::bstr::BString;
 
         /// The error produced when configuring a HTTP transport.
         #[derive(Debug, thiserror::Error)]
-        #[allow(missing_docs)]
+        #[expect(missing_docs)]
         pub enum Error {
             #[error(transparent)]
             Boolean(#[from] crate::config::boolean::Error),
@@ -573,7 +587,7 @@ pub mod transport {
             #[error("The proxy authentication at key `{key}` is invalid")]
             InvalidProxyAuthMethod {
                 source: crate::config::key::GenericErrorWithValue,
-                key: Cow<'static, BStr>,
+                key: BString,
             },
             #[error("Could not configure the credential helpers for the authenticated proxy url")]
             #[cfg(feature = "credentials")]
@@ -629,6 +643,8 @@ pub(crate) struct Cache {
     pub(crate) object_cache_bytes: usize,
     /// The maximum size of a single allocation caused by user-controlled on-disk packed object data.
     pub(crate) alloc_limit_bytes: Option<usize>,
+    /// The compression level to use when writing loose objects, from `core.looseCompression` or `core.compression`.
+    pub(crate) loose_compression: gix_zlib::Compression,
     /// The amount of bytes we can hold in our static LRU cache. Otherwise, go with the defaults.
     pub(crate) static_pack_cache_limit_bytes: Option<usize>,
     /// The config section filter from the options used to initialize this instance. Keep these in sync!
@@ -655,14 +671,12 @@ pub(crate) mod shared {
     };
 
     pub fn is_replace_refs_enabled(
-        config: &gix_config::File<'static>,
+        config: &gix_config::File,
         lenient: bool,
         mut filter_config_section: fn(&gix_config::file::Metadata) -> bool,
     ) -> Result<Option<bool>, config::boolean::Error> {
-        config
-            .boolean_filter("core.useReplaceRefs", &mut filter_config_section)
-            .map(|b| Core::USE_REPLACE_REFS.enrich_error(b))
-            .transpose()
+        Core::USE_REPLACE_REFS
+            .enrich_error(config.boolean_filter("core.useReplaceRefs", &mut filter_config_section))
             .with_leniency(lenient)
     }
 }

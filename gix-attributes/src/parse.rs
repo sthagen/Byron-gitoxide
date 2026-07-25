@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 
 use bstr::{BStr, ByteSlice};
-use kstring::KStringRef;
 
 use crate::{AssignmentRef, Name, NameRef, StateRef, name};
 
@@ -19,7 +18,7 @@ mod error {
     use bstr::BString;
     /// The error returned by [`parse::Lines`][crate::parse::Lines].
     #[derive(thiserror::Error, Debug)]
-    #[allow(missing_docs)]
+    #[expect(missing_docs)]
     pub enum Error {
         #[error(r"Line {line_number} has a negative pattern, for literal characters use \!: {line}")]
         PatternNegation { line_number: usize, line: BString },
@@ -76,7 +75,7 @@ fn check_attr(attr: &BStr) -> Result<NameRef<'_>, name::Error> {
     }
 
     attr_valid(attr)
-        .then(|| NameRef(KStringRef::from_ref(attr.to_str().expect("no illformed utf8"))))
+        .then(|| NameRef(attr.to_str().expect("no illformed utf8")))
         .ok_or_else(|| name::Error { attribute: attr.into() })
 }
 

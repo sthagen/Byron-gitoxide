@@ -2,14 +2,18 @@
 //! Submodule plumbing and abstractions
 //!
 use std::{
-    borrow::Cow,
     cell::{Ref, RefCell, RefMut},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 pub use gix_submodule::*;
 
-use crate::{Repository, Submodule, bstr::BStr, is_dir_to_mode, worktree::IndexPersistedOrInMemory};
+use crate::{
+    Repository, Submodule,
+    bstr::{BStr, BString},
+    is_dir_to_mode,
+    worktree::IndexPersistedOrInMemory,
+};
 
 pub(crate) type ModulesFileStorage = gix_features::threading::OwnShared<gix_fs::SharedFileSnapshotMut<File>>;
 /// A lazily loaded and auto-updated worktree index.
@@ -101,7 +105,7 @@ impl Submodule<'_> {
     /// Return the path at which the submodule can be found, relative to the repository.
     ///
     /// For details, see [gix_submodule::File::path()].
-    pub fn path(&self) -> Result<Cow<'_, BStr>, config::path::Error> {
+    pub fn path(&self) -> Result<BString, config::path::Error> {
         self.state.modules.path(self.name())
     }
 
@@ -130,14 +134,8 @@ impl Submodule<'_> {
     pub fn fetch_recurse(&self) -> Result<Option<config::FetchRecurse>, fetch_recurse::Error> {
         Ok(match self.state.modules.fetch_recurse(self.name())? {
             Some(val) => Some(val),
-            None => self
-                .state
-                .repo
-                .config
-                .resolved
-                .boolean("fetch.recurseSubmodules")
-                .map(|res| crate::config::tree::Fetch::RECURSE_SUBMODULES.try_into_recurse_submodules(res))
-                .transpose()?,
+            None => crate::config::tree::Fetch::RECURSE_SUBMODULES
+                .try_into_recurse_submodules(self.state.repo.config.resolved.boolean("fetch.recurseSubmodules"))?,
         })
     }
 
@@ -184,7 +182,7 @@ impl Submodule<'_> {
         Ok(self
             .state
             .index()?
-            .entry_by_path(&path)
+            .entry_by_path(BStr::new(&path))
             .and_then(|entry| (entry.mode == gix_index::entry::Mode::COMMIT).then_some(entry.id)))
     }
 
@@ -200,7 +198,7 @@ impl Submodule<'_> {
             .repo
             .head_commit()?
             .tree()?
-            .peel_to_entry_by_path(gix_path::from_bstr(path.as_ref()))?
+            .peel_to_entry_by_path(gix_path::from_bstring(path))?
             .and_then(|entry| (entry.mode().is_commit()).then_some(entry.inner.oid)))
     }
 
@@ -208,12 +206,7 @@ impl Submodule<'_> {
     ///
     /// The retunred directory might not exist yet.
     pub fn git_dir(&self) -> Result<PathBuf, gix_validate::submodule::name::Error> {
-        Ok(self
-            .state
-            .repo
-            .common_dir()
-            .join("modules")
-            .join(gix_path::from_bstr(self.validated_name()?)))
+        Ok(git_dir_from_name(self.state.repo.common_dir(), self.validated_name()?))
     }
 
     /// Return the path to the location at which the workdir would be checked out.
@@ -344,6 +337,48 @@ impl Submodule<'_> {
     }
 }
 
+/// Append the name textually, like Git's `repo_git_path_append(..., "modules/%s", name)`.
+///
+/// In particular, don't use `Path::join()` for `name`: absolute-looking names are valid in Git,
+/// but joining them as a path would discard the `.git/modules` prefix.
+fn git_dir_from_name(common_dir: &Path, name: &BStr) -> PathBuf {
+    let mut git_dir = common_dir.join("modules").into_os_string();
+    git_dir.push(std::path::MAIN_SEPARATOR_STR);
+    git_dir.push(gix_path::from_bstr(name).as_os_str());
+    git_dir.into()
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use crate::bstr::ByteSlice;
+
+    #[test]
+    fn git_dir_from_name_keeps_git_compatible_names_below_modules() {
+        let common_dir = Path::new("repo").join(".git");
+        let modules_dir = common_dir.join("modules");
+
+        for name in [
+            b"/etc/cron.d/x" as &[u8],
+            br"\Windows\Temp\x",
+            br"\\host\share\x",
+            b"//host/share/x",
+            br"C:\Windows\Temp\x",
+            b"C:/Windows/Temp/x",
+            b"C:x",
+        ] {
+            let actual = super::git_dir_from_name(&common_dir, name.as_bstr());
+            assert!(
+                actual.starts_with(&modules_dir),
+                "Git-compatible name {name:?} must remain below {} instead of producing {}",
+                modules_dir.display(),
+                actual.display()
+            );
+        }
+    }
+}
+
 ///
 #[cfg(feature = "status")]
 pub mod status {
@@ -354,7 +389,7 @@ pub mod status {
 
     /// The error returned by [Submodule::status()].
     #[derive(Debug, thiserror::Error)]
-    #[allow(missing_docs)]
+    #[expect(missing_docs)]
     pub enum Error {
         #[error(transparent)]
         State(#[from] state::Error),
