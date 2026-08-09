@@ -1,10 +1,6 @@
-use std::{
-    collections::TryReserveError,
-    sync::atomic::{AtomicBool, Ordering},
-};
+use std::{collections::TryReserveError, sync::atomic::AtomicBool};
 
 use gix_features::{
-    parallel::in_parallel_with_slice,
     progress::{self, DynNestedProgress, Progress},
     threading,
     threading::{Mutable, OwnShared},
@@ -17,6 +13,9 @@ use crate::{
 
 mod resolve;
 pub(crate) mod util;
+
+/// Shared access to ref-delta child indices awaiting a resolved base, keyed by its object ID.
+pub(super) type SharedRefDeltaChildren = OwnShared<Mutable<super::tree::RefDeltaChildren>>;
 
 /// Returned by [`Tree::traverse()`]
 #[derive(thiserror::Error, Debug)]
@@ -43,6 +42,13 @@ pub enum Error {
         /// The base's offset which was from a resolved ref-delta that didn't actually get added to the tree
         base_pack_offset: crate::data::Offset,
     },
+    #[error("The ref-delta base object {base_id} could not be found")]
+    UnresolvedRefDelta {
+        /// The id named by one or more unresolved ref-delta entries.
+        base_id: gix_hash::ObjectId,
+    },
+    #[error("Failed to hash an object while resolving in-pack ref-deltas")]
+    ObjectHash(#[from] gix_hash::hasher::Error),
     #[error("Failed to spawn thread when switching to work-stealing mode")]
     SpawnThread(#[from] std::io::Error),
     #[error(transparent)]
@@ -148,56 +154,41 @@ where
         };
         size_progress.init(None, progress::bytes());
         let size_counter = size_progress.counter();
-        let object_progress = OwnShared::new(Mutable::new(object_progress));
+        let resolver_progress = object_progress.add_child("delta resolver".into());
 
         let start = std::time::Instant::now();
-        let (mut root_items, mut child_items_vec) = self.take_root_and_child();
+        let (mut root_items, mut child_items_vec, ref_delta_children) = self.take_root_child_and_refs();
+        let ref_delta_children =
+            (!ref_delta_children.is_empty()).then(|| OwnShared::new(Mutable::new(ref_delta_children)));
         let child_items = ItemSliceSync::new(&mut child_items_vec);
-        let child_items = &child_items;
-        in_parallel_with_slice(
-            &mut root_items,
-            thread_limit,
-            {
-                {
-                    let object_progress = object_progress.clone();
-                    move |thread_index| resolve::State {
-                        delta_bytes: Vec::<u8>::with_capacity(4096),
-                        fully_resolved_delta_bytes: Vec::<u8>::with_capacity(4096),
-                        progress: Box::new(
-                            threading::lock(&object_progress).add_child(format!("thread {thread_index}")),
-                        ),
-                        resolve: resolve.clone(),
-                        modify_base: inspect_object.clone(),
-                        child_items,
-                    }
-                }
-            },
-            {
-                move |node, state, threads_left, should_interrupt| {
-                    // SAFETY: This invariant is upheld since `child_items` and `node` come from the same Tree.
-                    // This means we can rely on Tree's invariant that node.children will be the only `children` array in
-                    // for nodes in this tree that will contain any of those children.
-                    #[expect(unsafe_code)]
-                    unsafe {
-                        resolve::deltas(
-                            object_counter.clone(),
-                            size_counter.clone(),
-                            node,
-                            state,
-                            resolve_data,
-                            object_hash,
-                            alloc_limit_bytes,
-                            threads_left,
-                            should_interrupt,
-                        )
-                    }
-                }
-            },
-            || (!should_interrupt.load(Ordering::Relaxed)).then(|| std::time::Duration::from_millis(50)),
-            |_| (),
-        )?;
+        // SAFETY: Both item slices come from the same Tree, whose child-index uniqueness invariant still holds.
+        #[expect(unsafe_code)]
+        unsafe {
+            resolve::all(
+                &mut root_items,
+                &child_items,
+                thread_limit,
+                num_objects,
+                object_counter,
+                size_counter,
+                &resolver_progress,
+                resolve,
+                resolve_data,
+                inspect_object,
+                ref_delta_children.clone(),
+                object_hash,
+                alloc_limit_bytes,
+                should_interrupt,
+            )?;
+        }
 
-        threading::lock(&object_progress).show_throughput(start);
+        if let Some(ref_delta_children) = ref_delta_children {
+            if let Some((base_id, _children)) = threading::lock(&ref_delta_children).first_key_value() {
+                return Err(Error::UnresolvedRefDelta { base_id: *base_id });
+            }
+        }
+
+        object_progress.show_throughput(start);
         size_progress.show_throughput(start);
 
         Ok(Outcome {

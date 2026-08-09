@@ -35,111 +35,29 @@ impl Cache {
         filter_config_section: fn(&gix_config::file::Metadata) -> bool,
         git_install_dir: Option<&std::path::Path>,
         home: Option<&std::path::Path>,
-        environment @ open::permissions::Environment {
-            git_prefix,
-            ssh_prefix: _,
-            xdg_config_home: _,
-            home: _,
-            http_transport,
-            identity,
-            objects,
-        }: open::permissions::Environment,
+        environment: open::permissions::Environment,
         attributes: open::permissions::Attributes,
-        open::permissions::Config {
-            git_binary: use_installation,
-            system: use_system,
-            git: use_git,
-            user: use_user,
-            env: use_env,
-            includes: use_includes,
-        }: open::permissions::Config,
+        config_permissions: open::permissions::Config,
         lenient_config: bool,
         api_config_overrides: &[BString],
         cli_config_overrides: &[BString],
+        use_repository_local_environment: bool,
     ) -> Result<Self, Error> {
-        let options = gix_config::file::init::Options {
-            includes: if use_includes {
-                gix_config::file::includes::Options::follow(
-                    interpolate_context(git_install_dir, home),
-                    gix_config::file::includes::conditional::Context {
-                        git_dir: git_dir.into(),
-                        branch_name,
-                    },
-                )
-            } else {
-                gix_config::file::includes::Options::no_follow()
-            },
-            ..util::base_options(lossy, lenient_config)
-        };
-
-        let config = {
-            let git_prefix = &git_prefix;
-            let mut metas = [
-                gix_config::source::Kind::GitInstallation,
-                gix_config::source::Kind::System,
-                gix_config::source::Kind::Global,
-            ]
-            .iter()
-            .flat_map(|kind| kind.sources())
-            .filter_map(|source| {
-                match source {
-                    gix_config::Source::GitInstallation if !use_installation => return None,
-                    gix_config::Source::System if !use_system => return None,
-                    gix_config::Source::Git if !use_git => return None,
-                    gix_config::Source::User if !use_user => return None,
-                    _ => {}
-                }
-                source
-                    .storage_location(&mut Self::make_source_env(environment))
-                    .map(|p| (source, p))
-            })
-            .map(|(source, path)| gix_config::file::Metadata {
-                path: Some(path),
-                source: *source,
-                level: 0,
-                trust: gix_sec::Trust::Full,
-            });
-
-            let err_on_nonexisting_paths = false;
-            let mut globals = gix_config::File::from_paths_metadata_buf(
-                &mut metas,
-                &mut buf,
-                err_on_nonexisting_paths,
-                gix_config::file::init::Options {
-                    includes: gix_config::file::includes::Options::no_follow(),
-                    ..options
-                },
-            )
-            .map_err(|err| match err {
-                gix_config::file::init::from_paths::Error::Init(err) => Error::from(err),
-                gix_config::file::init::from_paths::Error::Io { source, path } => Error::Io { source, path },
-            })?
-            .unwrap_or_default();
-
-            let local_meta = git_dir_config.meta_owned();
-            globals.append(git_dir_config)?;
-            globals.resolve_includes(options)?;
-            if use_env {
-                globals.append(gix_config::File::from_env(options)?.unwrap_or_default())?;
-            }
-            if !cli_config_overrides.is_empty() {
-                config::overrides::append(&mut globals, cli_config_overrides, gix_config::Source::Cli, |_| None)
-                    .map_err(|err| Error::ConfigOverrides {
-                        err,
-                        source: gix_config::Source::Cli,
-                    })?;
-            }
-            if !api_config_overrides.is_empty() {
-                config::overrides::append(&mut globals, api_config_overrides, gix_config::Source::Api, |_| None)
-                    .map_err(|err| Error::ConfigOverrides {
-                        err,
-                        source: gix_config::Source::Api,
-                    })?;
-            }
-            apply_environment_overrides(&mut globals, *git_prefix, http_transport, identity, objects)?;
-            globals.set_meta(local_meta);
-            globals
-        };
+        let config = load(
+            Some(git_dir_config),
+            &mut buf,
+            Some(git_dir),
+            branch_name,
+            git_install_dir,
+            home,
+            environment,
+            config_permissions,
+            lossy,
+            lenient_config,
+            api_config_overrides,
+            cli_config_overrides,
+            use_repository_local_environment,
+        )?;
 
         let hex_len = util::parse_core_abbrev(&config, object_hash).with_leniency(lenient_config)?;
 
@@ -287,6 +205,131 @@ impl Cache {
     }
 }
 
+/// Load global configuration and optional repository-local configuration using the same ordering and overrides as
+/// repository opening.
+#[expect(clippy::too_many_arguments)]
+pub(crate) fn load(
+    git_dir_config: Option<gix_config::File>,
+    buf: &mut Vec<u8>,
+    git_dir: Option<&std::path::Path>,
+    branch_name: Option<&gix_ref::FullNameRef>,
+    git_install_dir: Option<&std::path::Path>,
+    home: Option<&std::path::Path>,
+    environment @ open::permissions::Environment {
+        git_prefix,
+        ssh_prefix: _,
+        xdg_config_home: _,
+        home: _,
+        http_transport,
+        identity,
+        objects,
+    }: open::permissions::Environment,
+    open::permissions::Config {
+        git_binary: use_installation,
+        system: use_system,
+        git: use_git,
+        user: use_user,
+        env: use_env,
+        includes: use_includes,
+    }: open::permissions::Config,
+    lossy: bool,
+    lenient: bool,
+    api_config_overrides: &[BString],
+    cli_config_overrides: &[BString],
+    use_repository_local_environment: bool,
+) -> Result<gix_config::File, Error> {
+    let options = gix_config::file::init::Options {
+        includes: if use_includes {
+            gix_config::file::includes::Options::follow(
+                interpolate_context(git_install_dir, home),
+                gix_config::file::includes::conditional::Context { git_dir, branch_name },
+            )
+        } else {
+            gix_config::file::includes::Options::no_follow()
+        },
+        ..util::base_options(lossy, lenient)
+    };
+    let git_prefix = &git_prefix;
+    let mut metas = [
+        gix_config::source::Kind::GitInstallation,
+        gix_config::source::Kind::System,
+        gix_config::source::Kind::Global,
+    ]
+    .iter()
+    .flat_map(|kind| kind.sources())
+    .filter_map(|source| {
+        match source {
+            gix_config::Source::GitInstallation if !use_installation => return None,
+            gix_config::Source::System if !use_system => return None,
+            gix_config::Source::Git if !use_git => return None,
+            gix_config::Source::User if !use_user => return None,
+            _ => {}
+        }
+        source
+            .storage_location(&mut Cache::make_source_env(environment))
+            .map(|p| (source, p))
+    })
+    .map(|(source, path)| gix_config::file::Metadata {
+        path: Some(path),
+        source: *source,
+        level: 0,
+        trust: gix_sec::Trust::Full,
+    });
+
+    let err_on_nonexisting_paths = false;
+    let mut globals = gix_config::File::from_paths_metadata_buf(
+        &mut metas,
+        buf,
+        err_on_nonexisting_paths,
+        gix_config::file::init::Options {
+            includes: gix_config::file::includes::Options::no_follow(),
+            ..options
+        },
+    )
+    .map_err(|err| match err {
+        gix_config::file::init::from_paths::Error::Init(err) => Error::from(err),
+        gix_config::file::init::from_paths::Error::Io { source, path } => Error::Io { source, path },
+    })?
+    .unwrap_or_default();
+
+    let local_meta = git_dir_config.as_ref().map(gix_config::File::meta_owned);
+    if let Some(git_dir_config) = git_dir_config {
+        globals.append(git_dir_config)?;
+    }
+    globals.resolve_includes(options)?;
+    if use_env {
+        globals.append(gix_config::File::from_env(options)?.unwrap_or_default())?;
+    }
+    if !cli_config_overrides.is_empty() {
+        config::overrides::append(&mut globals, cli_config_overrides, gix_config::Source::Cli, |_| None).map_err(
+            |err| Error::ConfigOverrides {
+                err,
+                source: gix_config::Source::Cli,
+            },
+        )?;
+    }
+    if !api_config_overrides.is_empty() {
+        config::overrides::append(&mut globals, api_config_overrides, gix_config::Source::Api, |_| None).map_err(
+            |err| Error::ConfigOverrides {
+                err,
+                source: gix_config::Source::Api,
+            },
+        )?;
+    }
+    apply_environment_overrides(
+        &mut globals,
+        *git_prefix,
+        http_transport,
+        identity,
+        objects,
+        use_repository_local_environment,
+    )?;
+    if let Some(local_meta) = local_meta {
+        globals.set_meta(local_meta);
+    }
+    Ok(globals)
+}
+
 impl crate::Repository {
     /// Replace our own configuration with `config` and re-read all cached values, and apply them to select in-memory instances.
     pub(crate) fn reread_values_and_clear_caches_replacing_config(
@@ -332,6 +375,7 @@ fn apply_environment_overrides(
     http_transport: Permission,
     identity: Permission,
     objects: Permission,
+    use_repository_local_environment: bool,
 ) -> Result<(), Error> {
     fn env(key: &'static dyn config::tree::Key) -> &'static str {
         key.the_environment_override()
@@ -347,7 +391,11 @@ fn apply_environment_overrides(
         (
             "core",
             None,
-            git_prefix,
+            if use_repository_local_environment {
+                git_prefix
+            } else {
+                Permission::Deny
+            },
             &[{
                 let key = &Core::WORKTREE;
                 (env(key), key.name)
@@ -466,7 +514,11 @@ fn apply_environment_overrides(
         (
             "gitoxide",
             Some("core"),
-            git_prefix,
+            if use_repository_local_environment {
+                git_prefix
+            } else {
+                Permission::Deny
+            },
             &[
                 {
                     let key = &gitoxide::Core::SHALLOW_FILE;
@@ -476,11 +528,29 @@ fn apply_environment_overrides(
                     let key = &gitoxide::Core::REFS_NAMESPACE;
                     (env(key), key.name)
                 },
-                {
-                    let key = &gitoxide::Core::EXTERNAL_COMMAND_STDERR;
-                    (env(key), key.name)
-                },
             ],
+        ),
+        (
+            "gitoxide",
+            Some("core"),
+            if use_repository_local_environment {
+                git_prefix
+            } else {
+                Permission::Deny
+            },
+            &[{
+                let key = &gitoxide::Core::INDEX_FILE;
+                (env(key), key.name)
+            }],
+        ),
+        (
+            "gitoxide",
+            Some("core"),
+            git_prefix,
+            &[{
+                let key = &gitoxide::Core::EXTERNAL_COMMAND_STDERR;
+                (env(key), key.name)
+            }],
         ),
         (
             "gitoxide",

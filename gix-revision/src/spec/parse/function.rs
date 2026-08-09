@@ -403,6 +403,11 @@ where
                 format!("Couldn't find index '{path}' stage 2", path = path.as_bstr())
             });
         }
+        [b':', b'3', b':', path @ ..] => {
+            return consume_all(delegate.index_lookup(path.as_bstr(), 3), || {
+                format!("Couldn't find index '{path}' stage 3", path = path.as_bstr())
+            });
+        }
         [b':', path @ ..] => {
             return consume_all(delegate.index_lookup(path.as_bstr(), 0), || {
                 format!("Couldn't find index '{path}' stage 0 (implicit)", path = path.as_bstr())
@@ -591,12 +596,10 @@ where
                     .and_then(|past_sep| try_parse_usize(past_sep.as_bstr()).transpose())
                     .transpose()?
                     .unwrap_or((1, 0));
-                if number != 0 {
-                    let traversal = delegate::Traversal::NthAncestor(number);
-                    delegate.traverse(traversal).or_raise(|| {
-                        Error::new_with_input(format!("delegate.traverse({traversal:?}) failed"), input)
-                    })?;
-                }
+                let traversal = delegate::Traversal::NthAncestor(number);
+                delegate
+                    .traverse(traversal)
+                    .or_raise(|| Error::new_with_input(format!("delegate.traverse({traversal:?}) failed"), input))?;
                 cursor += consumed;
             }
             b'^' => {

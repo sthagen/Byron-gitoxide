@@ -42,14 +42,32 @@ pub struct PrepareFetch {
     /// The name of the reference to fetch. If `None`, the reference pointed to by `HEAD` will be checked out.
     #[cfg_attr(not(feature = "blocking-network-client"), allow(dead_code))]
     ref_name: Option<gix_ref::PartialName>,
+    /// The single revision to fetch and check out with a detached `HEAD`.
+    #[cfg_attr(not(feature = "blocking-network-client"), allow(dead_code))]
+    revision: Option<gix_refspec::RefSpec>,
     /// If `true`, drop removes the entire worktree. Otherwise leave it alone.
     remove_worktree_on_drop: bool,
+}
+
+/// Errors returned by [`PrepareFetch::with_revision()`].
+pub mod with_revision {
+    /// An invalid revision for a single-revision clone.
+    #[derive(Debug, thiserror::Error)]
+    #[expect(missing_docs)]
+    pub enum Error {
+        #[error(transparent)]
+        Parse(#[from] gix_refspec::parse::Error),
+        #[error("A clone revision must be HEAD, a full reference name, or a full object ID, got {revision:?}")]
+        Invalid { revision: crate::bstr::BString },
+    }
 }
 
 /// The error returned by [`PrepareFetch::new()`].
 #[derive(Debug, thiserror::Error)]
 #[expect(missing_docs)]
 pub enum Error {
+    #[error(transparent)]
+    Config(#[from] crate::config::Error),
     #[error(transparent)]
     Init(#[from] crate::init::Error),
     #[error(transparent)]
@@ -108,10 +126,25 @@ impl PrepareFetch {
         path: &std::path::Path,
         kind: crate::create::Kind,
         mut create_opts: crate::create::Options,
-        open_opts: crate::open::Options,
+        mut open_opts: crate::open::Options,
     ) -> Result<Self, Error> {
         if create_opts.destination_must_be_empty.is_none() {
             create_opts.destination_must_be_empty = Some(true);
+        }
+
+        let git_dir = match kind {
+            crate::create::Kind::WithWorktree => path.join(gix_discover::DOT_GIT_DIR),
+            crate::create::Kind::Bare => path.to_owned(),
+        };
+        let config = crate::config(Some(&git_dir), &open_opts)?;
+        if crate::config::cache::util::config_bool_opt(
+            &config,
+            &crate::config::tree::Core::SYMLINKS,
+            "core.symlinks",
+            open_opts.lenient_config,
+        )? == Some(false)
+        {
+            open_opts.api_config_overrides.push("core.symlinks=false".into());
         }
 
         // Capture this before init_opts creates `.git`, otherwise the check below would see our own files.
@@ -142,6 +175,7 @@ impl PrepareFetch {
             configure_connection: None,
             shallow: remote::fetch::Shallow::NoChange,
             ref_name: None,
+            revision: None,
             remove_worktree_on_drop,
         })
     }

@@ -406,11 +406,11 @@ fn complex_quoted_values() {
             escape-sequence = "hi\nho\n\tthere\bi\\\" \""
 "#;
     let config = File::try_from(config).unwrap();
-    let expected = "hi\nho\n\ttheri\\\" \"";
+    let expected = "hi\nho\n\tthere\x08i\\\" \"";
     assert_eq!(
         config.raw_value("core.escape-sequence").unwrap(),
         expected,
-        "raw_value is normalized…"
+        "raw_value is normalized; `\\b` is the backspace character (0x08)"
     );
     assert_eq!(
         config.string("core.escape-sequence").unwrap(),
@@ -458,6 +458,33 @@ fn multi_line_value_outer_quotes_escaped_inner_quotes() {
 }
 
 #[test]
+fn multi_line_value_with_empty_continuation_line() {
+    for config in [
+        "[core]\n\tk = abc\\\n\n",
+        "[core]\n\tk = abc\\\n; comment\n",
+        "[core]\n\tk = abc\\\n",
+        "[core]\n\tk = abc\\",
+        "[core]\n\tk = abc\\\n\n[other]\n",
+        "[core]\r\n\tk = abc\\\r\n",
+    ] {
+        let file = File::try_from(config).unwrap();
+        assert_eq!(
+            file.raw_values("core.k").unwrap(),
+            vec![bstring("abc")],
+            "Git reports only `abc` for {config:?}, as a continuation line that is empty ends the value"
+        );
+    }
+
+    let config = "[core]\n\tk = abc\\\n\tk = def\n";
+    let file = File::try_from(config).unwrap();
+    assert_eq!(
+        file.raw_value("core.k").unwrap(),
+        bstring("abc\tk = def"),
+        "Git reports one value, `abc\tk = def`, for {config:?}, as the next line continues the first value"
+    );
+}
+
+#[test]
 fn overrides_with_implicit_booleans_work_in_single_section() {
     let config = r#"
         [a]
@@ -466,6 +493,47 @@ fn overrides_with_implicit_booleans_work_in_single_section() {
         "#;
     let config = File::try_from(config).unwrap();
     assert_eq!(config.boolean("a.b"), Ok(Some(true)), "empty implicit booleans ");
+}
+
+#[test]
+fn implicit_booleans_may_be_followed_by_whitespace() -> crate::Result {
+    for config in [
+        "[a]\n\tb \n",
+        "[a]\n\tb\t\n",
+        "[a]\n\tb  \n",
+        "[a]\n\tb \t \n",
+        "[a]\n\tb ",
+        "[a]\n\tb \r\n",
+        "[a]\n\tb\n",
+    ] {
+        let file = File::try_from(config)?;
+        assert_eq!(
+            file.boolean("a.b"),
+            Ok(Some(true)),
+            "Git sees no separator in {config:?}, so the value is an implicit boolean and thus true"
+        );
+        assert_eq!(
+            file.string("a.b"),
+            None,
+            "implicit booleans have no value of their own, no matter the whitespace that follows them"
+        );
+    }
+
+    for config in ["[a]\n\tb =\n", "[a]\n\tb = \n", "[a]\n\tb=\"\"\n", "[a]\n\tb ="] {
+        let file = File::try_from(config)?;
+        assert_eq!(
+            file.boolean("a.b"),
+            Ok(Some(false)),
+            "a separator in {config:?} makes the value explicitly empty, and an empty value is false"
+        );
+        assert_eq!(
+            file.string("a.b"),
+            Some(bstring("")),
+            "an explicitly empty value is the empty string"
+        );
+    }
+
+    Ok(())
 }
 
 #[test]

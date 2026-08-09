@@ -33,7 +33,7 @@ gix-fs = { version = "^0.22.0", path = "../gix-fs" }
 gix-hash = { version = "^0.26.0", path = "../gix-hash" }
 gix-object = { version = "^0.63.0", path = "../gix-object" }
 gix-glob = { version = "^0.27.0", path = "../gix-glob" }
-gix-path = { version = "^0.12.3", path = "../gix-path" }
+gix-path = { version = "^0.12.4", path = "../gix-path" }
 gix-attributes = { version = "^0.34.0", path = "../gix-attributes", optional = true }
 gix-validate = { version = "^0.11.3", path = "../gix-validate", optional = true }
 gix-ignore = { version = "^0.22.0", path = "../gix-ignore" }
@@ -45,9 +45,9 @@ bstr = { version = "1.12.0", default-features = false }
 document-features = { version = "0.2.0", optional = true }
 
 [dev-dependencies]
-gix-hash = { path = "../gix-hash", features = ["sha1"] }
+gix-hash = { path = "../gix-hash", features = ["sha1", "sha256"] }
 gix-testtools = { path = "../tests/tools", default-features = false }
-gix-odb = { path = "../gix-odb" }
+gix-odb = { path = "../gix-odb", features = ["sha1", "sha256"] }
 gix-discover = { path = "../gix-discover" }
 
 [package.metadata.docs.rs]

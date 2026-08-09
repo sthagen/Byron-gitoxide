@@ -149,24 +149,32 @@ check:
 
 # Run `cargo doc` on all crates
 doc $RUSTDOCFLAGS='-D warnings':
-    cargo doc --workspace --no-deps --features need-more-recent-msrv
-    cargo doc --features=max,lean,small --workspace --no-deps --features need-more-recent-msrv
+    cargo doc --workspace --no-deps
+    cargo doc --features=max,lean,small --workspace --no-deps
 
 # Run all unit tests
 unit-tests:
     cargo nextest run --no-fail-fast
+    cargo nextest run -p gix-attributes --features serde --no-fail-fast
     cargo nextest run -p gix-testtools --no-fail-fast
     cargo nextest run -p gix-testtools --features xz --no-fail-fast
-    cargo nextest run -p gix-archive --no-default-features --features sha1 --no-fail-fast
-    cargo nextest run -p gix-archive --no-default-features --features sha1,tar --no-fail-fast
-    cargo nextest run -p gix-archive --no-default-features --features sha1,tar_gz --no-fail-fast
-    cargo nextest run -p gix-archive --no-default-features --features sha1,zip --no-fail-fast
+    env GIX_TEST_FIXTURE_HASH=sha1 cargo nextest run -p gix-archive --no-default-features --features sha1 --no-fail-fast
+    env GIX_TEST_FIXTURE_HASH=sha1 cargo nextest run -p gix-archive --no-default-features --features sha1,tar --no-fail-fast
+    env GIX_TEST_FIXTURE_HASH=sha1 cargo nextest run -p gix-archive --no-default-features --features sha1,tar_gz --no-fail-fast
+    env GIX_TEST_FIXTURE_HASH=sha1 cargo nextest run -p gix-archive --no-default-features --features sha1,zip --no-fail-fast
+    env GIX_TEST_FIXTURE_HASH=sha256 cargo nextest run -p gix-archive --features sha256 --no-fail-fast
+    env GIX_TEST_FIXTURE_HASH=sha256 cargo nextest run -p gix-archive --no-default-features --features sha256 --no-fail-fast
+    env GIX_TEST_FIXTURE_HASH=sha256 cargo nextest run -p gix-archive --no-default-features --features sha256,tar --no-fail-fast
+    env GIX_TEST_FIXTURE_HASH=sha256 cargo nextest run -p gix-archive --no-default-features --features sha256,tar_gz --no-fail-fast
+    env GIX_TEST_FIXTURE_HASH=sha256 cargo nextest run -p gix-archive --no-default-features --features sha256,zip --no-fail-fast
     env GIX_TEST_FIXTURE_HASH=sha1 cargo nextest run -p gix-diff --no-fail-fast
     env GIX_TEST_FIXTURE_HASH=sha256 cargo nextest run -p gix-diff --no-fail-fast
     env GIX_TEST_FIXTURE_HASH=sha1 cargo nextest run -p gix-status --no-fail-fast
     env GIX_TEST_FIXTURE_HASH=sha256 cargo nextest run -p gix-status --no-fail-fast
-    cargo nextest run -p gix-worktree-state --features parallel --no-fail-fast
-    cargo nextest run -p gix-worktree --features parallel --no-fail-fast
+    env GIX_TEST_FIXTURE_HASH=sha1 cargo nextest run -p gix-worktree-state --features parallel --no-fail-fast
+    env GIX_TEST_FIXTURE_HASH=sha256 cargo nextest run -p gix-worktree-state --features sha256,parallel --no-fail-fast
+    env GIX_TEST_FIXTURE_HASH=sha1 cargo nextest run -p gix-worktree --features parallel --no-fail-fast
+    env GIX_TEST_FIXTURE_HASH=sha256 cargo nextest run -p gix-worktree --features sha256,parallel --no-fail-fast
     cargo nextest run -p gix-error --no-fail-fast --test auto-chain-error --features auto-chain-error
     cargo nextest run -p gix-error --no-fail-fast
     env GIX_TEST_FIXTURE_HASH=sha1 cargo nextest run -p gix-filter --no-fail-fast
@@ -216,10 +224,12 @@ unit-tests:
     env GIX_TEST_FIXTURE_HASH=sha256 cargo nextest run -p gix-blame --no-fail-fast
     env GIX_TEST_FIXTURE_HASH=sha1 cargo nextest run -p gix-refspec --no-fail-fast
     env GIX_TEST_FIXTURE_HASH=sha256 cargo nextest run -p gix-refspec --no-fail-fast
+    env GIX_TEST_FIXTURE_HASH=sha1 cargo nextest run -p gix-revision --features sha256 --no-fail-fast
+    env GIX_TEST_FIXTURE_HASH=sha256 cargo nextest run -p gix-revision --features sha256 --no-fail-fast
     env GIX_TEST_FIXTURE_HASH=sha1 cargo nextest run -p gix-worktree-stream --no-fail-fast
     env GIX_TEST_FIXTURE_HASH=sha256 cargo nextest run -p gix-worktree-stream --features sha256 --no-fail-fast
     cargo nextest run -p gix --no-default-features --features basic,comfort,max-performance-safe --no-fail-fast
-    cargo nextest run -p gix --no-default-features --features basic,extras,comfort,need-more-recent-msrv --no-fail-fast
+    cargo nextest run -p gix --no-default-features --features basic,extras,comfort --no-fail-fast
     cargo nextest run -p gix --features async-network-client --no-fail-fast
     env GIX_TEST_FIXTURE_HASH=sha256 cargo nextest run -p gix --features async-network-client --no-fail-fast
     cargo nextest run -p gix --features blocking-network-client --no-fail-fast
@@ -233,6 +243,8 @@ doc-tests:
     cargo test --workspace --doc --no-fail-fast
     # `cargo nextest` doesn't run doctests, so cover feature-gated examples explicitly here.
     cargo test -p gix-packetline --doc --features blocking-io --no-fail-fast
+    cargo test -p gix --doc --no-default-features --no-fail-fast
+    cargo test -p gix --doc --no-default-features --features revision --no-fail-fast
 
 # These tests aren't run by default as they are flaky (even locally)
 unit-tests-flaky:

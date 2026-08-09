@@ -115,9 +115,23 @@ fn exclamation_marks_must_be_escaped_or_error_unlike_gitignore() {
 }
 
 #[test]
-fn invalid_escapes_in_quotes_are_an_error() {
-    assert!(matches!(try_line(r#""\!hello""#), Err(parse::Error::Unquote(_))));
-    assert!(lenient_lines(r#""\!hello""#).is_empty());
+fn broken_quoting_falls_back_to_the_raw_text() {
+    assert_eq!(
+        line(r#""\!hello""#),
+        (pattern(r#""\!hello""#, Mode::NO_SUB_DIR, Some(1)), vec![], 1),
+        "an invalid escape leaves the quotes in place, so the leading `!` no longer negates, \
+         and the backslash goes on to escape it for the matcher"
+    );
+    assert_eq!(
+        line(r#""abc"#),
+        (pattern(r#""abc"#, Mode::NO_SUB_DIR, None), vec![], 1),
+        "so does a quote that is never closed"
+    );
+    assert_eq!(
+        line(r#""abc def"#),
+        (pattern(r#""abc"#, Mode::NO_SUB_DIR, None), vec![set("def")], 1),
+        "the raw text is then split on blanks like any unquoted pattern"
+    );
 }
 
 #[test]
@@ -169,6 +183,17 @@ fn macros_can_be_empty() {
 }
 
 #[test]
+fn the_macro_prefix_without_a_name_is_a_pattern() {
+    for input in ["[attr]", "\"[attr]\""] {
+        let output = line(input);
+        assert!(
+            matches!(output.0, parse::Kind::Pattern(_)),
+            "{input:?} is an ordinary pattern in Git"
+        );
+    }
+}
+
+#[test]
 fn custom_macros_must_be_valid_attribute_names() {
     assert!(matches!(
         try_line(r"[attr]-prefixdash"),
@@ -216,6 +241,78 @@ fn attribute_names_must_not_begin_with_dash_and_must_be_ascii_only() {
 }
 
 #[test]
+fn attribute_names_must_not_be_empty() {
+    assert!(
+        matches!(
+            try_line(r"p text =lf"),
+            Err(parse::Error::AttributeName { line_number: 1, .. })
+        ),
+        "a blank in front of the equals sign leaves the assignment without a name"
+    );
+    assert!(
+        matches!(
+            try_line(r"p ="),
+            Err(parse::Error::AttributeName { line_number: 1, .. })
+        ),
+        "an assignment that is nothing but an equals sign has no name either"
+    );
+    assert!(
+        matches!(
+            try_line(r"p -"),
+            Err(parse::Error::AttributeName { line_number: 1, .. })
+        ),
+        "prefixes need a name to apply to"
+    );
+    assert!(
+        matches!(
+            try_line(r"p !"),
+            Err(parse::Error::AttributeName { line_number: 1, .. })
+        ),
+        "the unspecified prefix needs one as well"
+    );
+    assert!(
+        gix_attributes::NameRef::try_from(bstr::BStr::new(b"")).is_err(),
+        "names can't be created empty either, which `attr_name_valid()` rejects via `namelen <= 0`"
+    );
+}
+
+#[test]
+fn attribute_names_must_not_use_the_reserved_builtin_prefix() {
+    assert!(
+        matches!(
+            try_line(r"p builtin_objectmode"),
+            Err(parse::Error::AttributeName { line_number: 1, .. })
+        ),
+        "Git reserves 'builtin_' for built-in attributes and drops lines that assign to it"
+    );
+    assert!(lenient_lines(r"p builtin_objectmode").is_empty());
+    assert!(
+        matches!(
+            try_line(r"p -builtin_objectmode"),
+            Err(parse::Error::AttributeName { line_number: 1, .. })
+        ),
+        "the prefix is checked after '-' and '!' are stripped, just like in `parse_attr()`"
+    );
+    assert!(
+        matches!(
+            try_line(r"[attr]builtin_macro -text"),
+            Err(parse::Error::MacroName { line_number: 1, .. })
+        ),
+        "macro names are checked against the reserved namespace as well"
+    );
+    assert_eq!(
+        line(r"p builtin"),
+        (pattern("p", Mode::NO_SUB_DIR, None), vec![set("builtin")], 1),
+        "only the exact 'builtin_' prefix is reserved…"
+    );
+    assert_eq!(
+        line(r"p x_builtin_y"),
+        (pattern("p", Mode::NO_SUB_DIR, None), vec![set("x_builtin_y")], 1),
+        "…and only at the beginning of the name"
+    );
+}
+
+#[test]
 fn attributes_are_parsed_behind_various_whitespace_characters() {
     assert_eq!(
         line(r#"p a b"#),
@@ -246,6 +343,47 @@ fn attributes_are_parsed_behind_various_whitespace_characters() {
         line("\"p\" \t a \t b"),
         (pattern("p", Mode::NO_SUB_DIR, None), vec![set("a"), set("b")], 1),
         "behind a mix of space and tab"
+    );
+}
+
+#[test]
+fn only_ascii_blanks_separate_attributes() {
+    assert_eq!(
+        line("p text=auto\u{a0}eol=lf"),
+        (
+            pattern("p", Mode::NO_SUB_DIR, None),
+            vec![value("text", "auto\u{a0}eol=lf")],
+            1
+        ),
+        "a non-breaking space belongs to the value it appears in"
+    );
+    assert!(
+        matches!(
+            try_line("p text\u{a0}eol=lf"),
+            Err(parse::Error::AttributeName { line_number: 1, .. })
+        ),
+        "in a name it makes the whole name invalid"
+    );
+    assert!(
+        matches!(
+            try_line("p a\u{b}b"),
+            Err(parse::Error::AttributeName { line_number: 1, .. })
+        ),
+        "a vertical tab is part of the name, not a separator"
+    );
+    assert!(
+        matches!(
+            try_line("p a\u{c}b"),
+            Err(parse::Error::AttributeName { line_number: 1, .. })
+        ),
+        "a form feed is part of the name, not a separator"
+    );
+    assert!(
+        matches!(
+            try_line("p a\u{2028}b"),
+            Err(parse::Error::AttributeName { line_number: 1, .. })
+        ),
+        "vertical tabs, form feeds and unicode line separators aren't blanks either"
     );
 }
 

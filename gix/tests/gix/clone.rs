@@ -24,6 +24,90 @@ mod blocking_io {
     const EXISTING_CONTENT: &[u8] = b"Pre-existing user content.\n";
     const EXISTING_HEAD_CONTENT: &[u8] = b"ref: refs/heads/pre-existing\n";
 
+    #[test]
+    #[serial_test::serial]
+    fn inherited_core_symlinks_false_is_respected() -> crate::Result {
+        use gix_sec::Permission;
+
+        let fixture = gix_testtools::scripted_fixture_read_only("make_clone_with_symlink.sh")?;
+        let destination = gix_testtools::tempfile::TempDir::new()?;
+        let global = destination.path().join("global.config");
+        std::fs::write(
+            &global,
+            "[core]
+                symlinks = false",
+        )?;
+        let _env = gix_testtools::Env::new().set("GIT_CONFIG_GLOBAL", global.display().to_string());
+
+        let mut permissions = gix::open::Permissions::isolated();
+        permissions.config.user = true;
+        permissions.env.git_prefix = Permission::Allow;
+        let mut capabilities = gix_fs::Capabilities {
+            symlink: true,
+            ..Default::default()
+        };
+        let mut prepare = gix::clone::PrepareFetch::new(
+            fixture.join("source.git"),
+            destination.path().join("clone"),
+            gix::create::Kind::WithWorktree,
+            gix::create::Options {
+                fs_capabilities: Some(capabilities),
+                ..Default::default()
+            },
+            gix::open::Options::isolated().permissions(permissions),
+        )?;
+        let (mut checkout, _) = prepare.fetch_then_checkout(gix::progress::Discard, &AtomicBool::default())?;
+        let (repo, _) = checkout.main_worktree(gix::progress::Discard, &AtomicBool::default())?;
+
+        let link = repo.workdir().expect("worktree repository").join("link");
+        assert!(
+            !std::fs::symlink_metadata(&link)?.file_type().is_symlink(),
+            "inherited core.symlinks=false must disable symlink checkout even if the probe supports them"
+        );
+        assert_eq!(
+            std::fs::read(link)?,
+            b"target",
+            "the link target is written as a plain file"
+        );
+        assert_eq!(
+            gix::open_opts(repo.git_dir(), gix::open::Options::isolated())?
+                .config_snapshot()
+                .boolean(gix::config::tree::Core::SYMLINKS),
+            None,
+            "a successful probe must not persist core.symlinks=true and mask inherited configuration"
+        );
+
+        capabilities.symlink = false;
+        let mut prepare = gix::clone::PrepareFetch::new(
+            fixture.join("source.git"),
+            destination.path().join("probe-disables-symlinks"),
+            gix::create::Kind::WithWorktree,
+            gix::create::Options {
+                fs_capabilities: Some(capabilities),
+                ..Default::default()
+            },
+            gix::open::Options::isolated()
+                .permissions(permissions)
+                .config_overrides(["core.symlinks=true"]),
+        )?;
+        let (mut checkout, _) = prepare.fetch_then_checkout(gix::progress::Discard, &AtomicBool::default())?;
+        let (repo, _) = checkout.main_worktree(gix::progress::Discard, &AtomicBool::default())?;
+        assert!(
+            !std::fs::symlink_metadata(repo.workdir().expect("worktree repository").join("link"))?
+                .file_type()
+                .is_symlink(),
+            "a failed symlink probe must override configuration that enables symlinks"
+        );
+        assert_eq!(
+            gix::open_opts(repo.git_dir(), gix::open::Options::isolated())?
+                .config_snapshot()
+                .boolean(gix::config::tree::Core::SYMLINKS),
+            Some(false),
+            "a failed probe is persisted like Git"
+        );
+        Ok(())
+    }
+
     fn shallow_ids(repo: &gix::Repository, expected: &'static str) -> crate::Result<Vec<gix::ObjectId>> {
         let commits = repo.shallow_commits()?.expect(expected);
         // `gix_shallow::read` returns these sorted by id; the expected side is sorted via `sorted(...)`.
@@ -832,6 +916,153 @@ mod blocking_io {
         assert_eq!(index.entries().len(), 1, "All entries are known as per HEAD tree");
 
         assure_index_entries_on_disk(&index, repo.workdir().expect("non-bare"));
+        Ok(())
+    }
+
+    #[test]
+    fn fetch_and_checkout_specific_revision() -> crate::Result {
+        let tmp = gix_testtools::tempfile::TempDir::new()?;
+        let remote_repo = remote::repo("base");
+        let branch_id = remote_repo.find_reference("refs/heads/a")?.peel_to_id()?.detach();
+        let tag_id = remote_repo
+            .find_reference("refs/tags/annotated-detached-tag")?
+            .peel_to_commit()?
+            .id;
+        let head_id = remote_repo.head_id()?.detach();
+        for (name, revision, expected) in [
+            ("branch", "refs/heads/a".to_owned(), branch_id),
+            ("tag", "refs/tags/annotated-detached-tag".to_owned(), tag_id),
+            ("head", "HEAD".to_owned(), head_id),
+            ("object-id", branch_id.to_string(), branch_id),
+        ] {
+            let mut prepare = gix::clone::PrepareFetch::new(
+                remote_repo.path(),
+                tmp.path().join(name),
+                gix::create::Kind::WithWorktree,
+                Default::default(),
+                restricted(),
+            )?
+            .with_revision(Some(revision))?;
+
+            let (mut checkout, _) = prepare.fetch_then_checkout(gix::progress::Discard, &AtomicBool::default())?;
+            let (repo, _) = checkout.main_worktree(gix::progress::Discard, &AtomicBool::default())?;
+
+            assert_eq!(repo.head_id()?, expected, "HEAD points at the requested revision");
+            assert!(repo.head_ref()?.is_none(), "HEAD is detached");
+            assert_eq!(
+                repo.references()?.all()?.count(),
+                0,
+                "single-revision clones create no ordinary references"
+            );
+            let remote = repo.find_remote("origin")?;
+            assert!(
+                remote.refspecs(Direction::Fetch).is_empty(),
+                "single-revision clones persist no fetch refspec"
+            );
+            assert_eq!(
+                remote.fetch_tags(),
+                gix::remote::fetch::Tags::None,
+                "later fetches do not follow tags"
+            );
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn fetch_specific_revision_bare_and_shallow() -> crate::Result {
+        let tmp = gix_testtools::tempfile::TempDir::new()?;
+        let remote_repo = remote::repo("base");
+        let revision = "refs/heads/a";
+        let expected = remote_repo.find_reference(revision)?.peel_to_id()?;
+
+        let mut bare = gix::clone::PrepareFetch::new(
+            remote_repo.path(),
+            tmp.path().join("bare"),
+            gix::create::Kind::Bare,
+            Default::default(),
+            restricted(),
+        )?
+        .with_revision(Some(revision))?;
+        let (repo, _) = bare.fetch_only(gix::progress::Discard, &AtomicBool::default())?;
+        assert_eq!(repo.head_id()?, expected, "bare clones retain a detached HEAD");
+        assert_eq!(
+            repo.references()?.all()?.count(),
+            0,
+            "bare clones create no ordinary references"
+        );
+
+        let mut shallow = gix::clone::PrepareFetch::new(
+            remote_repo.path(),
+            tmp.path().join("shallow"),
+            gix::create::Kind::WithWorktree,
+            Default::default(),
+            restricted(),
+        )?
+        .with_revision(Some(revision))?
+        .with_shallow(Shallow::DepthAtRemote(1.try_into()?));
+        let (mut checkout, _) = shallow.fetch_then_checkout(gix::progress::Discard, &AtomicBool::default())?;
+        let (repo, _) = checkout.main_worktree(gix::progress::Discard, &AtomicBool::default())?;
+        assert!(repo.is_shallow(), "depth applies to a single-revision clone");
+        assert_eq!(repo.head_id()?, expected, "the requested revision is checked out");
+        assert_eq!(
+            repo.references()?.all()?.count(),
+            0,
+            "shallow clones also create no ordinary references"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn invalid_specific_revisions_are_rejected() -> crate::Result {
+        let tmp = gix_testtools::tempfile::TempDir::new()?;
+        let remote_repo = remote::repo("base");
+        for invalid in ["main", "deadbeef", "refs/heads/main^"] {
+            let result = gix::clone::PrepareFetch::new(
+                remote_repo.path(),
+                tmp.path().join(invalid.replace('/', "_")),
+                gix::create::Kind::Bare,
+                Default::default(),
+                restricted(),
+            )?
+            .with_revision(Some(invalid));
+            assert!(result.is_err(), "{invalid:?} is not a full revision");
+        }
+
+        let mut missing = gix::clone::PrepareFetch::new(
+            remote_repo.path(),
+            tmp.path().join("missing"),
+            gix::create::Kind::Bare,
+            Default::default(),
+            restricted(),
+        )?
+        .with_revision(Some("refs/heads/does-not-exist"))?;
+        let err = missing
+            .fetch_only(gix::progress::Discard, &AtomicBool::default())
+            .expect_err("missing full references fail");
+        assert!(
+            matches!(err, gix::clone::fetch::Error::RevisionMissing { .. }),
+            "the missing revision is reported directly: {err}"
+        );
+
+        let tree_id = remote_repo
+            .find_reference("refs/heads/a")?
+            .peel_to_commit()?
+            .tree_id()?;
+        let mut tree = gix::clone::PrepareFetch::new(
+            remote_repo.path(),
+            tmp.path().join("tree"),
+            gix::create::Kind::Bare,
+            Default::default(),
+            restricted(),
+        )?
+        .with_revision(Some(tree_id.to_string()))?;
+        let err = tree
+            .fetch_only(gix::progress::Discard, &AtomicBool::default())
+            .expect_err("tree revisions cannot become HEAD");
+        assert!(
+            matches!(err, gix::clone::fetch::Error::PeelRevision(_)),
+            "non-commit revisions are rejected: {err}"
+        );
         Ok(())
     }
 

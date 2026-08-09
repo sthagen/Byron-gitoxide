@@ -75,6 +75,15 @@ baseline ':!(literal)some/*path'
 baseline ':(top,literal,icase,attr,exclude)some/path'
 baseline ':(top,glob,icase,attr,exclude)some/path'
 
+# empty_keywords_are_ignored
+baseline ':(top,)some/path'
+baseline ':(,top)some/path'
+baseline ':(top,,icase)some/path'
+baseline ':(,)some/path'
+baseline ':(,,)some/path'
+baseline ':(icase,)some/path'
+baseline ':(attr:someAttr,)some/path'
+
 # attributes_in_signature
 baseline ':(attr:someAttr)'
 baseline ':(attr:!someAttr)'
@@ -85,6 +94,7 @@ baseline ':(attr:a= b=two)'
 baseline ':(attr:a=one b=two)'
 baseline ':(attr:a=one   b=two)'
 baseline ':(attr:someAttr anotherAttr)'
+baseline ':(attr:builtin_objectmode)'
 
 # attributes_with_escape_chars_in_state_values
 baseline ':(attr:v=one\-)'
@@ -126,6 +136,11 @@ baseline ':(attr:+invalidAttr)some/path'
 baseline ':(attr:validAttr +invalidAttr)some/path'
 baseline ':(attr:+invalidAttr,attr:valid)some/path'
 baseline ':(attr:inva\lid)some/path'
+baseline $':(attr:a\tb)some/path'
+baseline $':(attr:a\rb)some/path'
+baseline $':(attr:a=one\tb=two)some/path'
+baseline ':(attr:!a=b)some/path'
+baseline ':(attr:-a=b)some/path'
 
 # invalid_attribute_values
 baseline ':(attr:v=inva#lid)some/path'

@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use gix_error::{ErrorExt, Exn, OptionExt, ResultExt, bail, message};
 use gix_hash::ObjectId;
 use gix_index::entry::Stage;
@@ -8,10 +10,9 @@ use gix_revision::spec::parse::{
 
 use crate::revision::spec::parse::delegate::peel;
 use crate::{
-    Object,
+    Object, Repository,
     bstr::{BStr, ByteSlice},
     ext::ObjectIdExt,
-    object,
     revision::spec::parse::{Delegate, delegate::Replacements},
 };
 
@@ -33,20 +34,16 @@ impl delegate::Navigate for Delegate<'_> {
         for obj in objs.iter() {
             match kind {
                 Traversal::NthParent(num) => {
-                    match self.repo.find_object(*obj).or_erased().and_then(|obj| {
-                        obj.try_into_commit().map_err(|err| {
-                            let object::try_into::Error { actual, expected, id } = err;
-                            message!(
-                                "Object {oid} was a {actual}, but needed it to be a {expected}",
-                                oid = id.attach(repo).shorten_or_id(),
-                            )
-                            .raise_erased()
-                        })
-                    }) {
+                    match self
+                        .repo
+                        .find_object(*obj)
+                        .or_erased()
+                        .and_then(|obj| obj.peel_to_commit().or_erased())
+                    {
                         Ok(commit) => match commit.parent_ids().nth(num.saturating_sub(1)) {
-                            Some(id) => replacements.push((commit.id, id.detach())),
+                            Some(id) => replacements.push((*obj, id.detach())),
                             None => errors.push((
-                                commit.id,
+                                *obj,
                                 message!(
                                     "Commit {oid} has {available} parents and parent number {desired} is out of range",
                                     oid = commit.id().shorten_or_id(),
@@ -60,7 +57,13 @@ impl delegate::Navigate for Delegate<'_> {
                     }
                 }
                 Traversal::NthAncestor(num) => {
-                    let id = obj.attach(repo);
+                    let id = match peel(repo, obj, gix_object::Kind::Commit) {
+                        Ok(id) => id.attach(repo),
+                        Err(err) => {
+                            errors.push((*obj, err));
+                            continue;
+                        }
+                    };
                     match id
                         .ancestors()
                         .first_parent_only()
@@ -120,6 +123,8 @@ impl delegate::Navigate for Delegate<'_> {
                 }
             }
             PeelTo::Path(path) => {
+                let path = to_repo_relative_path(repo, path)?;
+                let path = path.as_ref();
                 let lookup_path = |obj: &ObjectId| {
                     let tree_id = peel(repo, obj, gix_object::Kind::Tree)?;
                     if path.is_empty() {
@@ -194,8 +199,14 @@ impl delegate::Navigate for Delegate<'_> {
                 let mut errors = Vec::<(ObjectId, Exn)>::new();
                 let mut replacements = Replacements::default();
                 for oid in objs.iter() {
-                    match oid
-                        .attach(repo)
+                    let start = match peel(repo, oid, gix_object::Kind::Commit) {
+                        Ok(id) => id.attach(repo),
+                        Err(err) => {
+                            errors.push((*oid, err));
+                            continue;
+                        }
+                    };
+                    match start
                         .ancestors()
                         .sorting(crate::revision::walk::Sorting::ByCommitTime(Default::default()))
                         .all()
@@ -321,6 +332,8 @@ impl delegate::Navigate for Delegate<'_> {
             ),
         };
         self.unset_disambiguate_call();
+        let path = to_repo_relative_path(self.repo, path)?;
+        let path = path.as_ref();
         let index = self.repo.index().or_erased()?;
         match index.entry_by_path_and_stage(path, stage) {
             Some(entry) => {
@@ -363,6 +376,18 @@ impl delegate::Navigate for Delegate<'_> {
             }
         }
     }
+}
+
+/// Resolve `path` against the current working directory if it starts with `./` or `../`, and return it
+/// unchanged otherwise, matching the path syntax described in `gitrevisions(7)`.
+fn to_repo_relative_path<'a>(repo: &Repository, path: &'a BStr) -> Result<Cow<'a, BStr>, Exn> {
+    if !(path.starts_with_str("./") || path.starts_with_str("../")) {
+        return Ok(path.into());
+    }
+    repo.prefix()
+        .or_erased()?
+        .ok_or_raise_erased(|| message("Relative path syntax can't be used outside of a worktree"))?;
+    repo.normalize_path(path).or_erased()
 }
 
 fn handle_errors_and_replacements(

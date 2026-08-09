@@ -17,11 +17,6 @@ use crate::{
 
 /// Access
 impl Cache {
-    /// Returns `true` if the configuration value isn't set, so we assume bare for safety.
-    pub(crate) fn is_bare_but_assume_bare_if_unconfigured(&self) -> bool {
-        self.is_bare.unwrap_or(true)
-    }
-
     #[cfg(feature = "blob-diff")]
     pub(crate) fn diff_algorithm(&self) -> Result<gix_diff::blob::Algorithm, config::diff::algorithm::Error> {
         use crate::config::{cache::util::ApplyLeniencyDefault, diff::algorithm::Error, tree::Diff};
@@ -293,7 +288,6 @@ impl Cache {
         })
     }
 
-    #[cfg(any(feature = "index", feature = "tree-editor"))]
     pub(crate) fn protect_options(&self) -> Result<gix_validate::path::component::Options, config::boolean::Error> {
         const IS_WINDOWS: bool = cfg!(windows);
         const IS_MACOS: bool = cfg!(target_os = "macos");
