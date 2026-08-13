@@ -1,4 +1,4 @@
-use std::{str::FromStr, time::SystemTime};
+use std::str::FromStr;
 
 use crate::{
     spec,
@@ -558,7 +558,7 @@ where
                     .to_str()
                     .map_err(|_| Error::new_with_input("could not parse time for reflog lookup", nav))
                     .and_then(|date| {
-                        gix_date::parse(date, Some(SystemTime::now()))
+                        gix_date::parse(date, Some(gix_date::Zoned::now()))
                             .map_err(|_| Error::new_with_input("could not parse time for reflog lookup", nav))
                     })?;
                 let lookup = delegate::ReflogLookup::Date(time);
@@ -678,11 +678,9 @@ where
                         b"" => delegate::PeelTo::RecursiveTagObject,
                         regex if regex.starts_with(b"/") => {
                             let (regex, negated) = parse_regex_prefix(regex[1..].as_bstr())?;
-                            if !regex.is_empty() {
-                                delegate.find(regex, negated).or_raise(|| {
-                                    Error::new(format!("Delegate couldn't find '{regex}' (negated: {negated})"))
-                                })?;
-                            }
+                            delegate.find(regex, negated).or_raise(|| {
+                                Error::new(format!("Delegate couldn't find '{regex}' (negated: {negated})"))
+                            })?;
                             continue;
                         }
                         invalid => return Err(Error::new_with_input("cannot peel to unknown target", invalid).raise()),
