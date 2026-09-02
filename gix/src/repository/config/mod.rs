@@ -1,6 +1,5 @@
-use std::collections::BTreeSet;
-
 use crate::{bstr::ByteSlice, config};
+use std::{collections::BTreeSet, ffi::OsString};
 
 /// General Configuration
 impl crate::Repository {
@@ -23,6 +22,112 @@ impl crate::Repository {
     /// Use [`reload()`](Self::reload()) to refresh it from disk.
     pub fn config_snapshot(&self) -> config::Snapshot<'_> {
         config::Snapshot { repo: self }
+    }
+
+    /// Lock and open `path` as one physical configuration file without expanding its includes.
+    ///
+    /// Relative paths are resolved against the current directory captured when this repository was opened. Dropping the
+    /// returned transaction releases the lock and discards its changes. Committing it only updates the file; call
+    /// [`reload()`](Self::reload()) explicitly to rebuild this repository from the changed configuration.
+    pub fn config_file_mut(
+        &self,
+        path: impl Into<std::path::PathBuf>,
+    ) -> Result<config::FileTransaction, config::file_mut::Error> {
+        let path = path.into();
+        let path = if path.is_absolute() {
+            path
+        } else {
+            self.current_dir().join(path)
+        };
+        let lock_mode = self.config.config_lock_timeout()?;
+        let shared_repository_permissions =
+            config::file_mut::shared_repository_permissions(&self.config.resolved, self.filter_config_section())?;
+        config::FileTransaction::open(path, self.git_dir_trust(), lock_mode, shared_repository_permissions)
+    }
+
+    /// Return the editor program selected by Git's precedence rules.
+    ///
+    /// `GIT_EDITOR` takes precedence over `core.editor`. If the terminal isn't dumb, `VISUAL` is considered next,
+    /// followed by `EDITOR`. If none are set, a bundled `vi` (or its `vim` implementation) is returned when available
+    /// unless `TERM` is unset or `dumb`, in which case there is no usable editor.
+    ///
+    /// Use [`editor_command()`](Self::editor_command) to obtain a command prepared for execution.
+    pub fn editor(&self) -> Option<OsString> {
+        use crate::config::tree::{Core, Gitoxide};
+
+        let config = self.config_snapshot();
+        let terminal_is_dumb = config.string(Gitoxide::TERM).is_none_or(|terminal| terminal == "dumb");
+        config
+            .trusted_program(Core::EDITOR)
+            .or_else(|| {
+                (!terminal_is_dumb)
+                    .then(|| config.trusted_program(Gitoxide::VISUAL))
+                    .flatten()
+            })
+            .or_else(|| config.trusted_program(Gitoxide::EDITOR))
+            .or_else(|| {
+                (!terminal_is_dumb).then(|| {
+                    gix_path::env::installation_program("vi")
+                        // Current Git for Windows versions provide `vi` as a shell script that delegates to `vim.exe`.
+                        // Select the directly executable implementation when no `vi.exe` is installed.
+                        .or_else(|| {
+                            cfg!(windows)
+                                .then(|| gix_path::env::installation_program("vim"))
+                                .flatten()
+                        })
+                        .unwrap_or_else(|| "vi".into())
+                        .into_os_string()
+                })
+            })
+            .filter(|editor| !editor.is_empty())
+    }
+
+    /// Return the prepared [`editor`](Self::editor) command.
+    ///
+    /// The returned command has repository context and inherited standard streams. Add the paths to edit as arguments
+    /// before spawning it.
+    #[cfg(feature = "command")]
+    pub fn editor_command(&self) -> Result<Option<gix_command::Prepare>, config::command_context::Error> {
+        use std::{path::Path, process::Stdio};
+
+        let Some(editor) = self.editor() else {
+            return Ok(None);
+        };
+
+        let mut command = gix_command::prepare(&editor);
+        if editor.to_string_lossy().trim_ascii() == ":" {
+            command = command.with_shell();
+        } else if !Path::new(&editor).is_file() {
+            command = command.command_may_be_shell_script();
+        }
+        Ok(Some(
+            command
+                .with_context(self.command_context()?)
+                .stdin(Stdio::inherit())
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit()),
+        ))
+    }
+
+    /// Resolve all Git configuration needed to sign a commit with [`gix_object::Commit::sign()`].
+    ///
+    /// The returned plumbing options may be adjusted before use, for example to disable GPG pinentry by adding
+    /// `--pinentry-mode=error` to `program_arguments`.
+    #[cfg(feature = "command")]
+    pub fn commit_signing_options(
+        &self,
+    ) -> Result<gix_object::signature::sign::Options, crate::commit::sign::options::Error> {
+        crate::commit::sign::signing_options(self)
+    }
+
+    /// Resolve all Git configuration needed to sign a commit if `commit.gpgSign` enables signing.
+    ///
+    /// If signing is disabled, signer-specific configuration isn't resolved or validated.
+    #[cfg(feature = "command")]
+    pub fn commit_signing_options_if_enabled(
+        &self,
+    ) -> Result<Option<gix_object::signature::sign::Options>, crate::commit::sign::options::Error> {
+        crate::commit::sign::signing_options_if_enabled(self)
     }
 
     /// Return a mutable snapshot of the configuration as seen upon opening the repository, starting a transaction.
@@ -114,7 +219,7 @@ impl crate::Repository {
 
     /// Return the context to be passed to any spawned program that is supposed to interact with the repository, like
     /// hooks or filters.
-    #[cfg(feature = "attributes")]
+    #[cfg(feature = "command")]
     pub fn command_context(&self) -> Result<gix_command::Context, config::command_context::Error> {
         use crate::config::{cache::util::ApplyLeniency, tree::gitoxide};
 

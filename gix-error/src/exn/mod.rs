@@ -17,9 +17,11 @@
 #![deny(missing_docs)]
 
 mod ext;
-pub use ext::{ErrorExt, OptionExt, ResultExt};
+pub use ext::{BoxedResultExt, ErrorExt, OptionExt, ResultExt};
 
 mod impls;
+#[cfg(any(feature = "tree-error", not(feature = "auto-chain-error")))]
+pub(crate) use impls::ErrorNode;
 pub use impls::{Frame, Something, Untyped};
 
 mod macros;
@@ -30,10 +32,11 @@ mod macros;
 /// and friends are invoked, one can also use [`Exn::raise_all`] to create an error
 /// that has multiple causes.
 ///
-/// # Warning: `source()` information is stringified and type-erased
+/// # Native error sources
 ///
-/// All `source()` values are turned into frames, but lose their type information completely.
-/// This is because they are only seen as reference and thus can't be stored.
+/// Values reached through [`std::error::Error::source()`] remain owned by their original errors and are traversed by
+/// reference, preserving their concrete types. They aren't exception frames and therefore have no captured call site of
+/// their own.
 ///
 /// # `Exn` == `Exn<Untyped>`
 ///

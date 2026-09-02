@@ -34,6 +34,8 @@ pub enum Link {
     /// The environment variable of the given name will override the value of this key.
     EnvironmentOverride(&'static str),
     /// This config key is used as fallback if this key isn't set.
+    ///
+    /// This is descriptive metadata; configuration accessors don't follow it automatically.
     FallbackKey(&'static dyn Key),
 }
 
@@ -63,6 +65,18 @@ pub trait Key: std::fmt::Debug {
     /// Return the link to other resources, if available.
     fn link(&self) -> Option<&Link> {
         None
+    }
+    /// Return the value to use if this key is unset, if one is known.
+    fn default_value(&self) -> Option<&BStr> {
+        None
+    }
+    /// Return the value to use if this key is unset.
+    ///
+    /// # Panics
+    ///
+    /// If no default value is set.
+    fn default_value_or_panic(&self) -> &BStr {
+        self.default_value().expect("BUG: default value must be set")
     }
     /// Return a note about this key, if available.
     fn note(&self) -> Option<&Note> {

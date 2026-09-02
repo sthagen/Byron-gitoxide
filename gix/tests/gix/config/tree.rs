@@ -1,6 +1,6 @@
 mod keys {
     use gix::config::tree::{Key, Section};
-    use gix_object::bstr::ByteSlice;
+    use gix_object::bstr::{BStr, ByteSlice};
 
     #[test]
     fn string() -> crate::Result {
@@ -42,6 +42,39 @@ mod keys {
                 .unwrap(),
             "author.name=user"
         );
+    }
+
+    #[test]
+    fn default_values() {
+        for (key, expected) in [
+            (
+                &gix::config::tree::Clone::DEFAULT_REMOTE_NAME as &dyn Key,
+                BStr::new(b"origin"),
+            ),
+            (&gix::config::tree::Core::NOTES_REF, BStr::new(b"refs/notes/commits")),
+            (&gix::config::tree::Diff::ALGORITHM, BStr::new(b"myers")),
+            (&gix::config::tree::Gpg::FORMAT, BStr::new(b"openpgp")),
+            (&gix::config::tree::Gpg::PROGRAM, BStr::new(b"gpg")),
+            (&gix::config::tree::gpg::OpenPgp::PROGRAM, BStr::new(b"gpg")),
+            (&gix::config::tree::gpg::X509::PROGRAM, BStr::new(b"gpgsm")),
+            (&gix::config::tree::gpg::Ssh::PROGRAM, BStr::new(b"ssh-keygen")),
+            (&gix::config::tree::Commit::GPG_SIGN, BStr::new(b"false")),
+            (&gix::config::tree::gitoxide::Core::SHALLOW_FILE, BStr::new(b"shallow")),
+            (
+                &gix::config::tree::gitoxide::Objects::REPLACE_REF_BASE,
+                BStr::new(b"refs/replace/"),
+            ),
+        ] {
+            assert_eq!(key.default_value(), Some(expected), "default for {key:?}");
+            assert_eq!(key.default_value_or_panic(), expected, "default for {key:?}");
+        }
+        assert_eq!(gix::config::tree::Author::NAME.default_value(), None);
+    }
+
+    #[test]
+    #[should_panic(expected = "BUG: default value must be set")]
+    fn missing_default_panics() {
+        let _ = gix::config::tree::Author::NAME.default_value_or_panic();
     }
 
     #[test]
@@ -140,6 +173,18 @@ mod branch {
     fn merge() {
         assert!(branch::Merge::try_into_fullrefname("refs/heads/main").is_ok());
         assert!(branch::Merge::try_into_fullrefname("main").is_err());
+        assert!(
+            Branch::MERGE.validate("refs/heads/main".into()).is_ok(),
+            "a fully qualified merge reference is valid"
+        );
+        assert!(
+            Branch::MERGE.validate("main".into()).is_err(),
+            "a partial merge reference is invalid"
+        );
+        assert!(
+            Branch::MERGE.validate("".into()).is_err(),
+            "a merge reference cannot be empty"
+        );
 
         assert!(Branch::MERGE.full_name(None).is_err());
         assert_eq!(
@@ -423,6 +468,61 @@ mod core {
 
     fn signed(value: i64) -> Result<Option<i64>, gix_config::value::Error> {
         Ok(Some(value))
+    }
+
+    #[test]
+    fn notes_ref_is_a_full_reference_or_empty() {
+        assert!(
+            Core::NOTES_REF.validate("refs/notes/review".into()).is_ok(),
+            "a fully qualified notes reference is valid"
+        );
+        assert!(
+            Core::NOTES_REF.validate("review".into()).is_err(),
+            "a partial notes reference is invalid"
+        );
+        assert!(
+            Core::NOTES_REF.validate("".into()).is_ok(),
+            "an empty value disables the default notes reference"
+        );
+    }
+
+    #[test]
+    fn shared_repository() -> crate::Result {
+        for (value, expected) in [
+            (None, 0o660),
+            (Some("umask"), 0),
+            (Some("false"), 0),
+            (Some("0"), 0),
+            (Some("group"), 0o660),
+            (Some("true"), 0o660),
+            (Some("1"), 0o660),
+            (Some("all"), 0o664),
+            (Some("world"), 0o664),
+            (Some("everybody"), 0o664),
+            (Some("2"), 0o664),
+            (Some("0640"), -0o640),
+        ] {
+            assert_eq!(
+                Core::SHARED_REPOSITORY.try_into_shared_repository(value)?,
+                expected,
+                "value {value:?}"
+            );
+            if let Some(value) = value {
+                assert!(Core::SHARED_REPOSITORY.validate(value.into()).is_ok());
+            }
+        }
+
+        for value in ["0400", "invalid"] {
+            assert_eq!(
+                Core::SHARED_REPOSITORY
+                    .try_into_shared_repository(Some(value))
+                    .unwrap_err()
+                    .to_string(),
+                format!("The key \"core.sharedRepository={value}\" was invalid")
+            );
+            assert!(Core::SHARED_REPOSITORY.validate(value.into()).is_err());
+        }
+        Ok(())
     }
 
     #[test]
@@ -845,6 +945,107 @@ mod protocol {
                     .unwrap_err()
                     .to_string(),
                 "The key \"protocol.version=5\" was invalid"
+            );
+        }
+    }
+}
+
+mod gpg {
+    use gix::{
+        bstr::BStr,
+        config::tree::{Gpg, Key, Section, gpg},
+    };
+
+    #[test]
+    fn keys_and_subsections_are_registered() {
+        for (actual, expected) in [
+            (Gpg::FORMAT.logical_name(), "gpg.format"),
+            (Gpg::PROGRAM.logical_name(), "gpg.program"),
+            (Gpg::MIN_TRUST_LEVEL.logical_name(), "gpg.minTrustLevel"),
+            (gpg::OpenPgp::PROGRAM.logical_name(), "gpg.openpgp.program"),
+            (gpg::X509::PROGRAM.logical_name(), "gpg.x509.program"),
+            (gpg::Ssh::PROGRAM.logical_name(), "gpg.ssh.program"),
+            (
+                gpg::Ssh::DEFAULT_KEY_COMMAND.logical_name(),
+                "gpg.ssh.defaultKeyCommand",
+            ),
+            (
+                gpg::Ssh::ALLOWED_SIGNERS_FILE.logical_name(),
+                "gpg.ssh.allowedSignersFile",
+            ),
+            (gpg::Ssh::REVOCATION_FILE.logical_name(), "gpg.ssh.revocationFile"),
+        ] {
+            assert_eq!(actual, expected);
+        }
+        assert_eq!(
+            Gpg.sub_sections()
+                .iter()
+                .map(|section| section.name())
+                .collect::<Vec<_>>(),
+            ["openpgp", "x509", "ssh"]
+        );
+        for (key, expected) in [
+            (&Gpg::PROGRAM as &dyn Key, BStr::new(b"gpg")),
+            (&gpg::OpenPgp::PROGRAM, BStr::new(b"gpg")),
+            (&gpg::X509::PROGRAM, BStr::new(b"gpgsm")),
+            (&gpg::Ssh::PROGRAM, BStr::new(b"ssh-keygen")),
+        ] {
+            assert_eq!(key.default_value(), Some(expected), "default for {key:?}");
+        }
+        #[cfg(feature = "command")]
+        for valid in ["undefined", "NEVER", "Marginal", "fully", " ultimate "] {
+            assert!(
+                Gpg::MIN_TRUST_LEVEL.validate(valid.into()).is_ok(),
+                "Git accepts {valid:?} as a minimum trust level"
+            );
+        }
+        assert!(Gpg::MIN_TRUST_LEVEL.validate("unknown".into()).is_err());
+    }
+}
+
+mod notes {
+    use gix::config::tree::{Key, Notes};
+    use gix_object::bstr::BString;
+
+    #[test]
+    fn display_ref_metadata() {
+        assert_eq!(Notes::DISPLAY_REF.logical_name(), "notes.displayRef");
+        assert_eq!(
+            Notes::DISPLAY_REF.the_environment_override(),
+            "GIT_NOTES_DISPLAY_REF",
+            "the key declares its corresponding environment variable"
+        );
+    }
+
+    #[test]
+    fn display_ref_parsing() -> crate::Result {
+        assert_eq!(
+            Notes::DISPLAY_REF.try_into_display_refs(":refs/notes/review::refs/notes/*:")?,
+            vec![BString::from("refs/notes/review"), BString::from("refs/notes/*")],
+            "empty fields are ignored while literal and glob references retain their order"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn display_ref_validation() {
+        for valid in [
+            "",
+            "refs/notes/review",
+            "refs/notes/*",
+            "refs/notes/revie?",
+            "refs/notes/[rs]eview",
+            "refs/notes/review:refs/notes/*",
+        ] {
+            assert!(
+                Notes::DISPLAY_REF.validate(valid.into()).is_ok(),
+                "{valid:?} is a valid display-reference list"
+            );
+        }
+        for invalid in ["review", "refs/notes/review:security", r"refs/notes/review\literal"] {
+            assert!(
+                Notes::DISPLAY_REF.validate(invalid.into()).is_err(),
+                "{invalid:?} contains a reference that is neither fully qualified nor a glob"
             );
         }
     }

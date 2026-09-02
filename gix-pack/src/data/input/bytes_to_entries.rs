@@ -51,20 +51,15 @@ where
         compressed: input::EntryDataMode,
         object_hash: gix_hash::Kind,
     ) -> Result<BytesToEntriesIter<BR>, input::Error> {
-        let mut header_data = [0u8; 12];
+        let mut header_data = [0u8; crate::data::header::SIZE];
         read.read_exact(&mut header_data).map_err(gix_hash::io::Error::from)?;
 
         let (version, num_objects) = crate::data::header::decode(&header_data)?;
-        assert_eq!(
-            version,
-            crate::data::Version::V2,
-            "let's stop here if we see undocumented pack formats"
-        );
         Ok(BytesToEntriesIter {
             read,
             decompressor: Decompress::new(),
             compressed,
-            offset: 12,
+            offset: crate::data::header::SIZE as u64,
             had_error: false,
             version,
             objects_left: num_objects,
@@ -176,10 +171,10 @@ where
     fn try_read_trailer(&mut self) -> Result<Option<ObjectId>, input::Error> {
         Ok(if self.objects_left == 0 {
             let mut id = gix_hash::ObjectId::null(self.object_hash);
-            if let Err(err) = self.read.read_exact(id.as_mut_slice()) {
-                if self.mode != input::Mode::Restore {
-                    return Err(input::Error::Io(err.into()));
-                }
+            if let Err(err) = self.read.read_exact(id.as_mut_slice())
+                && self.mode != input::Mode::Restore
+            {
+                return Err(input::Error::Io(err.into()));
             }
 
             if let Some(hash) = self.hash.take() {

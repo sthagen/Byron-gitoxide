@@ -61,7 +61,8 @@ impl output::Entry {
     }
 
     /// Create an Entry from a previously counted object which is located in a pack. It's `entry` is provided here.
-    /// The `version` specifies what kind of target `Entry` version the caller desires.
+    /// The `target_version` specifies what kind of target `Entry` version the caller desires. Both supported versions use
+    /// the same entry encoding.
     pub fn from_pack_entry(
         mut entry: find::Entry,
         count: &output::Count,
@@ -88,10 +89,14 @@ impl output::Entry {
             Tag => Some(output::entry::Kind::Base(gix_object::Kind::Tag)),
             OfsDelta { base_distance } => {
                 let pack_location = count.entry_pack_location.as_ref().expect("packed");
-                let base_offset = pack_location
-                    .pack_offset
-                    .checked_sub(base_distance)
-                    .expect("pack-offset - distance is firmly within the pack");
+                let Some(base_offset) =
+                    crate::data::entry::Header::verified_base_pack_offset(pack_location.pack_offset, base_distance)
+                else {
+                    return Some(Err(crate::data::entry::decode::Error::Corrupt {
+                        message: "an ofs-delta base distance pointing before pack start",
+                    }
+                    .into()));
+                };
                 potential_bases
                     .binary_search_by(|e| {
                         e.entry_pack_location
@@ -158,21 +163,16 @@ impl output::Entry {
         })
     }
 
-    /// Transform ourselves into pack entry header of `version` which can be written into a pack.
+    /// Transform ourselves into a pack entry header which can be written into a pack of `version`.
     ///
     /// `index_to_pack(object_index) -> pack_offset` is a function to convert the base object's index into
     /// the input object array (if each object is numbered) to an offset into the pack.
     /// This information is known to the one calling the method.
     pub fn to_entry_header(
         &self,
-        version: data::Version,
+        _version: data::Version,
         index_to_base_distance: impl FnOnce(usize) -> u64,
     ) -> data::entry::Header {
-        assert!(
-            matches!(version, data::Version::V2),
-            "we can only write V2 pack entries for now"
-        );
-
         use Kind::*;
         match self.kind {
             Base(kind) => {

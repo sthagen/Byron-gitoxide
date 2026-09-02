@@ -1,10 +1,8 @@
 #![allow(clippy::result_large_err)]
-use std::{collections::BTreeMap, path::PathBuf};
-
 use gix_object::Exists;
 use gix_ref::{
     Target, TargetRef,
-    transaction::{Change, LogChange, PreviousValue, RefEdit, RefLog},
+    transaction::{Change, PreviousValue, RefEdit},
 };
 
 use crate::{
@@ -76,7 +74,15 @@ pub(crate) fn update(
     let mut updates = Vec::new();
     let mut edit_indices_to_validate = Vec::new();
 
-    let mut checked_out_branches = worktree_branches(repo)?;
+    let mut checked_out_branches = repo.checked_out_branches().map_err(|err| match err {
+        crate::repository::worktree::CheckedOutBranchesError::WorktreeListing(err) => {
+            update::Error::WorktreeListing(err)
+        }
+        crate::repository::worktree::CheckedOutBranchesError::OpenWorktreeRepo(err) => {
+            update::Error::OpenWorktreeRepo(err)
+        }
+        crate::repository::worktree::CheckedOutBranchesError::FollowSymref(err) => update::Error::FollowSymref(err),
+    })?;
     let implicit_tag_refspec = fetch_tags
         .to_refspec()
         .filter(|_| matches!(fetch_tags, crate::remote::fetch::Tags::Included));
@@ -98,18 +104,19 @@ pub(crate) fn update(
     ) {
         // `None` only if unborn.
         let remote_id = remote.as_id();
-        if matches!(dry_run, fetch::DryRun::No) && !remote_id.is_none_or(|id| repo.objects.exists(id)) {
-            if let Some(remote_id) = remote_id.filter(|id| !repo.objects.exists(id)) {
-                let update = if is_implicit_tag {
-                    Mode::ImplicitTagNotSentByRemote.into()
-                } else {
-                    // Assure the ODB is not to blame for the missing object.
-                    repo.try_find_object(remote_id)?;
-                    Mode::RejectedSourceObjectNotFound { id: remote_id.into() }.into()
-                };
-                updates.push(update);
-                continue;
-            }
+        if matches!(dry_run, fetch::DryRun::No)
+            && !remote_id.is_none_or(|id| repo.objects.exists(id))
+            && let Some(remote_id) = remote_id.filter(|id| !repo.objects.exists(id))
+        {
+            let update = if is_implicit_tag {
+                Mode::ImplicitTagNotSentByRemote.into()
+            } else {
+                // Assure the ODB is not to blame for the missing object.
+                repo.try_find_object(remote_id)?;
+                Mode::RejectedSourceObjectNotFound { id: remote_id.into() }.into()
+            };
+            updates.push(update);
+            continue;
         }
         let (mode, edit_index, type_change) = match local {
             Some(name) => {
@@ -262,21 +269,9 @@ pub(crate) fn update(
                     let anticipated_update_index = updates.len();
                     edit_indices_to_validate.push((anticipated_update_index, edit_index));
                 }
-                let edit = RefEdit {
-                    change: Change::Update {
-                        log: LogChange {
-                            mode: RefLog::AndReference,
-                            force_create_reflog: false,
-                            message: message.compose(reflog_message),
-                        },
-                        expected: previous_value,
-                        new,
-                    },
-                    name,
-                    // We must not deref symrefs or we will overwrite their destination, which might be checked out
-                    // and we don't check for that case.
-                    deref: false,
-                };
+                // We must not deref symrefs or we will overwrite their destination, which might be checked out
+                // and we don't check for that case.
+                let edit = RefEdit::update(name, new, previous_value, message.compose(reflog_message));
                 edits.push(edit);
                 (mode, Some(edit_index), type_change)
             }
@@ -408,37 +403,6 @@ fn new_value_by_remote(remote: &Source) -> Result<Target, update::Error> {
             Target::Object(remote_id.expect("unborn case handled earlier").to_owned())
         },
     )
-}
-
-fn insert_head(
-    head: Option<crate::Head<'_>>,
-    out: &mut BTreeMap<gix_ref::FullName, Vec<PathBuf>>,
-) -> Result<(), update::Error> {
-    if let Some((head, wd)) = head.and_then(|head| head.repo.workdir().map(|wd| (head, wd))) {
-        out.entry("HEAD".try_into().expect("valid"))
-            .or_default()
-            .push(wd.to_owned());
-        let mut ref_chain = Vec::new();
-        let mut cursor = head.try_into_referent();
-        while let Some(ref_) = cursor {
-            ref_chain.push(ref_.name().to_owned());
-            cursor = ref_.follow().transpose()?;
-        }
-        for name in ref_chain {
-            out.entry(name).or_default().push(wd.to_owned());
-        }
-    }
-    Ok(())
-}
-
-fn worktree_branches(repo: &Repository) -> Result<BTreeMap<gix_ref::FullName, Vec<PathBuf>>, update::Error> {
-    let mut map = BTreeMap::new();
-    insert_head(repo.head().ok(), &mut map)?;
-    for proxy in repo.worktrees()? {
-        let repo = proxy.into_repo_with_possibly_inaccessible_worktree()?;
-        insert_head(repo.head().ok(), &mut map)?;
-    }
-    Ok(map)
 }
 
 #[cfg(test)]

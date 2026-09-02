@@ -171,7 +171,6 @@ where
             thread_limit: config::index_threads(repo)?,
             index_version: config::pack_index_version(repo)?,
             iteration_mode: gix_pack::data::input::Mode::Verify,
-            object_hash: repo.object_hash(),
             alloc_limit_bytes: repo.config.alloc_limit_bytes,
             compression: repo.config.loose_compression,
         };
@@ -191,6 +190,7 @@ where
                             let repo = repo.clone();
                             repo.objects
                         })),
+                        repo.object_hash(),
                         write_pack_options,
                     )?;
                     may_read_to_end = true;
@@ -230,12 +230,11 @@ where
             self.write_packed_refs,
         )?;
 
-        if let Some(bundle) = write_pack_bundle.as_mut() {
-            if !update_refs.edits.is_empty() || bundle.index.num_objects == 0 {
-                if let Some(path) = bundle.keep_path.take() {
-                    std::fs::remove_file(&path).map_err(|err| Error::RemovePackKeepFile { path, source: err })?;
-                }
-            }
+        if let Some(bundle) = write_pack_bundle.as_mut()
+            && (!update_refs.edits.is_empty() || bundle.index.num_objects == 0)
+            && let Some(path) = bundle.keep_path.take()
+        {
+            std::fs::remove_file(&path).map_err(|err| Error::RemovePackKeepFile { path, source: err })?;
         }
 
         let out = Outcome {

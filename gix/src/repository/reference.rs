@@ -1,7 +1,7 @@
 use gix_hash::ObjectId;
 use gix_ref::{
     FullName, PartialNameRef, Target,
-    transaction::{Change, LogChange, PreviousValue, RefEdit, RefLog},
+    transaction::{PreviousValue, RefEdit},
 };
 
 use crate::{Reference, bstr::BString, ext::ReferenceExt, reference};
@@ -19,15 +19,12 @@ impl crate::Repository {
         constraint: PreviousValue,
     ) -> Result<Reference<'_>, reference::edit::Error> {
         let id = target.into();
-        let mut edits = self.edit_reference(RefEdit {
-            change: Change::Update {
-                log: Default::default(),
-                expected: constraint,
-                new: Target::Object(id),
-            },
-            name: format!("refs/tags/{}", name.as_ref()).try_into()?,
-            deref: false,
-        })?;
+        let mut edits = self.edit_reference(RefEdit::update(
+            format!("refs/tags/{}", name.as_ref()).try_into()?,
+            id,
+            constraint,
+            "",
+        ))?;
         assert_eq!(edits.len(), 1, "reference splits should ever happen");
         let edit = edits.pop().expect("exactly one item");
         Ok(Reference {
@@ -102,19 +99,7 @@ impl crate::Repository {
         constraint: PreviousValue,
         log_message: BString,
     ) -> Result<Reference<'_>, reference::edit::Error> {
-        let mut edits = self.edit_reference(RefEdit {
-            change: Change::Update {
-                log: LogChange {
-                    mode: RefLog::AndReference,
-                    force_create_reflog: false,
-                    message: log_message,
-                },
-                expected: constraint,
-                new: Target::Object(id),
-            },
-            name,
-            deref: false,
-        })?;
+        let mut edits = self.edit_reference(RefEdit::update(name, id, constraint, log_message))?;
         assert_eq!(
             edits.len(),
             1,
@@ -179,7 +164,7 @@ impl crate::Repository {
     /// # let repo = doctest::open_repo(doctest::basic_repo_dir()?)?;
     /// let head = repo.head()?;
     ///
-    /// assert_eq!(head.referent_name().expect("born").as_bstr(), "refs/heads/main");
+    /// assert_eq!(head.referent_name().expect("born"), "refs/heads/main");
     /// assert!(!head.is_detached());
     /// assert!(!head.is_unborn());
     /// # Ok(()) }
@@ -316,7 +301,7 @@ impl crate::Repository {
     /// # let repo = doctest::open_repo(doctest::basic_repo_dir()?)?;
     /// let mut reference = repo.find_reference("main")?;
     ///
-    /// assert_eq!(reference.name().as_bstr(), "refs/heads/main");
+    /// assert_eq!(reference, "refs/heads/main");
     /// assert_eq!(reference.peel_to_commit()?.message()?.title, "c2\n");
     /// # Ok(()) }
     /// ```
@@ -351,7 +336,6 @@ impl crate::Repository {
     /// let branches = repo
     ///     .references()?
     ///     .local_branches()?
-    ///     .map(|reference| reference.map(|reference| reference.name().as_bstr().to_string()))
     ///     .collect::<Result<Vec<_>, _>>()?;
     ///
     /// assert_eq!(branches, vec!["refs/heads/main".to_owned()]);

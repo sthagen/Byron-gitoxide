@@ -22,7 +22,10 @@ impl Cache {
         use crate::config::{cache::util::ApplyLeniencyDefault, diff::algorithm::Error, tree::Diff};
         self.diff_algorithm
             .get_or_try_init(|| {
-                let name = self.resolved.string(Diff::ALGORITHM).unwrap_or_else(|| "myers".into());
+                let name = self
+                    .resolved
+                    .string(Diff::ALGORITHM)
+                    .unwrap_or_else(|| Diff::ALGORITHM.default_value_or_panic().into());
                 config::tree::Diff::ALGORITHM
                     .try_into_algorithm(name)
                     .or_else(|err| match err {
@@ -216,6 +219,19 @@ impl Cache {
             .unwrap_or(DEFAULT))
     }
 
+    #[cfg(feature = "command")]
+    pub(crate) fn may_sign_commits(&self) -> Result<bool, config::boolean::Error> {
+        use crate::config::tree::Commit;
+
+        let default = gix_config::Boolean::try_from(Commit::GPG_SIGN.default_value_or_panic())
+            .expect("commit.gpgSign default is a valid boolean")
+            .0;
+        Ok(Commit::GPG_SIGN
+            .enrich_error(self.resolved.boolean(Commit::GPG_SIGN))
+            .with_lenient_default_value(self.lenient_config, Some(default))?
+            .unwrap_or(default))
+    }
+
     /// Returns (file-timeout, pack-refs timeout)
     pub(crate) fn lock_timeout(
         &self,
@@ -234,6 +250,16 @@ impl Cache {
                 .unwrap_or_else(|| Fail::AfterDurationWithBackoff(Duration::from_millis(default_ms)));
         }
         Ok((out[0], out[1]))
+    }
+
+    pub(crate) fn config_lock_timeout(&self) -> Result<gix_lock::acquire::Fail, config::lock_timeout::Error> {
+        Core::CONFIG_LOCK_TIMEOUT
+            .try_into_lock_timeout(
+                self.resolved
+                    .integer_filter(Core::CONFIG_LOCK_TIMEOUT, &mut self.filter_config_section.clone()),
+            )
+            .with_leniency(self.lenient_config)
+            .map(|value| value.unwrap_or_else(|| Fail::from(Duration::from_millis(1000))))
     }
 
     /// The path to the user-level excludes file to ignore certain files in the worktree.

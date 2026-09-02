@@ -10,7 +10,7 @@ use crate::{
     config::{
         Cache,
         cache::util::ApplyLeniency,
-        tree::{Core, Gitoxide, Http, gitoxide},
+        tree::{Author, Committer, Core, Gitoxide, Http, Notes, gitoxide},
     },
     open,
     repository::init::setup_objects,
@@ -217,6 +217,7 @@ pub(crate) fn load(
     home: Option<&std::path::Path>,
     environment @ open::permissions::Environment {
         git_prefix,
+        other,
         ssh_prefix: _,
         xdg_config_home: _,
         home: _,
@@ -319,6 +320,7 @@ pub(crate) fn load(
     apply_environment_overrides(
         &mut globals,
         *git_prefix,
+        other,
         http_transport,
         identity,
         objects,
@@ -372,6 +374,7 @@ impl crate::Repository {
 fn apply_environment_overrides(
     config: &mut gix_config::File,
     git_prefix: Permission,
+    other: Permission,
     http_transport: Permission,
     identity: Permission,
     objects: Permission,
@@ -396,10 +399,20 @@ fn apply_environment_overrides(
             } else {
                 Permission::Deny
             },
-            &[{
-                let key = &Core::WORKTREE;
-                (env(key), key.name)
-            }][..],
+            &[
+                {
+                    let key = &Core::WORKTREE;
+                    (env(key), key.name)
+                },
+                {
+                    let key = &Core::NOTES_REF;
+                    (env(key), key.name)
+                },
+                {
+                    let key = &Core::EDITOR;
+                    (env(key), key.name)
+                },
+            ][..],
         ),
         (
             "http",
@@ -418,6 +431,34 @@ fn apply_environment_overrides(
                     (env(key), key.name)
                 },
             ][..],
+        ),
+        (
+            "notes",
+            None,
+            git_prefix,
+            &[{
+                let key = &Notes::DISPLAY_REF;
+                (env(key), key.name)
+            }][..],
+        ),
+        (
+            "gitoxide",
+            None,
+            other,
+            &[
+                {
+                    let key = &Gitoxide::TERM;
+                    (env(key), key.name)
+                },
+                {
+                    let key = &Gitoxide::VISUAL;
+                    (env(key), key.name)
+                },
+                {
+                    let key = &Gitoxide::EDITOR;
+                    (env(key), key.name)
+                },
+            ],
         ),
         (
             "gitoxide",
@@ -497,16 +538,16 @@ fn apply_environment_overrides(
             ],
         ),
         (
-            "gitoxide",
-            Some("committer"),
+            "committer",
+            None,
             identity,
             &[
                 {
-                    let key = &gitoxide::Committer::NAME_FALLBACK;
+                    let key = &Committer::NAME;
                     (env(key), key.name)
                 },
                 {
-                    let key = &gitoxide::Committer::EMAIL_FALLBACK;
+                    let key = &Committer::EMAIL;
                     (env(key), key.name)
                 },
             ],
@@ -553,16 +594,16 @@ fn apply_environment_overrides(
             }],
         ),
         (
-            "gitoxide",
-            Some("author"),
+            "author",
+            None,
             identity,
             &[
                 {
-                    let key = &gitoxide::Author::NAME_FALLBACK;
+                    let key = &Author::NAME;
                     (env(key), key.name)
                 },
                 {
-                    let key = &gitoxide::Author::EMAIL_FALLBACK;
+                    let key = &Author::EMAIL;
                     (env(key), key.name)
                 },
             ],

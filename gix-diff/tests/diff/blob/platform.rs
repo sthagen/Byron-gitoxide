@@ -6,7 +6,6 @@ use gix_object::{
     bstr::{BString, ByteSlice},
     tree::EntryKind,
 };
-use gix_worktree::stack::state::attributes;
 
 use crate::{
     blob::pipeline::convert_to_diffable::default_options,
@@ -86,6 +85,14 @@ fn resources_of_worktree_and_odb_and_check_link() -> crate::Result {
             }
         ),
         "in this case, there is no rename-to field as last argument, it's based on the resource paths being different"
+    );
+
+    let command = platform.prepare_diff_command("test --flag".into(), Default::default(), 0, 1)?;
+    assert!(
+        command
+            .get_args()
+            .any(|arg| arg.to_string_lossy().contains("test --flag")),
+        "configured command lines with arguments are interpreted by a shell"
     );
 
     platform.set_resource(id, EntryKind::Link, "a".into(), ResourceKind::NewOrDestination, &db)?;
@@ -181,13 +188,26 @@ fn comparable_ext_diff(
     >,
 ) -> String {
     let cmd = cmd.expect("no error");
-    let tokens = shell_words::split(&format!("{:?}", *cmd)).expect("parses fine");
-    let ofs = if cfg!(windows) { 3 } else { 0 }; // Windows doesn't show env vars
-    tokens
+    let command = format!("{:?}", *cmd);
+    let parsed = gix_diff::command::parse::command_line(command.as_str().into()).expect("parses fine");
+    let env_len = parsed.env.len();
+    parsed
+        .env
         .into_iter()
+        .map(|(name, value)| {
+            format!(
+                "{name}={}",
+                value.into_string().expect("parsing a UTF-8 command preserves UTF-8")
+            )
+        })
+        .chain(
+            std::iter::once(parsed.command)
+                .chain(parsed.args)
+                .map(|arg| arg.into_string().expect("parsing a UTF-8 command preserves UTF-8")),
+        )
         .enumerate()
         .filter_map(|(idx, s)| {
-            (idx != (5 - ofs) && idx != (8 - ofs))
+            (idx != env_len + 2 && idx != env_len + 5)
                 .then_some(s)
                 .or_else(|| Some("<tmp-path>".into()))
         })
@@ -396,18 +416,7 @@ fn new_platform(
     mode: gix_diff::blob::pipeline::Mode,
 ) -> Platform {
     let root = crate::scripted_fixture_read_only("make_blob_repo.sh").expect("valid fixture");
-    let attributes = gix_worktree::Stack::new(
-        &root,
-        gix_worktree::stack::State::AttributesStack(gix_worktree::stack::state::Attributes::new(
-            Default::default(),
-            None,
-            attributes::Source::WorktreeThenIdMapping,
-            Default::default(),
-        )),
-        gix_worktree::glob::pattern::Case::Sensitive,
-        Vec::new(),
-        Vec::new(),
-    );
+    let attributes = crate::blob::new_attributes_stack(&root);
     let filter = gix_diff::blob::Pipeline::new(
         pipeline::WorktreeRoots {
             old_root: Some(root.clone()),

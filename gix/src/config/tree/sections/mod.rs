@@ -26,6 +26,11 @@ mod clone;
 pub struct Committer;
 mod committer;
 
+/// The `commit` top-level section.
+#[derive(Copy, Clone, Default)]
+pub struct Commit;
+pub mod commit;
+
 /// The `core` top-level section.
 #[derive(Copy, Clone, Default)]
 pub struct Core;
@@ -58,6 +63,11 @@ pub mod fetch;
 pub struct Gitoxide;
 pub mod gitoxide;
 
+/// The `gpg` top-level section.
+#[derive(Copy, Clone, Default)]
+pub struct Gpg;
+pub mod gpg;
+
 /// The `http` top-level section.
 #[derive(Copy, Clone, Default)]
 pub struct Http;
@@ -80,6 +90,11 @@ mod mailmap;
 #[derive(Copy, Clone, Default)]
 pub struct Merge;
 mod merge;
+
+/// The `notes` top-level section.
+#[derive(Copy, Clone, Default)]
+pub struct Notes;
+pub mod notes;
 
 /// The `pack` top-level section.
 #[derive(Copy, Clone, Default)]

@@ -7,7 +7,7 @@ use gix_features::{
 };
 
 use crate::{
-    cache::delta::{Item, Tree, traverse::util::ItemSliceSync},
+    cache::delta::{Tree, traverse::util::ItemSliceSync, tree::Item},
     data::EntryRange,
 };
 
@@ -19,6 +19,7 @@ pub(super) type SharedRefDeltaChildren = OwnShared<Mutable<super::tree::RefDelta
 
 /// Returned by [`Tree::traverse()`]
 #[derive(thiserror::Error, Debug)]
+#[allow(missing_docs)]
 pub enum Error {
     #[error("{message}")]
     ZlibInflate {
@@ -182,10 +183,10 @@ where
             )?;
         }
 
-        if let Some(ref_delta_children) = ref_delta_children {
-            if let Some((base_id, _children)) = threading::lock(&ref_delta_children).first_key_value() {
-                return Err(Error::UnresolvedRefDelta { base_id: *base_id });
-            }
+        if let Some(ref_delta_children) = ref_delta_children
+            && let Some((base_id, _children)) = threading::lock(&ref_delta_children).first_key_value()
+        {
+            return Err(Error::UnresolvedRefDelta { base_id: *base_id });
         }
 
         object_progress.show_throughput(start);

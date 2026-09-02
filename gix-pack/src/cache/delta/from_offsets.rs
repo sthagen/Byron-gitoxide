@@ -11,6 +11,7 @@ use crate::{cache::delta::Tree, data};
 
 /// Returned by [`Tree::from_offsets_in_pack()`]
 #[derive(thiserror::Error, Debug)]
+#[allow(missing_docs)]
 pub enum Error {
     #[error("{message}")]
     Io { source: io::Error, message: &'static str },
@@ -23,8 +24,6 @@ pub enum Error {
     #[error("Interrupted")]
     Interrupted,
 }
-
-const PACK_HEADER_LEN: usize = 12;
 
 /// Generate tree from certain input
 impl<T> Tree<T> {
@@ -63,11 +62,11 @@ impl<T> Tree<T> {
                 progress.init(Some(num_objects), progress::count("objects"));
             })
             .unwrap_or_default();
-        let mut tree = Tree::with_capacity(anticipated_num_objects)?;
+        let mut tree = Tree::with_capacity(anticipated_num_objects, None)?;
 
         {
             // safety check - assure ourselves it's a pack we can handle
-            let mut buf = [0u8; PACK_HEADER_LEN];
+            let mut buf = [0u8; data::header::SIZE];
             r.read_exact(&mut buf).map_err(|err| Error::Io {
                 source: err,
                 message: "reading header buffer with at least 12 bytes failed - pack file truncated?",
@@ -104,9 +103,19 @@ impl<T> Tree<T> {
                         })?;
                 }
                 OfsDelta { base_distance } => {
-                    let base_pack_offset = pack_offset
-                        .checked_sub(base_distance)
-                        .expect("in bound distance for deltas");
+                    let Some(base_pack_offset) =
+                        crate::data::entry::Header::verified_base_pack_offset(pack_offset, base_distance)
+                    else {
+                        return Err(Error::Io {
+                            source: io::Error::new(
+                                io::ErrorKind::InvalidData,
+                                format!(
+                                    "OFS_DELTA base distance {base_distance} is invalid for pack offset {pack_offset}"
+                                ),
+                            ),
+                            message: "invalid OFS_DELTA base distance",
+                        });
+                    };
                     tree.add_child(base_pack_offset, pack_offset, data)?;
                 }
             }

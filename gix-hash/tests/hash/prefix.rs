@@ -1,3 +1,20 @@
+mod hex_output {
+    use crate::hex_to_id;
+
+    #[test]
+    fn writes_only_the_significant_hex_digits() {
+        let prefix =
+            gix_hash::Prefix::new(&hex_to_id("abcdefabcdefabcdefabcdefabcdefabcdefabcd"), 7).expect("valid prefix");
+        let mut buf = [0; 7];
+        assert_eq!(prefix.hex_to_buf(&mut buf), "abcdefa");
+        assert_eq!(prefix.to_string(), "abcdefa");
+
+        let mut written = Vec::new();
+        prefix.write_hex_to(&mut written).expect("in-memory writes succeed");
+        assert_eq!(written, b"abcdefa");
+    }
+}
+
 mod cmp_oid {
     use std::cmp::Ordering;
 
@@ -276,5 +293,42 @@ mod from_hex_nonempty {
         let expected = Error::TooLong { hex_len: 70 };
         let actual = Prefix::from_hex_nonempty(input).unwrap_err();
         assert_eq!(actual, expected);
+    }
+}
+
+mod reverse_hex {
+    use std::cmp::Ordering;
+
+    use gix_hash::{ChangeId, Prefix, prefix::from_hex::Error};
+
+    #[test]
+    fn matches_change_ids_at_odd_nibbles() -> gix_testtools::Result {
+        let full = "zzyxwvutsrqponmlkzyxwvutsrqponmlkzyxwvut";
+        let change_id = ChangeId::from_reverse_hex(full.as_bytes())?;
+        let prefix = Prefix::from_reverse_hex_nonempty("zzy")?;
+
+        assert_eq!(prefix.cmp_oid(&change_id), Ordering::Equal, "zzy matches zzyx...");
+        assert_eq!(prefix.to_reverse_hex().to_string(), "zzy");
+        assert_eq!(Prefix::from(change_id).to_reverse_hex().to_string(), full);
+        Ok(())
+    }
+
+    #[test]
+    fn validates_reverse_hex_like_forward_hex() -> gix_testtools::Result {
+        assert_eq!(
+            Prefix::from_reverse_hex("zzy").expect_err("three digits are below the safe minimum"),
+            Error::TooShort { hex_len: 3 }
+        );
+        let prefix = Prefix::from_reverse_hex("ZZYX")?;
+        assert_eq!(
+            prefix.to_reverse_hex().to_string(),
+            "zzyx",
+            "output is canonical lowercase"
+        );
+        assert_eq!(
+            Prefix::from_reverse_hex_nonempty("jj").expect_err("j is outside the reverse alphabet"),
+            Error::Invalid
+        );
+        Ok(())
     }
 }

@@ -2,7 +2,7 @@
 use std::path::Path;
 
 use gix_ref::{
-    Category, FullName, Target,
+    Category, FullName,
     store::WriteReflog,
     transaction::{PreviousValue, RefEdit},
 };
@@ -76,7 +76,7 @@ impl ThreadSafeRepository {
         open_options.git_dir_trust = Some(gix_sec::Trust::Full);
         // The repo will use `core.precomposeUnicode` to adjust the value as needed.
         open_options.current_dir = gix_fs::current_dir(false)?.into();
-        let repo = ThreadSafeRepository::open_from_paths(git_dir, worktree_dir, open_options)?;
+        let repo = ThreadSafeRepository::open_from_paths(git_dir, worktree_dir, open_options, None)?;
 
         let branch_name = repo
             .config
@@ -98,15 +98,12 @@ impl ThreadSafeRepository {
             let mut repo = repo.to_thread_local();
             let prev_write_reflog = repo.refs.write_reflog;
             repo.refs.write_reflog = WriteReflog::Disable;
-            repo.edit_reference(RefEdit {
-                change: gix_ref::transaction::Change::Update {
-                    log: Default::default(),
-                    expected: PreviousValue::Any,
-                    new: Target::Symbolic(sym_ref),
-                },
-                name: "HEAD".try_into().expect("valid"),
-                deref: false,
-            })?;
+            repo.edit_reference(RefEdit::update(
+                "HEAD".try_into().expect("valid"),
+                sym_ref,
+                PreviousValue::Any,
+                "",
+            ))?;
             repo.refs.write_reflog = prev_write_reflog;
         }
 

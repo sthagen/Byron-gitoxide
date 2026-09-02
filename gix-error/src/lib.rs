@@ -123,6 +123,8 @@
 //! |--------------------------------------------------------------|-----------------------|
 //! | General-purpose error messages                                | [`Message`]           |
 //! | Validation/parsing, optionally storing the offending input   | [`ValidationError`]   |
+//! | Malformed or internally inconsistent data                     | [`CorruptionError`]   |
+//! | A requested resource does not exist                            | [`NotFoundError`]     |
 //!
 //! For example, a validation function with no callee errors returns `Result<_, ValidationError>`,
 //! while a function that wraps I/O errors during parsing could return `Result<_, Exn<ValidationError>>`.
@@ -275,11 +277,12 @@
 //!
 //! ## Convert `Exn` to [`Error`] at public API boundaries
 //!
-//! Porcelain crates (like `gix`) should not expose [`Exn<Message>`](Exn) in their public API
-//! because it does not implement [`std::error::Error`], which makes it incompatible
-//! with `anyhow`, `Box<dyn Error>`, and the `?` operator in those contexts.
+//! Porcelain crates (like `gix`) should **not** expose [`Exn<Message>`](Exn) in their public API
+//! because it does not itself implement [`std::error::Error`].
 //!
-//! Instead, convert to [`Error`] (which does implement `std::error::Error`) at the boundary:
+//! Instead, convert to [`Error`] (which does implement `std::error::Error`) at the boundary.
+//! [`Exn`] also converts directly into `Box<dyn std::error::Error + Send + Sync>`, so `?` works
+//! without an explicit conversion when that is the receiving result's error type:
 //! ```rust,ignore
 //! // In the porcelain crate's error module:
 //! pub type Error = gix_error::Error;  // not gix_archive::Error (which is Exn<Message>)
@@ -311,7 +314,7 @@
 mod exn;
 
 pub use bstr;
-pub use exn::{ErrorExt, Exn, Frame, OptionExt, ResultExt, Something, Untyped};
+pub use exn::{BoxedResultExt, ErrorExt, Exn, Frame, OptionExt, ResultExt, Something, Untyped};
 
 /// An error type that wraps an inner type-erased boxed `std::error::Error` or an `Exn` frame.
 ///
@@ -320,7 +323,7 @@ pub use exn::{ErrorExt, Exn, Frame, OptionExt, ResultExt, Something, Untyped};
 /// # Warning: `source()` information is stringified and type-erased
 ///
 /// All `source()` values when created with [`Error::from_error()`] are turned into frames,
-/// but lose their type information completely.
+/// but lose their type information completely. An existing `Error` is retained as a nested error instead.
 /// This is because they are only seen as reference and thus can't be stored.
 ///
 /// # The `auto-chain-error` feature
@@ -337,14 +340,46 @@ pub struct Error {
     inner: ChainedError,
 }
 
+fn root_error_eq(mut error: &(dyn std::error::Error + 'static), other: &str) -> bool {
+    while let Some(nested) = error.downcast_ref::<Error>() {
+        error = nested.error();
+    }
+    error.to_string() == other
+}
+
+impl PartialEq<str> for Error {
+    fn eq(&self, other: &str) -> bool {
+        root_error_eq(self.error(), other)
+    }
+}
+
+impl PartialEq<&str> for Error {
+    fn eq(&self, other: &&str) -> bool {
+        <Self as PartialEq<str>>::eq(self, other)
+    }
+}
+
+impl PartialEq<String> for Error {
+    fn eq(&self, other: &String) -> bool {
+        <Self as PartialEq<str>>::eq(self, other)
+    }
+}
+
 /// A Result type that uses the [`Error`] type.
 pub type Result<T = ()> = std::result::Result<T, Error>;
 
+mod test;
+pub use test::{TestError, TestResult};
+
 mod error;
+pub use error::{Class, Classification, DisplaySource, can_retry, can_retry_lenient};
 
 /// Various kinds of concrete errors that implement [`std::error::Error`].
 mod concrete;
 pub use concrete::chain::ChainedError;
+pub use concrete::classify::{
+    CorruptionError, NotFoundError, ResourceExhaustionError, ResourceExhaustionKind, RetryableError,
+};
 pub use concrete::message::{Message, message};
 pub use concrete::validate::ValidationError;
 

@@ -7,15 +7,15 @@ use gix_features::{
 
 use crate::{
     cache::delta::{
-        Item,
         traverse::{Context, Error, util::ItemSliceSync},
+        tree::Item,
     },
     data,
     data::EntryRange,
 };
 
 mod node {
-    use crate::cache::delta::{Item, traverse::util::ItemSliceSync};
+    use crate::cache::delta::{traverse::util::ItemSliceSync, tree::Item};
 
     /// A node in a delta tree, with exclusive access to its item data.
     pub(crate) struct Node<'a, T: Send> {
@@ -549,15 +549,13 @@ where
 
     // This might be a leaf, while its base buffer now is also exclusively available,
     // and if so, keep the larger buffer.
-    if let Some(parent) = parent {
-        if let Ok(parent) = OwnShared::try_unwrap(parent) {
-            if reusable
-                .as_ref()
-                .is_none_or(|reusable| parent.bytes.capacity() > reusable.capacity())
-            {
-                reusable = Some(parent.bytes);
-            }
-        }
+    if let Some(parent) = parent
+        && let Ok(parent) = OwnShared::try_unwrap(parent)
+        && reusable
+            .as_ref()
+            .is_none_or(|reusable| parent.bytes.capacity() > reusable.capacity())
+    {
+        reusable = Some(parent.bytes);
     }
     if let Some(reusable) = reusable {
         *fully_resolved_delta_bytes = reusable;
@@ -684,7 +682,7 @@ mod tests {
         let first_leaf = append_delta(&mut pack, first_child, b'D');
         let second_leaf = append_delta(&mut pack, second_child, b'E');
 
-        let mut tree = Tree::with_capacity(5).expect("capacity is small");
+        let mut tree = Tree::with_capacity(5, None).expect("capacity is small");
         tree.add_root(root_offset, ()).expect("offsets are increasing");
         tree.add_child(root_offset, first_child, ())
             .expect("offsets are increasing");
@@ -730,7 +728,7 @@ mod tests {
             .map(|byte| append_delta(&mut pack, root_offset, byte))
             .collect();
 
-        let mut tree = Tree::with_capacity(1 + child_offsets.len()).expect("capacity is small");
+        let mut tree = Tree::with_capacity(1 + child_offsets.len(), None).expect("capacity is small");
         tree.add_root(root_offset, ()).expect("offsets are increasing");
         for child_offset in child_offsets {
             tree.add_child(root_offset, child_offset, ())
@@ -768,7 +766,7 @@ mod tests {
     fn traversal_rejects_declared_decompressed_size_over_alloc_limit() {
         let mut pack = Vec::new();
         let root_offset = append_entry(&mut pack, data::entry::Header::Blob, 1, b"");
-        let mut tree = Tree::with_capacity(1).expect("capacity is small");
+        let mut tree = Tree::with_capacity(1, None).expect("capacity is small");
         tree.add_root(root_offset, ()).expect("offsets are increasing");
 
         let err = traverse_with_limit(tree, &pack).expect_err("entry size exceeds the allocation cap");
@@ -795,7 +793,7 @@ mod tests {
             &delta,
         );
 
-        let mut tree = Tree::with_capacity(2).expect("capacity is small");
+        let mut tree = Tree::with_capacity(2, None).expect("capacity is small");
         tree.add_root(root_offset, ()).expect("offsets are increasing");
         tree.add_child(root_offset, child_offset, ())
             .expect("offsets are increasing");
@@ -824,7 +822,7 @@ mod tests {
             &delta,
         );
 
-        let mut tree = Tree::with_capacity(2).expect("capacity is small");
+        let mut tree = Tree::with_capacity(2, None).expect("capacity is small");
         tree.add_root(root_offset, ()).expect("offsets are increasing");
         tree.add_child(root_offset, child_offset, ())
             .expect("offsets are increasing");

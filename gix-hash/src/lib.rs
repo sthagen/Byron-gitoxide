@@ -31,6 +31,52 @@
 #[cfg(all(not(feature = "sha1"), not(feature = "sha256")))]
 compile_error!("Please set either the `sha1` or the `sha256` feature flag");
 
+macro_rules! impl_partial_eq_str_one_way {
+    ($type:ty) => {
+        impl PartialEq<str> for $type {
+            fn eq(&self, other: &str) -> bool {
+                self.eq_str(other)
+            }
+        }
+
+        impl PartialEq<&str> for $type {
+            fn eq(&self, other: &&str) -> bool {
+                self.eq_str(other)
+            }
+        }
+
+        impl PartialEq<String> for $type {
+            fn eq(&self, other: &String) -> bool {
+                self.eq_str(other)
+            }
+        }
+    };
+}
+
+macro_rules! impl_partial_eq_str {
+    ($type:ty) => {
+        impl_partial_eq_str_one_way!($type);
+
+        impl PartialEq<$type> for str {
+            fn eq(&self, other: &$type) -> bool {
+                other.eq_str(self)
+            }
+        }
+
+        impl PartialEq<$type> for &str {
+            fn eq(&self, other: &$type) -> bool {
+                other.eq_str(self)
+            }
+        }
+
+        impl PartialEq<$type> for String {
+            fn eq(&self, other: &$type) -> bool {
+                other.eq_str(self)
+            }
+        }
+    };
+}
+
 #[path = "oid.rs"]
 mod borrowed;
 pub use borrowed::{Error, oid};
@@ -46,11 +92,26 @@ pub use io::_impl::{bytes, bytes_of_file, bytes_with_hasher};
 mod object_id;
 pub use object_id::{ObjectId, decode};
 
-///
+/// JJ-compatible change identifiers and their reverse-hex formatting.
+pub mod change_id;
+
+/// Object ID prefixes and their parsing and comparison.
 pub mod prefix;
 
-///
+/// Object ID verification.
 pub mod verify;
+
+/// An object hash used as stable identifier for a change.
+///
+/// Its bytes are identical to the wrapped [`ObjectId`], but its textual form uses
+/// Jujutsu's reverse-hex alphabet `z` through `k` instead of `0` through `f`.
+#[derive(PartialEq, Eq, Hash, Ord, PartialOrd, Clone, Copy, Debug)]
+#[repr(transparent)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(transparent))]
+pub struct ChangeId(
+    /// The object hash whose bytes represent this change identifier.
+    ObjectId,
+);
 
 /// A partial, owned hash possibly identifying an object uniquely, whose non-prefix bytes are zeroed.
 ///

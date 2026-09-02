@@ -25,6 +25,8 @@ pub struct Any<T: Validate = validate::All> {
     pub link: Option<Link>,
     /// A note about this key.
     pub note: Option<Note>,
+    /// The value to use if this key is unset.
+    pub default_value: Option<&'static [u8]>,
     /// The way validation and transformation should happen.
     validate: T,
 }
@@ -47,6 +49,7 @@ impl<T: Validate> Any<T> {
             subsection_requirement: Some(SubSectionRequirement::Never),
             link: None,
             note: None,
+            default_value: None,
             validate,
         }
     }
@@ -68,9 +71,17 @@ impl<T: Validate> Any<T> {
         self
     }
 
-    /// Set a link to another key which serves as fallback to provide a value if this key is not set.
+    /// Record another key as fallback if this key is not set.
+    ///
+    /// This is descriptive metadata; consumers must apply the fallback during value resolution.
     pub const fn with_fallback(mut self, key: &'static dyn Key) -> Self {
         self.link = Some(Link::FallbackKey(key));
+        self
+    }
+
+    /// Set the value to use if this key is unset.
+    pub const fn with_default(mut self, value: &'static [u8]) -> Self {
+        self.default_value = Some(value);
         self
     }
 
@@ -149,6 +160,10 @@ impl<T: Validate> Key for Any<T> {
 
     fn note(&self) -> Option<&Note> {
         self.note.as_ref()
+    }
+
+    fn default_value(&self) -> Option<&BStr> {
+        self.default_value.map(BStr::new)
     }
 }
 
@@ -599,6 +614,33 @@ pub mod validate {
     impl Validate for Boolean {
         fn validate(&self, value: &BStr) -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
             gix_config::Boolean::try_from(value)?;
+            Ok(())
+        }
+    }
+
+    /// Values that are full reference names.
+    #[derive(Default, Clone, Copy)]
+    pub struct FullNameRef {
+        allow_empty: bool,
+    }
+
+    impl FullNameRef {
+        /// Create a validator that requires a full reference name.
+        pub const fn new() -> Self {
+            FullNameRef { allow_empty: false }
+        }
+
+        /// Create a validator that also accepts an empty value.
+        pub const fn or_empty() -> Self {
+            FullNameRef { allow_empty: true }
+        }
+    }
+
+    impl Validate for FullNameRef {
+        fn validate(&self, value: &BStr) -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
+            if !self.allow_empty || !value.is_empty() {
+                gix_ref::FullName::try_from(value.to_owned())?;
+            }
             Ok(())
         }
     }

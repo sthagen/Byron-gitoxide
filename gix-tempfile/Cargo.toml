@@ -9,7 +9,7 @@ description = "A tempfile implementation with a global registry to assure cleanu
 authors = ["Sebastian Thiel <sebastian.thiel@icloud.com>"]
 edition = "2024"
 include = ["/src/**/*", "/LICENSE-*", "/README.md"]
-rust-version = "1.85"
+rust-version = "1.88"
 
 [[example]]
 name = "delete-tempfiles-on-sigterm"
@@ -51,6 +51,9 @@ hp-hashmap = ["dep:dashmap"]
 
 [target.'cfg(not(windows))'.dependencies]
 libc = { version = "0.2.186", default-features = false }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61.1", features = ["Win32_Storage_FileSystem"] }
 
 [package.metadata.docs.rs]
 all-features = true

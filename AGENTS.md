@@ -58,21 +58,30 @@ uses `gix-error` (look at its `Cargo.toml`); if it does, follow the patterns bel
 
 Follow "purposeful conventional commits" style:
 
+- Write commit messages in Markdown and assume readers view them with syntax highlighting.
+  - Enclose anything that occurs in code, as well as crate names and shell commands, in backticks.
+  - Use Markdown generously whenever markup helps readers understand or navigate the prose.
+  - Use the body to share everything known about what motivated the change, not merely what changed.
 - Use conventional commit prefixes ONLY if message should appear in changelog
-- Breaking changes MUST use suffix `!`: `change!:`, `remove!:`, `rename!:`
+- Breaking changes MUST use `!` before the colon: `change!:`, `remove!:`, `rename!:`, or _scoped_ forms like `feat(gix-odb)!:`
 - Features/fixes visible to users: `feat:`, `fix:`
+- For a changelog-worthy commit touching multiple crates, _scope_ it to the crate that should receive the changelog entry, like `feat!(gix-ref)`.
 - Refactors/chores: no prefix (don't affect users)
 - Examples:
   - `feat: add Repository::foo() to do great things. (#234)`
   - `fix: don't panic when calling foo() in a bare repository. (#456)`
   - `change!: rename Foo to Bar. (#123)`
+  - `feat(gix-odb)!: add a new object lookup API`
+  - `fix(gix-ref)!: reject invalid reference names`
 
 ### Code Style
 
 - Follow existing patterns in the codebase
+- When creating directory-backed Rust modules, use the `mod.rs` style (`foo/mod.rs`) rather than a sibling `foo.rs` file.
 - No `.unwrap()` - use `.expect("context")` if you are sure this can't fail.
 - Prefer references in plumbing crates to avoid expensive clones
 - Avoid calling `.detach()` unless an owned value is explicitly required. Many `gix` APIs accept attached ids and references directly, so prefer keeping repository-backed handles like `gix::Id` when possible.
+- Name variables holding untyped Git object IDs `<type>_id` or `*_<type>_id` (for example, `commit_id`, `root_tree_id`, or `note_blob_id`) so the object kind is always explicit.
 - Use `gix_features::threading::*` for interior mutability primitives
 
 ### Path Handling
@@ -146,8 +155,10 @@ Follow "purposeful conventional commits" style:
 
 - Ubuntu-latest git version is the compatibility target
 - `cargo smart-release` for releases (driven by commit messages)
-- Split breaking changes into separate commits per affected crate if one commit-message wouldn't be suitable for all changed crates.
-- First commit: breaking change only; second commit: adaptations
+- Every commit must be self-contained and pass CI independently
+   - Feel free to run `etc/scripts/ci-check-local.sh --thorough` until it passes as proxy, as running every commit against CI isn't feasible.
+- Keep breaking changes and all adaptations required to build and test the workspace in the same commit
+- When such a commit touches multiple crates, _scope_ its conventional commit message to the crate whose changelog should receive the entry
 
 ## When Suggesting Changes
 

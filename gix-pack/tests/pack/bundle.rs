@@ -168,7 +168,7 @@ mod write_to_directory {
                 &[b"A".as_slice(), b"B".as_slice()][..],
                 &[b"A".as_slice(), b"B".as_slice(), b"C".as_slice()][..],
             ] {
-                let pack_data = ref_delta_pack(object_hash, objects)?;
+                let pack_data = ref_delta_pack(object_hash, objects, pack::data::Version::V2)?;
                 for lookup in [None, Some(gix_object::find::Never)] {
                     let dir = TempDir::new()?;
                     let mut input = Cursor::new(pack_data.clone());
@@ -178,11 +178,11 @@ mod write_to_directory {
                         &mut progress::Discard,
                         &AtomicBool::new(false),
                         lookup,
+                        object_hash,
                         pack::bundle::write::Options {
                             thread_limit: None,
                             iteration_mode: pack::data::input::Mode::Verify,
                             index_version: pack::index::Version::V2,
-                            object_hash,
                             alloc_limit_bytes: None,
                             compression: gix_zlib::Compression::BEST_SPEED,
                         },
@@ -219,6 +219,34 @@ mod write_to_directory {
     }
 
     #[test]
+    fn version_3_with_thin_pack_lookup() -> Result<(), Box<dyn std::error::Error>> {
+        let object_hash = gix_hash::Kind::Sha1;
+        let pack_data = ref_delta_pack(
+            object_hash,
+            &[b"A".as_slice(), b"B".as_slice()],
+            pack::data::Version::V3,
+        )?;
+        let outcome = pack::Bundle::write_to_directory(
+            &mut Cursor::new(pack_data),
+            Some(TempDir::new()?.as_ref()),
+            &mut progress::Discard,
+            &AtomicBool::new(false),
+            Some(gix_object::find::Never),
+            object_hash,
+            pack::bundle::write::Options {
+                iteration_mode: pack::data::input::Mode::Verify,
+                ..Default::default()
+            },
+        )?;
+        assert_eq!(
+            outcome.pack_version,
+            pack::data::Version::V3,
+            "the rewritten pack preserves its supported input version"
+        );
+        Ok(())
+    }
+
+    #[test]
     fn unresolved_ref_delta_base_is_reported() -> Result<(), Box<dyn std::error::Error>> {
         let object_hash = gix_hash::Kind::Sha1;
         let base_id = object_hash.null();
@@ -236,11 +264,11 @@ mod write_to_directory {
             &mut progress::Discard,
             &AtomicBool::new(false),
             None::<gix_object::find::Never>,
+            object_hash,
             pack::bundle::write::Options {
                 thread_limit: None,
                 iteration_mode: pack::data::input::Mode::Verify,
                 index_version: pack::index::Version::V2,
-                object_hash,
                 alloc_limit_bytes: None,
                 compression: gix_zlib::Compression::BEST_SPEED,
             },
@@ -267,19 +295,19 @@ mod write_to_directory {
             &mut progress::Discard,
             &SHOULD_INTERRUPT,
             None::<gix_object::find::Never>,
+            gix_hash::Kind::Sha1,
             pack::bundle::write::Options {
                 thread_limit: None,
                 iteration_mode: pack::data::input::Mode::Verify,
                 index_version: pack::index::Version::V2,
-                object_hash: gix_hash::Kind::Sha1,
                 alloc_limit_bytes: prevent_allocation,
                 compression: gix_zlib::Compression::BEST_SPEED,
             },
         )
-        .expect_err("a zero allocation limit rejects the first non-empty decoded object");
+        .expect_err("a zero allocation limit rejects non-empty delta-tree storage");
 
         assert!(
-            error_chain_contains_message(&err, "Entry too large to fit in memory"),
+            error_chain_contains_message(&err, "The pack delta tree is too large to fit in memory"),
             "bundle writing must forward its allocation limit to index writing"
         );
         Ok(())
@@ -302,11 +330,11 @@ mod write_to_directory {
             &mut progress::Discard,
             &SHOULD_INTERRUPT,
             None::<gix_object::find::Never>,
+            gix_hash::Kind::Sha1,
             pack::bundle::write::Options {
                 thread_limit: None,
                 iteration_mode: pack::data::input::Mode::Verify,
                 index_version: pack::index::Version::V2,
-                object_hash: gix_hash::Kind::Sha1,
                 alloc_limit_bytes: None,
                 compression: gix_zlib::Compression::BEST_SPEED,
             },
@@ -329,8 +357,9 @@ mod write_to_directory {
     fn ref_delta_pack(
         object_hash: gix_hash::Kind,
         objects: &[&'static [u8]],
+        version: pack::data::Version,
     ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-        let mut pack_data = pack::data::header::encode(pack::data::Version::V2, objects.len() as u32).to_vec();
+        let mut pack_data = pack::data::header::encode(version, objects.len() as u32).to_vec();
         for pair in objects.windows(2).rev() {
             let (base, resolved) = (pair[0], pair[1]);
             let base_id = gix_object::compute_hash(object_hash, gix_object::Kind::Blob, base)?;

@@ -399,13 +399,7 @@ mod write_blob {
 #[test]
 fn writes_avoid_io_using_duplicate_check() -> crate::Result {
     let mut repo = crate::named_repo("make_packed_and_loose.sh")?;
-    let store = gix::odb::loose::Store::at(
-        repo.git_dir().join("objects"),
-        gix::odb::loose::Options {
-            object_hash: repo.object_hash(),
-            ..Default::default()
-        },
-    );
+    let store = gix::odb::loose::Store::at(repo.git_dir().join("objects"), repo.object_hash());
     let loose_count = store.iter().count();
     assert_eq!(loose_count, 3, "there are some loose objects");
     assert_eq!(
@@ -655,7 +649,7 @@ mod tag {
             message,
             gix_ref::transaction::PreviousValue::MustNotExist,
         )?;
-        assert_eq!(tag_ref.name().as_bstr(), "refs/tags/v1.0.0");
+        assert_eq!(tag_ref, "refs/tags/v1.0.0");
         assert_ne!(tag_ref.id(), current_head_id, "it points to the tag object");
         let tag = tag_ref.id().object()?;
         let tag = tag.try_to_tag_ref()?;
@@ -731,10 +725,7 @@ mod commit {
             gix_hash::Kind::Sha256 => expected_sha256,
             _ => unreachable!(),
         };
-        assert_eq!(
-            actual,
-            gix_hash::ObjectId::from_hex(expected_hash.as_bytes()).expect("valid sha1")
-        );
+        assert_eq!(actual, expected_hash);
     }
 
     #[test]
@@ -784,7 +775,7 @@ mod commit {
         );
 
         let head = repo.head()?.try_into_referent().expect("born");
-        assert_eq!(head.name().as_bstr(), "refs/heads/main", "'main' is the default name");
+        assert_eq!(head, "refs/heads/main", "'main' is the default name");
         assert_eq!(
             head.log_iter()
                 .rev()?
@@ -900,8 +891,7 @@ fn new_commit_as() -> crate::Result {
         _ => unreachable!(),
     };
     assert_eq!(
-        commit.id,
-        gix_hash::ObjectId::from_hex(expected_hex.as_bytes()).expect("valid object id"),
+        commit.id, expected_hex,
         "The commit-id is stable as the author/committer is controlled"
     );
 

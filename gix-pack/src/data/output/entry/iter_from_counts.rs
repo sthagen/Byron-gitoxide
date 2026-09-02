@@ -59,10 +59,6 @@ pub(crate) mod function {
     where
         Find: crate::Find + Send + Clone + 'static,
     {
-        assert!(
-            matches!(version, crate::data::Version::V2),
-            "currently we can only write version 2"
-        );
         let (chunk_size, thread_limit, _) =
             parallel::optimize_chunk_size_and_thread_limit(chunk_size, Some(counts.len()), thread_limit, None);
         {
@@ -170,10 +166,10 @@ pub(crate) mod function {
                             .and_then(|l| db.entry_by_location(l).map(|pe| (l, pe)))
                         {
                             Some((location, pack_entry)) => {
-                                if let Some((cached_pack_id, _)) = &pack_offsets_to_id {
-                                    if *cached_pack_id != location.pack_id {
-                                        pack_offsets_to_id = None;
-                                    }
+                                if let Some((cached_pack_id, _)) = &pack_offsets_to_id
+                                    && *cached_pack_id != location.pack_id
+                                {
+                                    pack_offsets_to_id = None;
                                 }
                                 let pack_range = counts_range_by_pack_id[counts_range_by_pack_id
                                     .binary_search_by_key(&location.pack_id, |e| e.0)

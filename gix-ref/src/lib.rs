@@ -31,6 +31,7 @@ use gix_object::bstr::{BStr, BString};
 mod store_impl;
 pub use store_impl::{file, packed};
 
+mod compare;
 mod fullname;
 ///
 pub mod name;
@@ -62,8 +63,6 @@ pub mod store {
         pub struct Options {
             /// How to write the ref-log.
             pub write_reflog: super::WriteReflog,
-            /// The kind of hash to expect in
-            pub object_hash: gix_hash::Kind,
             /// The equivalent of `core.precomposeUnicode`.
             pub precompose_unicode: bool,
             /// If `true`, we will avoid reading from or writing to references that contains Windows device names
