@@ -181,6 +181,8 @@ impl ThreadSafeRepository {
                 },
             ref api_config_overrides,
             ref cli_config_overrides,
+            ref git_installation_config_path,
+            ref system_config_path,
             use_repository_local_environment,
             ref mut current_dir,
         } = options;
@@ -255,6 +257,8 @@ impl ThreadSafeRepository {
             filter_config_section,
             git_install_dir.as_deref(),
             home.as_deref(),
+            git_installation_config_path.as_deref(),
+            system_config_path.as_deref(),
             *env,
             attributes,
             config,
@@ -270,20 +274,22 @@ impl ThreadSafeRepository {
                 is_eligible_worktree_config_section(section, &git_dir, current_dir, &mut filter_config_section)
             })
             .ok()
-            .map(|(value, section)| (gix_config::Path::from(value), section.meta().source));
+            .map(|(value, section)| (value, section.meta().source));
         let worktree_from_environment = configured_worktree
             .as_ref()
             .is_some_and(|(_, source)| *source == gix_config::Source::EnvOverride);
         let may_use_configured_worktree = config.is_bare == Some(false) || worktree_from_environment;
 
         if let Some((worktree, source)) = configured_worktree.filter(|_| may_use_configured_worktree) {
-            let original = worktree.clone();
-            let worktree = worktree
-                .interpolate(interpolate_context(git_install_dir.as_deref(), home.as_deref()))
-                .map_err(|err| config::Error::PathInterpolation {
-                    path: original.value,
-                    source: err,
-                })?;
+            if worktree.is_empty() {
+                return Err(config::Error::PathInterpolation {
+                    path: worktree,
+                    source: gix_config::path::interpolate::Error::Missing { what: "path" },
+                }
+                .into());
+            }
+            // Git treats core.worktree as a literal path, without tilde or prefix interpolation.
+            let worktree = gix_path::from_bstr(worktree.as_bstr()).into_owned();
             let worktree = match source {
                 gix_config::Source::Env
                 | gix_config::Source::Cli

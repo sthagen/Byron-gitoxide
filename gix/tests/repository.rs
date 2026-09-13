@@ -1,5 +1,100 @@
+use std::fs;
+
 use gix::bstr::ByteSlice;
+use gix_testtools::{Env, tempfile};
 use serial_test::serial;
+
+#[test]
+#[serial]
+fn config_path_uses_repository_options_for_global_sources() -> gix_testtools::Result {
+    use gix::config::{Source, file_mut::Error};
+
+    let fixture = gix::path::realpath(gix_testtools::scripted_fixture_read_only("make_config_repos.sh")?)?;
+    let git_dir = fixture.join("bare-repo");
+    let missing = fixture.join("missing");
+    let installation = missing.join("installation.config");
+    let system = missing.join("system.config");
+    let global = missing.join("global.config");
+    let _env = Env::new()
+        .set("GIT_CONFIG_GLOBAL", global.to_string_lossy())
+        .set("GIT_CONFIG_SYSTEM", "ignored.config")
+        .set("GIT_CONFIG_NOSYSTEM", "0");
+    let mut options = gix::open::Options::isolated()
+        .git_installation_config_path(&installation)
+        .system_config_path(&system);
+    options.permissions.config.git_binary = true;
+    options.permissions.config.system = true;
+    options.permissions.config.git = true;
+    options.permissions.config.user = true;
+    options.permissions.env.git_prefix = gix::sec::Permission::Allow;
+    let repo = gix::open_opts(&git_dir, options)?;
+    for (source, expected) in [
+        (Source::GitInstallation, installation),
+        (Source::System, system),
+        (Source::Git, global.clone()),
+        (Source::User, global),
+    ] {
+        assert_eq!(
+            repo.config_path(source)?,
+            expected,
+            "{source:?} honors the repository's explicit paths and environment permissions"
+        );
+    }
+    assert!(!missing.exists(), "path lookup does not create files or directories");
+
+    let repo = gix::open_opts(&git_dir, gix::open::Options::isolated())?;
+    for source in [Source::GitInstallation, Source::System, Source::Git, Source::User] {
+        assert!(
+            matches!(repo.config_path(source), Err(Error::SourceUnavailable(actual)) if actual == source),
+            "{source:?} remains unavailable when disabled by the repository's permissions"
+        );
+    }
+    for source in [Source::Env, Source::Cli, Source::Api, Source::EnvOverride] {
+        assert!(
+            matches!(repo.config_path(source), Err(Error::UnsupportedSource(actual)) if actual == source),
+            "{source:?} has no physical configuration file even with a repository"
+        );
+    }
+    Ok(())
+}
+
+#[test]
+#[serial]
+fn config_paths_use_the_opening_cwd() -> gix_testtools::Result {
+    use gix::config::Source;
+
+    let fixture = gix::path::realpath(gix_testtools::scripted_fixture_read_only("make_config_repos.sh")?)?;
+    let _cwd = gix_testtools::set_current_dir(&fixture)?;
+    let _env = Env::new()
+        .set("GIT_CONFIG_GLOBAL", "missing/global.config")
+        .set("GIT_CONFIG_NOSYSTEM", "0");
+    let mut options = gix::open::Options::isolated()
+        .git_installation_config_path("missing/installation.config")
+        .system_config_path("missing/system.config");
+    options.permissions.config.git_binary = true;
+    options.permissions.config.system = true;
+    options.permissions.config.git = true;
+    options.permissions.config.user = true;
+    options.permissions.env.git_prefix = gix::sec::Permission::Allow;
+    let repo = gix::open_opts("bare-repo", options)?;
+    std::env::set_current_dir(fixture.join("bare-repo"))?;
+
+    for (source, path) in [
+        (Source::Local, "bare-repo/config"),
+        (Source::Worktree, "bare-repo/config.worktree"),
+        (Source::GitInstallation, "missing/installation.config"),
+        (Source::System, "missing/system.config"),
+        (Source::Git, "missing/global.config"),
+        (Source::User, "missing/global.config"),
+    ] {
+        assert_eq!(
+            repo.config_path(source)?,
+            repo.current_dir().join(path),
+            "{source:?} resolves relative paths against the opening CWD whether or not the file exists"
+        );
+    }
+    Ok(())
+}
 
 #[test]
 #[serial]
@@ -268,6 +363,76 @@ fn revspec_paths_starting_with_a_dot_need_a_worktree_to_stay_within() -> gix_tes
             "`{spec}` has nothing to be relative to and must not resolve"
         );
     }
+    Ok(())
+}
+
+#[test]
+#[serial]
+fn open_options_preset_system_config_paths_avoid_running_git() -> gix_testtools::Result {
+    let temp = tempfile::tempdir()?;
+    let git_dir = temp.path().join("repo.git");
+    fs::create_dir_all(git_dir.join("objects"))?;
+    fs::create_dir_all(git_dir.join("refs"))?;
+    fs::write(git_dir.join("HEAD"), "ref: refs/heads/main\n")?;
+    fs::write(
+        git_dir.join("config"),
+        "[core]
+            repositoryFormatVersion = 0
+            bare = true",
+    )?;
+
+    let installation_config = temp.path().join("installation.gitconfig");
+    fs::write(
+        &installation_config,
+        "[preset]
+            installation = configured",
+    )?;
+    let system_config = temp.path().join("system.gitconfig");
+    fs::write(
+        &system_config,
+        "[preset]
+            system = configured",
+    )?;
+
+    let trace = temp.path().join("git.trace");
+    let _env = Env::new().set("GIT_TRACE", trace.to_string_lossy());
+    let mut options = gix::open::Options::isolated()
+        .git_installation_config_path(&installation_config)
+        .system_config_path(&system_config);
+    options.permissions.config.git_binary = true;
+    options.permissions.config.system = true;
+
+    let repo = gix::open_opts(&git_dir, options)?;
+    assert_eq!(
+        repo.config_snapshot()
+            .string("preset.installation")
+            .expect("installation configuration was loaded"),
+        "configured"
+    );
+    assert_eq!(
+        repo.config_snapshot()
+            .string("preset.system")
+            .expect("system configuration was loaded"),
+        "configured"
+    );
+
+    let _no_system = Env::new().set("GIT_CONFIG_NOSYSTEM", "1");
+    let mut options = gix::open::Options::isolated()
+        .git_installation_config_path(installation_config)
+        .system_config_path(system_config);
+    options.permissions.config.git_binary = true;
+    options.permissions.config.system = true;
+    options.permissions.env.git_prefix = gix::sec::Permission::Allow;
+    let repo = gix::open_opts(git_dir, options)?;
+    assert!(
+        repo.config_snapshot().string("preset.installation").is_none(),
+        "GIT_CONFIG_NOSYSTEM must disable preset installation configuration"
+    );
+    assert!(
+        repo.config_snapshot().string("preset.system").is_none(),
+        "GIT_CONFIG_NOSYSTEM must disable preset system configuration"
+    );
+    assert!(!trace.exists(), "presetting both paths must avoid launching Git");
     Ok(())
 }
 

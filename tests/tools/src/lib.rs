@@ -8,6 +8,12 @@
 //! Valid values are the names of hash functions supported by `gix_hash::Kind` (e.g., `sha1`, `sha256`).
 //! If not set, the default hash function via `gix_hash::Kind::default()` is used.
 //!
+//! ## Script Isolation
+//!
+//! Fixture scripts and [`git()`] use `GIT_CONFIG_PARAMETERS` to disable signing and automatic maintenance
+//! and set `init.defaultBranch=main`. A script's own `GIT_CONFIG_COUNT` entries coexist with this configuration,
+//! with isolation taking precedence for shared keys. Explicit `git -c` options can override isolation.
+//!
 
 //! ## Feature Flags
 #![cfg_attr(
@@ -710,6 +716,7 @@ pub fn fixture_bytes(path: impl AsRef<Path>) -> Vec<u8> {
 /// the path is returned.
 ///
 /// Note that it persists and the script at `script_name` will only be executed once if it ran without error.
+/// Inherited `GIT_TEMPLATE_DIR` is cleared; Git's installed templates remain available.
 ///
 /// ### Automatic Archive Creation
 ///
@@ -1988,6 +1995,7 @@ fn configure_command<'a, I: IntoIterator<Item = S>, S: AsRef<OsStr>>(
         .env_remove("GIT_ALTERNATE_OBJECT_DIRECTORIES")
         .env_remove("GIT_WORK_TREE")
         .env_remove("GIT_COMMON_DIR")
+        .env_remove("GIT_TEMPLATE_DIR")
         .env_remove("GIT_ASKPASS")
         .env_remove("SSH_ASKPASS")
         .env("MSYS", msys_for_git_bash_on_windows)
@@ -1995,8 +2003,18 @@ fn configure_command<'a, I: IntoIterator<Item = S>, S: AsRef<OsStr>>(
             "XDG_CONFIG_HOME",
             script_result_directory.join(".gix-testtools-xdg-config"),
         )
+        // Discard ambient command-scope configuration before applying isolation.
+        .env_remove("GIT_CONFIG_COUNT")
         .env("GIT_CONFIG_NOSYSTEM", "1")
         .env("GIT_CONFIG_GLOBAL", NULL_DEVICE)
+        .env(
+            "GIT_CONFIG_PARAMETERS",
+            ISOLATED_GIT_CONFIG
+                .iter()
+                .map(|(key, value)| format!("'{key}={value}'"))
+                .collect::<Vec<_>>()
+                .join(" "),
+        )
         .env("GIT_TERMINAL_PROMPT", "false")
         .env("GIT_AUTHOR_DATE", "2000-01-01 00:00:00 +0000")
         .env("GIT_AUTHOR_EMAIL", "author@example.com")
@@ -2004,8 +2022,7 @@ fn configure_command<'a, I: IntoIterator<Item = S>, S: AsRef<OsStr>>(
         .env("GIT_COMMITTER_DATE", "2000-01-02 00:00:00 +0000")
         .env("GIT_COMMITTER_EMAIL", "committer@example.com")
         .env("GIT_COMMITTER_NAME", "committer")
-        .env("GIT_DEFAULT_HASH", object_hash.to_string());
-    apply_git_config_by_environment(cmd, ISOLATED_GIT_CONFIG)
+        .env("GIT_DEFAULT_HASH", object_hash.to_string())
 }
 
 /// Apply command-scoped Git `config` to `cmd`, and return it.
